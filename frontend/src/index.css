@@ -1,0 +1,101 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg-primary: #050505;
+    --bg-secondary: #0a0a0a;
+    --bg-hex: #111111;
+    --accent: #F5A623;
+    --accent-rgb: 245, 166, 35;
+    --text-primary: #ffffff;
+    --text-secondary: #a1a1aa;
+    --border-color: rgba(255, 255, 255, 0.05);
+  }
+
+  [data-theme='morandi-sage'] {
+    --bg-primary: #2C2E2B;
+    --bg-secondary: #353834;
+    --bg-hex: #3E413D;
+    --accent: #A3B5A1;
+    --accent-rgb: 163, 181, 161;
+    --text-primary: #E8E6E1;
+    --text-secondary: #8E918B;
+    --border-color: rgba(163, 181, 161, 0.1);
+  }
+
+  [data-theme='morandi-rose'] {
+    --bg-primary: #3D3535;
+    --bg-secondary: #473E3E;
+    --bg-hex: #524747;
+    --accent: #D6A6A6;
+    --accent-rgb: 214, 166, 166;
+    --text-primary: #F5F0F0;
+    --text-secondary: #A89999;
+    --border-color: rgba(214, 166, 166, 0.1);
+  }
+
+  [data-theme='ocean-night'] {
+    --bg-primary: #0A1120;
+    --bg-secondary: #111B2D;
+    --bg-hex: #1A253A;
+    --accent: #00D1FF;
+    --accent-rgb: 0, 209, 255;
+    --text-primary: #E2E8F0;
+    --text-secondary: #64748B;
+    --border-color: rgba(0, 209, 255, 0.1);
+  }
+
+  [data-theme='nordic-cold'] {
+    --bg-primary: #1A1C1E;
+    --bg-secondary: #232529;
+    --bg-hex: #2D3035;
+    --accent: #D1D5DB;
+    --accent-rgb: 209, 213, 219;
+    --text-primary: #F9FAFB;
+    --text-secondary: #9CA3AF;
+    --border-color: rgba(209, 213, 219, 0.1);
+  }
+
+  body {
+    margin: 0;
+    padding: 0;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    transition: background-color 0.5s ease, color 0.5s ease;
+  }
+}
+
+/* 隐藏滚动条 */
+::-webkit-scrollbar {
+  display: none;
+}
+
+/* 六边形遮罩 */
+.hex-clip {
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+}
+
+.breathing {
+  animation: breathe 3s ease-in-out infinite;
+}
+
+@keyframes breathe {
+  0% {
+    opacity: 0.6;
+    box-shadow: 0 0 10px rgba(var(--accent-rgb), 0);
+  }
+
+  50% {
+    opacity: 1;
+    box-shadow: 0 0 25px rgba(var(--accent-rgb), 0.4);
+  }
+
+  100% {
+    opacity: 0.6;
+    box-shadow: 0 0 10px rgba(var(--accent-rgb), 0);
+  }
+}

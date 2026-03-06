@@ -1,0 +1,35 @@
+# Node
+node_modules/
+dist/
+build/
+.npm
+.eslintcache
+frontend/dist
+frontend/node_modules
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+backend/__pycache__/
+backend/venv/
+backend/.venv/
+backend/env/
+backend/.env
+backend/*.db
+backend/*.sqlite3
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+
+# OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Brain/Memory
+.gemini/
+brain/
+*.log
