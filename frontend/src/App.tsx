@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Play, Square, Settings, Users, Flame, ChevronLeft, MapPin, BookOpen, Clock, Zap, Maximize2 } from 'lucide-react';
 import clsx from 'clsx';
 import { Sheet } from './components/Sheet';
@@ -12,6 +12,9 @@ import type { Theme } from './components/ThemePicker';
 import { ProfilePortal } from './components/ProfilePortal';
 import type { UserProfile } from './components/ProfilePortal';
 import { GlobalMap } from './components/GlobalMap';
+import { userService, focusService, socialService } from './api';
+import type { Subject, Squad, Bond } from './api/types';
+import { useHiveSocket } from './hooks/useHiveSocket';
 
 
 
@@ -27,9 +30,6 @@ const SQUAD_MEMBERS = [
   { id: 8, name: 'Nina', status: 'break', subject: 'Art', avatar: 'https://i.pravatar.cc/150?u=8' },
   { id: 9, name: 'Sam', status: 'focus', subject: 'Lang', avatar: 'https://i.pravatar.cc/150?u=9' },
 ];
-
-// 模拟 Hive 房间中的更多在线用户 (L2 外围光点)
-const HIVE_AMBIENT_COUNT = 86;
 
 type SheetType = 'subject' | 'location' | 'timer' | 'squad' | 'bonds' | 'theme' | 'profile' | null;
 
@@ -49,6 +49,14 @@ export default function App() {
   // UI 控制
   const [activeSheet, setActiveSheet] = useState<SheetType>(null);
   const [theme, setTheme] = useState<Theme>('classic');
+  const [lastNudge, setLastNudge] = useState<string | null>(null);
+
+  // 用户与会话状态
+  const [userId] = useState<string>('00000000-0000-0000-0000-000000000001'); // 演示用固定 UUID
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [squads, setSquads] = useState<Squad[]>([]);
+  const [bonds, setBonds] = useState<Bond[]>([]);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
 
   // 用户个人资料
   const [userProfile, setUserProfile] = useState<UserProfile>({
@@ -59,6 +67,57 @@ export default function App() {
     totalFocus: 45,
     sparks: 128
   });
+
+  // Calculate a dynamic but consistent number of ambient users based on the location name
+  const dynamicAmbientCount = useMemo(() => {
+    if (currentLocation === 'Global') return 24302; // Global default from map
+
+    // Simple string hash to generate a consistent pseudo-random number
+    let hash = 0;
+    for (let i = 0; i < currentLocation.length; i++) {
+      hash = ((hash << 5) - hash) + currentLocation.charCodeAt(i);
+      hash |= 0; // Convert to 32bit integer
+    }
+
+    // Generate a number between 12 and 1500 depending on the hash
+    return Math.floor(Math.abs(hash) % 1488) + 12;
+  }, [currentLocation]);
+
+  // 初始化加载
+  useEffect(() => {
+    const initData = async () => {
+      try {
+        // 加载科目
+        const fetchedSubjects = await focusService.getSubjects();
+        setSubjects(fetchedSubjects);
+
+        // 加载个人资料
+        const profile = await userService.getProfile(userId);
+        if (profile) {
+          setUserProfile({
+            name: profile.name,
+            avatar: profile.avatar_url || 'https://i.pravatar.cc/150?u=my-unique-id',
+            bio: profile.bio || '',
+            goal: profile.daily_goal_mins,
+            totalFocus: profile.total_focus_mins,
+            sparks: profile.total_sparks
+          });
+          setTheme(profile.theme_preference as any);
+        }
+
+        // 加载社交数据
+        const [fetchedSquads, fetchedBonds] = await Promise.all([
+          socialService.getSquads(userId),
+          socialService.getBonds(userId)
+        ]);
+        setSquads(fetchedSquads);
+        setBonds(fetchedBonds);
+      } catch (err) {
+        console.error('Failed to init data:', err);
+      }
+    };
+    initData();
+  }, [userId]);
 
 
   // 同步主题到 DOM
@@ -85,11 +144,111 @@ export default function App() {
     return () => clearInterval(timer);
   }, [isFocusing, timeLeft]);
 
-  const toggleFocus = () => {
-    if (!isFocusing && timeLeft === 0) {
-      setTimeLeft(maxTime);
+  const { messages, sendNudge } = useHiveSocket(userId);
+
+  // 监听 WebSocket 消息处理“轻推”视觉反馈
+  useEffect(() => {
+    const latest = messages[messages.length - 1];
+    if (latest?.type === 'NUDGE_RECEIVED') {
+      setLastNudge(latest.sender_id || 'Someone');
+      const timer = setTimeout(() => setLastNudge(null), 3000);
+      return () => clearTimeout(timer);
     }
-    setIsFocusing(!isFocusing);
+  }, [messages]);
+
+  // 处理资料更新
+  const handleUpdateProfile = async (updates: Partial<UserProfile>) => {
+    try {
+      const resp = await userService.updateProfile(userId, {
+        name: updates.name,
+        bio: updates.bio,
+        avatar_url: updates.avatar,
+        daily_goal_mins: updates.goal,
+        theme_preference: theme
+      });
+      if (resp) {
+        setUserProfile(prev => ({ ...prev, ...updates }));
+      }
+    } catch (err) {
+      console.error('Update profile failed:', err);
+    }
+  };
+
+  const handleJoinSquad = async (inviteCode: string) => {
+    try {
+      const squad = await socialService.joinSquad(userId, inviteCode);
+      setSquads(prev => [...prev.filter(s => s.id !== squad.id), squad]);
+      setCurrentSquad(squad.name);
+    } catch (err) {
+      console.error('Join squad failed:', err);
+    }
+  };
+
+  const handleCreateSquad = async (name: string) => {
+    try {
+      const squad = await socialService.createSquad(userId, name);
+      setSquads(prev => [...prev, squad]);
+      setCurrentSquad(squad.name);
+    } catch (err) {
+      console.error('Create squad failed:', err);
+    }
+  };
+
+  const handleReport = async (targetId: string, type: 'USER' | 'SQUAD') => {
+    const reason = window.prompt(`Reason for reporting this ${type.toLowerCase()}:`);
+    if (!reason) return;
+    try {
+      await socialService.report(userId, targetId, type, reason);
+      alert('Report submitted. Our team will review it shortly.');
+    } catch (err) {
+      console.error('Report failed:', err);
+    }
+  };
+
+  const handleBlock = async (blockedId: string) => {
+    if (!window.confirm('Are you sure you want to block this user? They will no longer be able to interact with you.')) return;
+    try {
+      await socialService.block(userId, blockedId);
+      // 刷新羁绊列表以过滤掉已屏蔽的用户
+      const fetchedBonds = await socialService.getBonds(userId);
+      setBonds(fetchedBonds);
+      alert('User blocked successfully.');
+    } catch (err) {
+      console.error('Block failed:', err);
+    }
+  };
+
+  const toggleFocus = async () => {
+    try {
+      if (!isFocusing) {
+        // 开始专注
+        const subject = subjects.find(s => s.name === currentSubject);
+        const session = await focusService.startSession(userId, subject?.id || 1);
+        setActiveSessionId(session.id);
+        setIsFocusing(true);
+      } else {
+        // 结束专注
+        if (activeSessionId) {
+          const durationMins = Math.floor((maxTime - timeLeft) / 60);
+          await focusService.endSession(activeSessionId, durationMins);
+
+          // 更新本地资料统计
+          const updatedProfile = await userService.getProfile(userId);
+          setUserProfile({
+            name: updatedProfile.name,
+            avatar: updatedProfile.avatar_url || userProfile.avatar,
+            bio: updatedProfile.bio || '',
+            goal: updatedProfile.daily_goal_mins,
+            totalFocus: updatedProfile.total_focus_mins,
+            sparks: updatedProfile.total_sparks
+          });
+        }
+        setIsFocusing(false);
+        setActiveSessionId(null);
+      }
+    } catch (err) {
+      console.error('Focus toggle failed:', err);
+    }
   };
 
   const handleTimeSelect = (mins: number) => {
@@ -98,6 +257,22 @@ export default function App() {
     setMaxTime(secs);
     setActiveSheet(null);
   };
+
+  // Generate particles only when the dynamicAmbientCount changes
+  const ambientParticles = useMemo(() => {
+    const count = Math.min(dynamicAmbientCount, 150); // limit to 150
+    return Array.from({ length: count }).map((_, i) => {
+      const angle = (i / count) * Math.PI * 2;
+      const radiusBase = 130 + Math.random() * 40;
+      const x = Math.cos(angle) * radiusBase + 170;
+      const y = Math.sin(angle) * radiusBase + 170;
+      const size = 2 + Math.random() * 3;
+      const opacity = 0.15 + Math.random() * 0.25;
+      const delay = Math.random() * 3;
+      const duration = 2 + Math.random() * 2;
+      return { id: `amb-${i}`, x, y, size, opacity, delay, duration };
+    });
+  }, [dynamicAmbientCount]);
 
   return (
     <div className="flex h-screen items-center justify-center bg-black/95">
@@ -140,16 +315,32 @@ export default function App() {
               Live Room
             </div>
           </div>
-          <button
-            onClick={() => setActiveSheet('profile')}
-            className="w-10 h-10 rounded-full border-2 transition-all p-0.5 overflow-hidden hover:scale-105 active:scale-95 shadow-lg"
-            style={{
-              borderColor: activeSheet === 'profile' ? 'var(--accent)' : 'rgba(var(--accent-rgb), 0.2)',
-              boxShadow: activeSheet === 'profile' ? '0 0 15px rgba(var(--accent-rgb), 0.3)' : 'none'
-            }}
-          >
-            <img src={userProfile.avatar} alt="Profile" className="w-full h-full rounded-full object-cover" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setActiveSheet('theme')}
+              className="p-2 transition-colors hover:opacity-80 active:scale-95"
+              style={{ color: 'var(--text-secondary)' }}
+            >
+              <Settings size={20} />
+            </button>
+            <button
+              onClick={() => setActiveSheet('profile')}
+              className="w-10 h-10 rounded-full border-2 transition-all p-0.5 overflow-hidden hover:scale-105 active:scale-95 shadow-lg relative"
+              style={{
+                borderColor: activeSheet === 'profile' ? 'var(--accent)' : 'rgba(var(--accent-rgb), 0.2)',
+                boxShadow: activeSheet === 'profile' ? '0 0 15px rgba(var(--accent-rgb), 0.3)' : 'none'
+              }}
+            >
+              <img src={userProfile.avatar} alt="Profile" className="w-full h-full rounded-full object-cover" />
+
+              {/* 收到轻推时的提示光点 */}
+              {lastNudge && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#F5A623] rounded-full flex items-center justify-center animate-bounce shadow-lg border-2 border-black">
+                  <Zap size={8} className="text-black fill-current" />
+                </span>
+              )}
+            </button>
+          </div>
         </div>
 
 
@@ -178,33 +369,22 @@ export default function App() {
 
           {/* 蜂窝网格 + 外围光点环 */}
           <div className="w-full flex flex-col items-center mb-10 relative">
-
             {/* L2 外围渐变粒子环 */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[340px] h-[340px] pointer-events-none z-0">
-              {Array.from({ length: HIVE_AMBIENT_COUNT }).map((_, i) => {
-                const angle = (i / HIVE_AMBIENT_COUNT) * Math.PI * 2;
-                const radiusBase = 130 + Math.random() * 40;
-                const x = Math.cos(angle) * radiusBase + 170;
-                const y = Math.sin(angle) * radiusBase + 170;
-                const size = 2 + Math.random() * 3;
-                const opacity = 0.15 + Math.random() * 0.25;
-                const delay = Math.random() * 3;
-                return (
-                  <div
-                    key={`amb-${i}`}
-                    className="absolute rounded-full animate-pulse"
-                    style={{
-                      left: x, top: y,
-                      width: size, height: size,
-                      opacity,
-                      backgroundColor: 'var(--accent)',
-                      animationDelay: `${delay}s`,
-                      animationDuration: `${2 + Math.random() * 2}s`,
-                    }}
-                  />
-                );
-
-              })}
+              {ambientParticles.map((particle) => (
+                <div
+                  key={particle.id}
+                  className="absolute rounded-full animate-pulse"
+                  style={{
+                    left: particle.x, top: particle.y,
+                    width: particle.size, height: particle.size,
+                    opacity: particle.opacity,
+                    backgroundColor: 'var(--accent)',
+                    animationDelay: `${particle.delay}s`,
+                    animationDuration: `${particle.duration}s`,
+                  }}
+                />
+              ))}
             </div>
 
             {/* 背景光晕 */}
@@ -219,10 +399,13 @@ export default function App() {
 
                 return (
                   <div key={member.id} className={clsx("flex flex-col items-center", offsetClass)}>
-                    <div className={clsx(
-                      "w-[66px] h-[76px] hex-clip relative group transition-all duration-500",
-                      isFocus ? "bg-[#F5A623] breathing" : isOffline ? "bg-zinc-900 border border-zinc-800 opacity-40" : "bg-zinc-800"
-                    )}>
+                    <div
+                      onClick={() => sendNudge(member.id.toString())}
+                      className={clsx(
+                        "w-[66px] h-[76px] hex-clip relative group transition-all duration-500 cursor-pointer active:scale-95",
+                        isFocus ? "bg-[#F5A623] breathing" : isOffline ? "bg-zinc-900 border border-zinc-800 opacity-40" : "bg-zinc-800"
+                      )}
+                    >
                       <div className="absolute inset-[2px] hex-clip bg-[#111] overflow-hidden">
                         {!isOffline ? (
                           <img src={member.avatar} alt={member.name} className={clsx("w-full h-full object-cover transition-opacity", !isFocus && "opacity-50 grayscale")} />
@@ -233,6 +416,10 @@ export default function App() {
                         )}
                         {isFocus && <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(var(--accent-rgb), 0.4), transparent)' }}></div>}
 
+                        {/* 悬浮 Nudge 提示 */}
+                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
+                          <Zap size={14} className="text-[#F5A623] animate-bounce" />
+                        </div>
                       </div>
                     </div>
                     <div className="mt-1 text-center">
@@ -260,7 +447,7 @@ export default function App() {
                   />
                 ))}
               </div>
-              <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-400">+{HIVE_AMBIENT_COUNT} in this hive</span>
+              <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-400">+{dynamicAmbientCount} near {currentLocation}</span>
             </div>
 
 
@@ -336,7 +523,10 @@ export default function App() {
           onClose={() => setActiveSheet(null)}
           title="Select Subject"
         >
-          <SubjectPicker onSelect={(s) => { setCurrentSubject(s); setActiveSheet(null); }} />
+          <SubjectPicker
+            subjects={subjects}
+            onSelect={(s) => { setCurrentSubject(s); setActiveSheet(null); }}
+          />
         </Sheet>
 
         <Sheet
@@ -360,7 +550,12 @@ export default function App() {
           onClose={() => setActiveSheet(null)}
           title="Join a Hive"
         >
-          <SquadPortal onJoin={(s) => { setCurrentSquad(s); setActiveSheet(null); }} />
+          <SquadPortal
+            squads={squads}
+            onJoin={handleJoinSquad}
+            onCreate={handleCreateSquad}
+            onReport={handleReport}
+          />
         </Sheet>
 
         <Sheet
@@ -368,7 +563,13 @@ export default function App() {
           onClose={() => setActiveSheet(null)}
           title="Digital Bonds"
         >
-          <BondsPortal />
+          <BondsPortal
+            bonds={bonds}
+            userId={userId}
+            onNudge={sendNudge}
+            onReport={handleReport}
+            onBlock={handleBlock}
+          />
         </Sheet>
 
         <Sheet
@@ -385,19 +586,12 @@ export default function App() {
           title="Personal Profile"
         >
           <ProfilePortal
+            userId={userId}
             profile={userProfile}
-            onUpdate={(updates) => setUserProfile({ ...userProfile, ...updates })}
+            onUpdate={handleUpdateProfile}
           />
         </Sheet>
 
-        <div className="absolute top-40 right-6 z-30">
-          <button
-            onClick={() => setActiveSheet('theme')}
-            className="p-3 rounded-2xl bg-white/5 border border-white/10 text-zinc-400 shadow-xl backdrop-blur-md active:scale-90 transition-all"
-          >
-            <Settings size={20} />
-          </button>
-        </div>
 
 
 

@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Camera, Edit2, Check, Award, Flame, Target, Info } from 'lucide-react';
+import { Camera, Edit2, Check, Award, Flame, Target, Info, ExternalLink, ShieldCheck } from 'lucide-react';
 
 
 export interface UserProfile {
@@ -12,8 +12,9 @@ export interface UserProfile {
 }
 
 interface ProfilePortalProps {
+    userId: string;
     profile: UserProfile;
-    onUpdate: (updates: Partial<UserProfile>) => void;
+    onUpdate: (updates: Partial<UserProfile>) => Promise<void>;
 }
 
 export function ProfilePortal({ profile, onUpdate }: ProfilePortalProps) {
@@ -25,16 +26,17 @@ export function ProfilePortal({ profile, onUpdate }: ProfilePortalProps) {
         fileInputRef.current?.click();
     };
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
+            // 真实场景下应上传到服务器并返回 URL
             const url = URL.createObjectURL(file);
-            onUpdate({ avatar: url });
+            await onUpdate({ avatar: url });
         }
     };
 
-    const handleSave = () => {
-        onUpdate(editForm);
+    const handleSave = async () => {
+        await onUpdate(editForm);
         setIsEditing(false);
     };
 
@@ -96,7 +98,7 @@ export function ProfilePortal({ profile, onUpdate }: ProfilePortalProps) {
                 {/* 编辑切换按钮 */}
                 <button
                     onClick={() => isEditing ? handleSave() : setIsEditing(true)}
-                    className="mt-6 flex items-center gap-2 px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all active:scale-95"
+                    className="mt-6 flex items-center gap-2 px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 disabled:opacity-50"
                     style={{
                         backgroundColor: isEditing ? 'var(--accent)' : 'rgba(var(--accent-rgb), 0.1)',
                         color: isEditing ? 'black' : 'var(--accent)',
@@ -178,6 +180,24 @@ export function ProfilePortal({ profile, onUpdate }: ProfilePortalProps) {
                 <p className="text-[10px] text-zinc-600 leading-relaxed italic">
                     Your profile is visible to your Bonds and fellow Hive members. Let your statistics demonstrate your discipline.
                 </p>
+            </div>
+
+            {/* Legal Links for App Store */}
+            <div className="mt-4 pt-6 border-t border-white/[0.05] flex flex-col gap-3">
+                <a href="https://hive.example.com/eula" target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-4 rounded-[24px] bg-white/[0.03] hover:bg-white/[0.05] transition-colors border border-white/[0.03]">
+                    <div className="flex items-center gap-2">
+                        <ShieldCheck size={14} className="text-zinc-500" />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">User Agreement (EULA)</span>
+                    </div>
+                    <ExternalLink size={12} className="text-zinc-600" />
+                </a>
+                <a href="https://hive.example.com/privacy" target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-4 rounded-[24px] bg-white/[0.03] hover:bg-white/[0.05] transition-colors border border-white/[0.03]">
+                    <div className="flex items-center gap-2">
+                        <Info size={14} className="text-zinc-500" />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Privacy Policy</span>
+                    </div>
+                    <ExternalLink size={12} className="text-zinc-600" />
+                </a>
             </div>
         </div>
     );

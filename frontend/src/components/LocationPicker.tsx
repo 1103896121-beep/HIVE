@@ -1,75 +1,161 @@
-import React, { useState } from 'react';
-import { ChevronRight, Globe, MapPin, Navigation } from 'lucide-react';
-
-const DATA = [
-    { name: 'Global', types: 'continent', children: ['Asia', 'Europe', 'North America', 'South America'] },
-    { name: 'Asia', types: 'country', children: ['China', 'Japan', 'Korea', 'Thailand'] },
-    { name: 'China', types: 'city', children: ['Beijing', 'Shanghai', 'Guangzhou', 'Shenzhen', 'Hangzhou'] },
-    { name: 'Beijing', types: 'city', children: [] },
-];
+import React, { useState, useMemo } from 'react';
+import { ChevronRight, Globe, Search, Navigation, ArrowLeft } from 'lucide-react';
+import { LOCATION_DATA } from '../data/locations';
 
 export const LocationPicker: React.FC<{ onSelect: (location: string) => void }> = ({ onSelect }) => {
-    const [path, setPath] = useState(['Global']);
+    const [path, setPath] = useState<{ id: string, name: string }[]>([{ id: 'Global', name: 'Global' }]);
+    const [searchQuery, setSearchQuery] = useState('');
 
-    const currentLevel = DATA.find(d => d.name === path[path.length - 1]);
+    const currentLevel = LOCATION_DATA.find(d => d.id === path[path.length - 1].id);
     const children = currentLevel?.children || [];
 
-    const handleSelect = (item: string) => {
-        const itemData = DATA.find(d => d.name === item);
+    const filteredResults = useMemo(() => {
+        if (!searchQuery.trim()) return [];
+
+        const normalize = (str: string) =>
+            str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+        const query = normalize(searchQuery);
+
+        return LOCATION_DATA.filter(d => {
+            const normalizedName = normalize(d.name);
+            const normalizedParent = d.parent ? normalize(d.parent) : '';
+
+            const nameMatch = normalizedName.includes(query);
+            const parentMatch = normalizedParent.includes(query);
+            return (d.type === 'city' || d.type === 'province' || d.type === 'country') && (nameMatch || parentMatch);
+        })
+            .sort((a, b) => {
+                const normalizedA = normalize(a.name);
+                const normalizedB = normalize(b.name);
+
+                const aExact = normalizedA === query;
+                const bExact = normalizedB === query;
+                if (aExact && !bExact) return -1;
+                if (!aExact && bExact) return 1;
+
+                const aStarts = normalizedA.startsWith(query);
+                const bStarts = normalizedB.startsWith(query);
+                if (aStarts && !bStarts) return -1;
+                if (!aStarts && bStarts) return 1;
+
+                return 0;
+            })
+            .slice(0, 40);
+    }, [searchQuery]);
+
+    const handleSelect = (itemId: string, itemName: string) => {
+        const itemData = LOCATION_DATA.find(d => d.id === itemId);
         if (itemData && itemData.children.length > 0) {
-            setPath([...path, item]);
+            setPath([...path, { id: itemId, name: itemName }]);
+            setSearchQuery('');
         } else {
-            onSelect(item);
+            onSelect(itemName);
+        }
+    };
+
+    const goBack = () => {
+        if (path.length > 1) {
+            setPath(path.slice(0, -1));
         }
     };
 
     return (
-        <div className="space-y-4">
-            {/* Breadcrumb path */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
-                {path.map((p, i) => (
-                    <React.Fragment key={p}>
-                        <button
-                            onClick={() => setPath(path.slice(0, i + 1))}
-                            className="text-sm font-medium text-zinc-400 whitespace-nowrap hover:text-white"
-                        >
-                            {p}
-                        </button>
-                        {i < path.length - 1 && <ChevronRight size={14} className="text-zinc-700 flex-shrink-0" />}
-                    </React.Fragment>
-                ))}
+        <div className="flex flex-col h-full max-h-[60vh]">
+            <div className="relative mb-6">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500">
+                    <Search size={18} />
+                </div>
+                <input
+                    type="text"
+                    placeholder="Search city, province or country..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-white placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-[#F5A623]/50 transition-all font-medium"
+                />
             </div>
 
-            {/* List */}
-            <div className="space-y-2">
-                {children.length > 0 ? (
-                    children.map((item) => (
-                        <button
-                            key={item}
-                            onClick={() => handleSelect(item)}
-                            className="w-full flex items-center justify-between p-5 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 active:scale-[0.98] transition-all"
-                        >
-                            <div className="flex items-center gap-4">
-                                <div className="p-2 rounded-xl bg-black/40 text-zinc-400">
-                                    <Globe size={18} />
+            {searchQuery ? (
+                <div className="flex-1 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+                    {filteredResults.length > 0 ? (
+                        filteredResults.map((item) => (
+                            <button
+                                key={item.id}
+                                onClick={() => handleSelect(item.id, item.name)}
+                                className="w-full flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all group"
+                            >
+                                <div className="flex flex-col items-start translate-x-0 group-hover:translate-x-1 transition-transform">
+                                    <span className="font-bold text-zinc-100">{item.name}</span>
+                                    {item.parent && <span className="text-[10px] text-zinc-500 uppercase tracking-widest">{item.parent}</span>}
                                 </div>
-                                <span className="font-semibold text-zinc-100">{item}</span>
-                            </div>
-                            <ChevronRight size={18} className="text-zinc-600" />
-                        </button>
-                    ))
-                ) : (
-                    <div className="py-12 text-center text-zinc-500 italic">No more sub-regions</div>
-                )}
-            </div>
+                                <div className="text-zinc-600 group-hover:text-[#F5A623] transition-colors">
+                                    {item.children.length > 0 ? <ChevronRight size={18} /> : <div className="w-2 h-2 rounded-full bg-[#F5A623]/30" />}
+                                </div>
+                            </button>
+                        ))
+                    ) : (
+                        <div className="py-12 text-center text-zinc-500 italic">No matches found</div>
+                    )}
+                </div>
+            ) : (
+                <>
+                    <div className="flex items-center gap-3 mb-4">
+                        {path.length > 1 && (
+                            <button onClick={goBack} className="p-2 -ml-2 text-zinc-400 hover:text-white transition-colors">
+                                <ArrowLeft size={18} />
+                            </button>
+                        )}
+                        <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
+                            {path.map((p, i) => (
+                                <React.Fragment key={p.id}>
+                                    <button
+                                        onClick={() => setPath(path.slice(0, i + 1))}
+                                        className={`text-xs font-black uppercase tracking-widest whitespace-nowrap transition-colors ${i === path.length - 1 ? 'text-[#F5A623]' : 'text-zinc-600 hover:text-zinc-400'}`}
+                                    >
+                                        {p.name}
+                                    </button>
+                                    {i < path.length - 1 && <span className="text-zinc-800 text-[10px]">/</span>}
+                                </React.Fragment>
+                            ))}
+                        </div>
+                    </div>
 
-            {/* Near Me Shortcut */}
-            {path.length === 1 && (
-                <button className="w-full flex items-center gap-4 p-5 rounded-2xl bg-[#F5A623]/10 border border-[#F5A623]/20 text-[#F5A623] hover:bg-[#F5A623]/20 transition-all mt-4">
-                    <Navigation size={18} />
-                    <span className="font-bold">Locate Me (Nearby Hives)</span>
-                </button>
+                    <div className="flex-1 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+                        {children.map((item) => (
+                            <button
+                                key={item.id}
+                                onClick={() => handleSelect(item.id, item.name)}
+                                className="w-full flex items-center justify-between p-5 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 active:scale-[0.98] transition-all group"
+                            >
+                                <div className="flex items-center gap-4">
+                                    <div className="p-2.5 rounded-xl bg-black/40 text-zinc-500 group-hover:text-[#F5A623] transition-colors">
+                                        <Globe size={18} strokeWidth={2.5} />
+                                    </div>
+                                    <span className="font-bold text-zinc-200 group-hover:text-white transition-colors text-sm">{item.name}</span>
+                                </div>
+                                <ChevronRight size={18} className="text-zinc-700 group-hover:text-zinc-400 transition-colors" />
+                            </button>
+                        ))}
+
+                        {path.length === 1 && (
+                            <button className="w-full flex items-center gap-4 p-5 rounded-2xl bg-[#F5A623]/10 border border-[#F5A623]/20 text-[#F5A623] hover:bg-[#F5A623]/20 transition-all mt-4 group">
+                                <div className="p-2.5 rounded-xl bg-[#F5A623]/10">
+                                    <Navigation size={18} strokeWidth={2.5} />
+                                </div>
+                                <span className="font-black text-xs uppercase tracking-widest">Locate Me (Nearby Hives within 100km)</span>
+                            </button>
+                        )}
+                    </div>
+                </>
             )}
+
+            <style dangerouslySetInnerHTML={{
+                __html: `
+                .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+                .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+                .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+                .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+            `}} />
         </div>
     );
 };

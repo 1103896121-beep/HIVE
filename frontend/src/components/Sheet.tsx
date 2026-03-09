@@ -15,25 +15,30 @@ interface SheetProps {
 }
 
 export const Sheet: React.FC<SheetProps> = ({ isOpen, onClose, title, children }) => {
-    const [mounted, setMounted] = useState(false);
+    const [mounted, setMounted] = useState(isOpen);
 
     useEffect(() => {
+        let timer: ReturnType<typeof setTimeout>;
         if (isOpen) {
             setMounted(true);
             document.body.style.overflow = 'hidden';
         } else {
-            const timer = setTimeout(() => setMounted(false), 300);
             document.body.style.overflow = 'unset';
-            return () => clearTimeout(timer);
+            timer = setTimeout(() => setMounted(false), 300);
         }
+        return () => {
+            if (timer) clearTimeout(timer);
+        };
     }, [isOpen]);
 
-    if (!mounted) return null;
+    // Pre-mount CSS hide to allow transition without conditional structural mounting
+    const displayClass = mounted ? "flex" : "hidden";
 
     return (
         <div className={cn(
-            "fixed inset-0 z-[100] flex flex-col justify-end transition-opacity duration-300",
-            isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+            "fixed inset-0 z-[100] flex-col justify-end transition-opacity duration-300",
+            isOpen ? "opacity-100" : "opacity-0 pointer-events-none",
+            displayClass
         )}>
             {/* Backdrop */}
             <div

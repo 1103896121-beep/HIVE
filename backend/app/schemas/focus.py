@@ -1,14 +1,14 @@
-from pydantic import BaseModel, Field
-from typing import Optional
+from pydantic import BaseModel
 from uuid import UUID
 from datetime import datetime
+from typing import Optional, List
 
 class SubjectBase(BaseModel):
     name: str
     icon: Optional[str] = None
     color_hex: Optional[str] = None
 
-class Subject(SubjectBase):
+class SubjectResponse(SubjectBase):
     id: int
 
     class Config:
@@ -21,7 +21,7 @@ class FocusSessionBase(BaseModel):
 class FocusSessionCreate(FocusSessionBase):
     pass
 
-class FocusSession(FocusSessionBase):
+class FocusSessionResponse(FocusSessionBase):
     id: UUID
     user_id: UUID
     start_time: datetime
@@ -31,8 +31,3 @@ class FocusSession(FocusSessionBase):
 
     class Config:
         from_attributes = True
-
-class FocusStats(BaseModel):
-    total_mins: int
-    session_count: int
-    top_subject: Optional[str] = None

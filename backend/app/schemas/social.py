@@ -1,27 +1,20 @@
-from pydantic import BaseModel, Field
-from typing import Optional, List
+from pydantic import BaseModel
 from uuid import UUID
 from datetime import datetime
+from typing import Optional, List
 
 class SquadBase(BaseModel):
-    name: str = Field(..., min_length=1, max_length=50)
+    name: str
     is_private: bool = False
 
 class SquadCreate(SquadBase):
     pass
 
-class Squad(SquadBase):
+class SquadResponse(SquadBase):
     id: UUID
     invite_code: str
     created_at: datetime
-
-    class Config:
-        from_attributes = True
-
-class SquadMember(BaseModel):
-    user_id: UUID
-    role: str
-    joined_at: datetime
+    created_by: UUID
 
     class Config:
         from_attributes = True
@@ -29,7 +22,7 @@ class SquadMember(BaseModel):
 class BondBase(BaseModel):
     user_id_2: UUID
 
-class Bond(BaseModel):
+class BondResponse(BaseModel):
     user_id_1: UUID
     user_id_2: UUID
     status: str
@@ -42,9 +35,29 @@ class NudgeCreate(BaseModel):
     receiver_id: UUID
     nudge_type: str = "VIBRATE"
 
-class Nudge(NudgeCreate):
+class ReportCreate(BaseModel):
+    target_id: UUID
+    target_type: str # "USER" or "SQUAD"
+    reason: str
+
+class ReportResponse(BaseModel):
     id: int
-    sender_id: UUID
+    reporter_id: UUID
+    target_id: UUID
+    target_type: str
+    reason: str
+    created_at: datetime
+    status: str
+
+    class Config:
+        from_attributes = True
+
+class BlockCreate(BaseModel):
+    blocked_id: UUID
+
+class BlockResponse(BaseModel):
+    user_id: UUID
+    blocked_id: UUID
     created_at: datetime
 
     class Config:

@@ -56,6 +56,14 @@ export const GlobalMap: React.FC<{ onExit: () => void }> = ({ onExit }) => {
             earthMaterial.needsUpdate = true;
         });
 
+        // 异步加载夜景贴图作为自发光 (Emissive Map)
+        textureLoader.load(EARTH_NIGHT_URL, (nightTexture) => {
+            earthMaterial.emissiveMap = nightTexture;
+            earthMaterial.emissive = new THREE.Color(0xffff88); // 柔和的金黄色灯光
+            earthMaterial.emissiveIntensity = 0.5;
+            earthMaterial.needsUpdate = true;
+        });
+
         // 大气层 (发光外壳)
         const atmosphereGeometry = new THREE.SphereGeometry(1.02, 64, 64);
         const atmosphereMaterial = new THREE.ShaderMaterial({
@@ -185,15 +193,28 @@ export const GlobalMap: React.FC<{ onExit: () => void }> = ({ onExit }) => {
     return (
         <div className="absolute inset-0 z-50 bg-[#050505] flex flex-col animate-in fade-in zoom-in duration-1000">
             {/* Header */}
-            <div className="absolute top-16 left-0 right-0 px-8 flex justify-between items-start pointer-events-none z-10">
+            <div className="absolute top-16 left-0 right-0 px-8 flex justify-between items-start pointer-events-none z-10 w-full">
                 <div className="animate-in fade-in slide-in-from-top-4 duration-700 delay-300">
-                    <div className="text-[10px] text-[#F5A623] font-black uppercase tracking-[0.4em] mb-1">Planet Hive</div>
+                    <div className="text-[10px] text-[#F5A623] font-black uppercase tracking-[0.4em] mb-1">Planet Hive Global Status</div>
                     <div className="text-3xl font-black text-white tracking-tighter">24,302</div>
-                    <div className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mt-1">Focused Right Now</div>
+                    <div className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mt-1">Total Users Focusing</div>
+
+                    <div className="mt-8 flex gap-8">
+                        <div>
+                            <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest mb-1">Active Hives</div>
+                            <div className="text-lg font-black text-zinc-300">1,204</div>
+                        </div>
+                        <div>
+                            <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest mb-1">Daily Sparks</div>
+                            <div className="text-lg font-black text-zinc-300">8.4M</div>
+                        </div>
+                    </div>
                 </div>
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.03] border border-white/5 backdrop-blur-md">
-                    <div className="w-1.5 h-1.5 rounded-full bg-[#F5A623] animate-pulse"></div>
-                    <span className="text-[9px] text-zinc-400 font-bold uppercase tracking-widest">Live Sync</span>
+                <div className="flex flex-col items-end gap-3">
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.03] border border-white/5 backdrop-blur-md">
+                        <div className="w-1.5 h-1.5 rounded-full bg-[#F5A623] animate-pulse"></div>
+                        <span className="text-[9px] text-zinc-400 font-bold uppercase tracking-widest">Live Sync</span>
+                    </div>
                 </div>
             </div>
 

@@ -44,3 +44,21 @@ class Nudge(Base):
     receiver_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
     nudge_type = Column(String(20), default="VIBRATE")
     created_at = Column(DateTime, default=datetime.utcnow)
+
+class Report(Base):
+    __tablename__ = "reports"
+
+    id = Column(BigInteger, primary_key=True, index=True)
+    reporter_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    target_id = Column(UUID(as_uuid=True)) # 举报对象（用户或小队 ID）
+    target_type = Column(String(20)) # "USER" or "SQUAD"
+    reason = Column(String(255))
+    created_at = Column(DateTime, default=datetime.utcnow)
+    status = Column(String(20), default="PENDING") # PENDING, REVIEWED, ACTION_TAKEN
+
+class Block(Base):
+    __tablename__ = "blocks"
+
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), primary_key=True)
+    blocked_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), primary_key=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
