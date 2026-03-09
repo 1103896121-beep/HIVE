@@ -184,14 +184,14 @@ export function ProfilePortal({ profile, onUpdate }: ProfilePortalProps) {
 
             {/* Legal Links for App Store */}
             <div className="mt-4 pt-6 border-t border-white/[0.05] flex flex-col gap-3">
-                <a href="https://hive.example.com/eula" target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-4 rounded-[24px] bg-white/[0.03] hover:bg-white/[0.05] transition-colors border border-white/[0.03]">
+                <a href="/eula.html" target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-4 rounded-[24px] bg-white/[0.03] hover:bg-white/[0.05] transition-colors border border-white/[0.03]">
                     <div className="flex items-center gap-2">
                         <ShieldCheck size={14} className="text-zinc-500" />
                         <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">User Agreement (EULA)</span>
                     </div>
                     <ExternalLink size={12} className="text-zinc-600" />
                 </a>
-                <a href="https://hive.example.com/privacy" target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-4 rounded-[24px] bg-white/[0.03] hover:bg-white/[0.05] transition-colors border border-white/[0.03]">
+                <a href="/privacy.html" target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-4 rounded-[24px] bg-white/[0.03] hover:bg-white/[0.05] transition-colors border border-white/[0.03]">
                     <div className="flex items-center gap-2">
                         <Info size={14} className="text-zinc-500" />
                         <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Privacy Policy</span>
