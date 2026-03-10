@@ -6,6 +6,42 @@ export const LocationPicker: React.FC<{ onSelect: (location: string) => void }> 
     const [path, setPath] = useState<{ id: string, name: string }[]>([{ id: 'Global', name: 'Global' }]);
     const [searchQuery, setSearchQuery] = useState('');
 
+    const [loading, setLoading] = useState(false);
+
+    const handleLocateMe = async () => {
+        if (!navigator.geolocation) {
+            alert('Geolocation is not supported by your browser');
+            return;
+        }
+
+        setLoading(true);
+        navigator.geolocation.getCurrentPosition(async (position) => {
+            const { latitude, longitude } = position.coords;
+            try {
+                // Using Nominatim for reverse geocoding (no API key required for small usage)
+                const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`);
+                const data = await response.json();
+
+                // Try to get city, town, or village
+                const city = data.address.city || data.address.town || data.address.village || data.address.state || data.address.country;
+                if (city) {
+                    onSelect(city);
+                } else {
+                    onSelect(`${latitude.toFixed(2)}, ${longitude.toFixed(2)}`);
+                }
+            } catch (error) {
+                console.error('Reverse geocoding failed:', error);
+                onSelect(`${latitude.toFixed(2)}, ${longitude.toFixed(2)}`);
+            } finally {
+                setLoading(false);
+            }
+        }, (error) => {
+            console.error('Geolocation error:', error);
+            alert('Unable to retrieve your location');
+            setLoading(false);
+        });
+    };
+
     const currentLevel = LOCATION_DATA.find(d => d.id === path[path.length - 1].id);
     const children = currentLevel?.children || [];
 
@@ -61,7 +97,7 @@ export const LocationPicker: React.FC<{ onSelect: (location: string) => void }> 
     };
 
     return (
-        <div className="flex flex-col h-full max-h-[60vh]">
+        <div className="flex flex-col h-full">
             <div className="relative mb-6">
                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500">
                     <Search size={18} />
@@ -138,11 +174,17 @@ export const LocationPicker: React.FC<{ onSelect: (location: string) => void }> 
                         ))}
 
                         {path.length === 1 && (
-                            <button className="w-full flex items-center gap-4 p-5 rounded-2xl bg-[#F5A623]/10 border border-[#F5A623]/20 text-[#F5A623] hover:bg-[#F5A623]/20 transition-all mt-4 group">
+                            <button
+                                onClick={handleLocateMe}
+                                disabled={loading}
+                                className="w-full flex items-center gap-4 p-5 rounded-2xl bg-[#F5A623]/10 border border-[#F5A623]/20 text-[#F5A623] hover:bg-[#F5A623]/20 disabled:opacity-50 transition-all mt-4 group"
+                            >
                                 <div className="p-2.5 rounded-xl bg-[#F5A623]/10">
-                                    <Navigation size={18} strokeWidth={2.5} />
+                                    <Navigation size={18} strokeWidth={2.5} className={loading ? "animate-pulse" : ""} />
                                 </div>
-                                <span className="font-black text-xs uppercase tracking-widest">Locate Me (Nearby Hives within 100km)</span>
+                                <span className="font-black text-xs uppercase tracking-widest">
+                                    {loading ? 'Locating...' : 'Locate Me (Nearby Hives within 100km)'}
+                                </span>
                             </button>
                         )}
                     </div>

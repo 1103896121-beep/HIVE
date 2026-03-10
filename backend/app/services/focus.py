@@ -3,7 +3,9 @@ from sqlalchemy.future import select
 from app.models.focus import FocusSession, Subject
 from app.schemas.focus import FocusSessionCreate
 from uuid import UUID
-from datetime import datetime
+from datetime import datetime, timedelta
+from fastapi import HTTPException, status
+from app.models.user import User
 
 class FocusService:
     @staticmethod
@@ -13,6 +15,24 @@ class FocusService:
 
     @staticmethod
     async def start_session(db: AsyncSession, user_id: UUID, session_in: FocusSessionCreate):
+        # 订阅校验逻辑
+        result = await db.execute(select(User).where(User.id == user_id))
+        user = result.scalars().first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        # 检查是否在7天试用期内
+        trial_expired = datetime.utcnow() > (user.trial_start_at + timedelta(days=7))
+        
+        # 检查是否有有效订阅
+        has_active_subscription = user.subscription_end_at and user.subscription_end_at > datetime.utcnow()
+
+        if trial_expired and not has_active_subscription:
+            raise HTTPException(
+                status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                detail="Trial expired. Subscription required to start focus sessions."
+            )
+
         db_session = FocusSession(
             user_id=user_id,
             subject_id=session_in.subject_id,

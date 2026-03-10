@@ -9,15 +9,18 @@ export interface UserProfile {
     goal: number; // 每日专注目标(分钟)
     totalFocus: number; // 累计专注时长(分钟)
     sparks: number; // 累计获得的 Sparks
+    trialStartAt: string;
+    subscriptionEndAt?: string;
 }
 
 interface ProfilePortalProps {
     userId: string;
     profile: UserProfile;
     onUpdate: (updates: Partial<UserProfile>) => Promise<void>;
+    onSignOut: () => void;
 }
 
-export function ProfilePortal({ profile, onUpdate }: ProfilePortalProps) {
+export function ProfilePortal({ profile, onUpdate, onSignOut }: ProfilePortalProps) {
     const [isEditing, setIsEditing] = useState(false);
     const [editForm, setEditForm] = useState(profile);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -199,6 +202,14 @@ export function ProfilePortal({ profile, onUpdate }: ProfilePortalProps) {
                     <ExternalLink size={12} className="text-zinc-600" />
                 </a>
             </div>
+
+            {/* Logout Button */}
+            <button
+                onClick={onSignOut}
+                className="mt-6 w-full flex items-center justify-center gap-2 p-4 rounded-[24px] bg-red-500/10 hover:bg-red-500/20 transition-all border border-red-500/20 text-red-500 text-[10px] font-black uppercase tracking-widest"
+            >
+                Sign Out
+            </button>
         </div>
     );
 }

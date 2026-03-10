@@ -35,6 +35,8 @@ class ProfileResponse(ProfileBase):
     user_id: UUID
     total_focus_mins: int
     total_sparks: int
+    trial_start_at: datetime
+    subscription_end_at: Optional[datetime] = None
     updated_at: datetime
 
     class Config:

@@ -10,7 +10,6 @@ class Squad(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(50), nullable=False)
-    invite_code = Column(String(10), unique=True, index=True, nullable=False)
     created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"))
     is_private = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -24,6 +23,7 @@ class SquadMember(Base):
     squad_id = Column(UUID(as_uuid=True), ForeignKey("squads.id"), primary_key=True)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), primary_key=True)
     role = Column(String(20), default="MEMBER")
+    status = Column(String(20), default="ACTIVE") # ACTIVE, PENDING_APPROVAL, PENDING_INVITE
     joined_at = Column(DateTime, default=datetime.utcnow)
 
     squad = relationship("Squad", back_populates="members")

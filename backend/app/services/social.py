@@ -9,22 +9,26 @@ from uuid import UUID
 
 class SocialService:
     @staticmethod
-    def generate_invite_code():
-        return ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+    async def _check_user_in_squad(db: AsyncSession, user_id: UUID) -> bool:
+        # Check if user is already an ACTIVE member of any squad
+        result = await db.execute(select(SquadMember).where(SquadMember.user_id == user_id, SquadMember.status == "ACTIVE"))
+        return result.scalars().first() is not None
 
     @staticmethod
     async def create_squad(db: AsyncSession, user_id: UUID, squad_in: SquadCreate):
+        if await SocialService._check_user_in_squad(db, user_id):
+            raise ValueError("User is already in an active squad.")
+
         db_squad = Squad(
             name=squad_in.name,
             is_private=squad_in.is_private,
-            invite_code=SocialService.generate_invite_code(),
             created_by=user_id
         )
         db.add(db_squad)
         await db.flush() # 获取 ID
         
         # 自动加入创建者
-        member = SquadMember(squad_id=db_squad.id, user_id=user_id, role="ADMIN")
+        member = SquadMember(squad_id=db_squad.id, user_id=user_id, role="ADMIN", status="ACTIVE")
         db.add(member)
         
         await db.commit()
@@ -32,23 +36,112 @@ class SocialService:
         return db_squad
 
     @staticmethod
-    async def join_squad(db: AsyncSession, user_id: UUID, invite_code: str):
-        result = await db.execute(select(Squad).where(Squad.invite_code == invite_code))
-        db_squad = result.scalars().first()
-        if not db_squad:
-            return None
-        
-        # 检查是否已在小队中
-        member_check = await db.execute(
-            select(SquadMember).where(SquadMember.squad_id == db_squad.id, SquadMember.user_id == user_id)
-        )
-        if member_check.scalars().first():
-            return db_squad
+    async def apply_to_squad(db: AsyncSession, user_id: UUID, squad_id: UUID):
+        if await SocialService._check_user_in_squad(db, user_id):
+            raise ValueError("User is already in an active squad.")
             
-        member = SquadMember(squad_id=db_squad.id, user_id=user_id)
+        result = await db.execute(select(Squad).where(Squad.id == squad_id))
+        squad = result.scalars().first()
+        if not squad:
+            raise ValueError("Squad not found.")
+
+        # Check existing membership
+        member_check = await db.execute(select(SquadMember).where(SquadMember.squad_id == squad_id, SquadMember.user_id == user_id))
+        existing = member_check.scalars().first()
+        if existing:
+            return existing
+
+        member = SquadMember(squad_id=squad_id, user_id=user_id, status="PENDING_APPROVAL")
         db.add(member)
         await db.commit()
-        return db_squad
+        return member
+
+    @staticmethod
+    async def invite_to_squad(db: AsyncSession, admin_id: UUID, user_id: UUID, squad_id: UUID):
+        # Verify admin
+        admin_check = await db.execute(select(SquadMember).where(SquadMember.squad_id == squad_id, SquadMember.user_id == admin_id, SquadMember.role == "ADMIN", SquadMember.status == "ACTIVE"))
+        if not admin_check.scalars().first():
+            raise ValueError("Only an active admin can invite.")
+
+        # Check existing membership
+        member_check = await db.execute(select(SquadMember).where(SquadMember.squad_id == squad_id, SquadMember.user_id == user_id))
+        existing = member_check.scalars().first()
+        if existing:
+            return existing
+
+        member = SquadMember(squad_id=squad_id, user_id=user_id, status="PENDING_INVITE")
+        db.add(member)
+        await db.commit()
+        return member
+
+    @staticmethod
+    async def review_application(db: AsyncSession, admin_id: UUID, user_id: UUID, squad_id: UUID, approve: bool):
+        # Verify admin
+        admin_check = await db.execute(select(SquadMember).where(SquadMember.squad_id == squad_id, SquadMember.user_id == admin_id, SquadMember.role == "ADMIN", SquadMember.status == "ACTIVE"))
+        if not admin_check.scalars().first():
+            raise ValueError("Only an active admin can review applications.")
+
+        member_check = await db.execute(select(SquadMember).where(SquadMember.squad_id == squad_id, SquadMember.user_id == user_id, SquadMember.status == "PENDING_APPROVAL"))
+        member = member_check.scalars().first()
+        if not member:
+            raise ValueError("Application not found.")
+
+        if approve:
+            if await SocialService._check_user_in_squad(db, user_id):
+                db.delete(member) # Reject automatically if they joined another squad
+                await db.commit()
+                raise ValueError("User has already joined another squad.")
+            member.status = "ACTIVE"
+        else:
+            db.delete(member)
+        
+        await db.commit()
+        return member if approve else None
+
+    @staticmethod
+    async def review_invitation(db: AsyncSession, user_id: UUID, squad_id: UUID, accept: bool):
+        member_check = await db.execute(select(SquadMember).where(SquadMember.squad_id == squad_id, SquadMember.user_id == user_id, SquadMember.status == "PENDING_INVITE"))
+        member = member_check.scalars().first()
+        if not member:
+            raise ValueError("Invitation not found.")
+
+        if accept:
+            if await SocialService._check_user_in_squad(db, user_id):
+                raise ValueError("You are already in an active squad.")
+            member.status = "ACTIVE"
+        else:
+            db.delete(member)
+        
+        await db.commit()
+        return member if accept else None
+
+    @staticmethod
+    async def leave_squad(db: AsyncSession, user_id: UUID, squad_id: UUID):
+        member_check = await db.execute(select(SquadMember).where(SquadMember.squad_id == squad_id, SquadMember.user_id == user_id))
+        member = member_check.scalars().first()
+        if not member:
+            raise ValueError("Member not found in squad.")
+        
+        if member.role == "ADMIN":
+            raise ValueError("Creator cannot leave the squad. Disband it instead.")
+
+        db.delete(member)
+        await db.commit()
+        return True
+
+    @staticmethod
+    async def disband_squad(db: AsyncSession, admin_id: UUID, squad_id: UUID):
+        admin_check = await db.execute(select(SquadMember).where(SquadMember.squad_id == squad_id, SquadMember.user_id == admin_id, SquadMember.role == "ADMIN", SquadMember.status == "ACTIVE"))
+        if not admin_check.scalars().first():
+            raise ValueError("Only an active admin can disband the squad.")
+
+        await db.execute(SquadMember.__table__.delete().where(SquadMember.squad_id == squad_id))
+        result = await db.execute(select(Squad).where(Squad.id == squad_id))
+        squad = result.scalars().first()
+        if squad:
+            db.delete(squad)
+            await db.commit()
+        return True
 
     @staticmethod
     async def create_bond(db: AsyncSession, user_id_1: UUID, user_id_2: UUID):

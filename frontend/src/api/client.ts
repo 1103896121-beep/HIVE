@@ -17,6 +17,9 @@ class APIClient {
             ...options,
             headers: {
                 'Content-Type': 'application/json',
+                ...(localStorage.getItem('hive_token')
+                    ? { 'Authorization': `Bearer ${localStorage.getItem('hive_token')}` }
+                    : {}),
                 ...options.headers,
             },
         });
@@ -46,6 +49,14 @@ class APIClient {
             ...options,
             method: 'PATCH',
             body: JSON.stringify(body),
+        });
+    }
+
+    delete<T, B = unknown>(url: string, body?: B, options: RequestInit = {}): Promise<T> {
+        return this.request<T>(url, {
+            ...options,
+            method: 'DELETE',
+            ...(body ? { body: JSON.stringify(body) } : {})
         });
     }
 }

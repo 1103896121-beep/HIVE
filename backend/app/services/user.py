@@ -12,8 +12,20 @@ class UserService:
 
     @staticmethod
     async def get_profile(db: AsyncSession, user_id: UUID):
-        result = await db.execute(select(Profile).where(Profile.user_id == user_id))
-        return result.scalars().first()
+        result = await db.execute(
+            select(Profile, User.trial_start_at, User.subscription_end_at)
+            .join(User, Profile.user_id == User.id)
+            .where(Profile.user_id == user_id)
+        )
+        row = result.first()
+        if not row:
+            return None
+        
+        profile, trial_start, sub_end = row
+        # Manually attach attributes for the schema to pick up
+        profile.trial_start_at = trial_start
+        profile.subscription_end_at = sub_end
+        return profile
 
     @staticmethod
     async def update_profile(db: AsyncSession, user_id: UUID, profile_data: ProfileUpdate):

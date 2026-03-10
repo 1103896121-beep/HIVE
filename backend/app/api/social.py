@@ -10,14 +10,54 @@ router = APIRouter(prefix="/social", tags=["social"])
 
 @router.post("/squads", response_model=SquadResponse)
 async def create_squad(squad_in: SquadCreate, user_id: UUID, db: AsyncSession = Depends(get_db)):
-    return await SocialService.create_squad(db, user_id, squad_in)
+    try:
+        return await SocialService.create_squad(db, user_id, squad_in)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
-@router.post("/squads/join", response_model=SquadResponse)
-async def join_squad(invite_code: str, user_id: UUID, db: AsyncSession = Depends(get_db)):
-    squad = await SocialService.join_squad(db, user_id, invite_code)
-    if not squad:
-        raise HTTPException(status_code=404, detail="Squad not found")
-    return squad
+@router.post("/squads/{squad_id}/apply")
+async def apply_to_squad(squad_id: UUID, user_id: UUID, db: AsyncSession = Depends(get_db)):
+    try:
+        return await SocialService.apply_to_squad(db, user_id, squad_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.post("/squads/{squad_id}/invite")
+async def invite_to_squad(squad_id: UUID, admin_id: UUID, user_id: UUID, db: AsyncSession = Depends(get_db)):
+    try:
+        return await SocialService.invite_to_squad(db, admin_id, user_id, squad_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.post("/squads/{squad_id}/applications/review")
+async def review_application(squad_id: UUID, admin_id: UUID, user_id: UUID, approve: bool, db: AsyncSession = Depends(get_db)):
+    try:
+        return await SocialService.review_application(db, admin_id, user_id, squad_id, approve)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.post("/squads/{squad_id}/invitations/review")
+async def review_invitation(squad_id: UUID, user_id: UUID, accept: bool, db: AsyncSession = Depends(get_db)):
+    try:
+        return await SocialService.review_invitation(db, user_id, squad_id, accept)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.post("/squads/{squad_id}/leave")
+async def leave_squad(squad_id: UUID, user_id: UUID, db: AsyncSession = Depends(get_db)):
+    try:
+        await SocialService.leave_squad(db, user_id, squad_id)
+        return {"status": "success"}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.delete("/squads/{squad_id}")
+async def disband_squad(squad_id: UUID, admin_id: UUID, db: AsyncSession = Depends(get_db)):
+    try:
+        await SocialService.disband_squad(db, admin_id, squad_id)
+        return {"status": "success"}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/bonds", response_model=BondResponse)
 async def create_bond(user_id_2: UUID, user_id_1: UUID, db: AsyncSession = Depends(get_db)):

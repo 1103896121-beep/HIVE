@@ -36,7 +36,7 @@ export const Sheet: React.FC<SheetProps> = ({ isOpen, onClose, title, children }
 
     return (
         <div className={cn(
-            "fixed inset-0 z-[100] flex-col justify-end transition-opacity duration-300",
+            "absolute inset-0 z-[100] flex-col justify-end transition-opacity duration-300",
             isOpen ? "opacity-100" : "opacity-0 pointer-events-none",
             displayClass
         )}>

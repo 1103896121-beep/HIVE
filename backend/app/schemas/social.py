@@ -12,12 +12,17 @@ class SquadCreate(SquadBase):
 
 class SquadResponse(SquadBase):
     id: UUID
-    invite_code: str
     created_at: datetime
     created_by: UUID
 
     class Config:
         from_attributes = True
+
+class SquadMemberAction(BaseModel):
+    user_id: UUID
+
+class SquadApplyAction(BaseModel):
+    squad_id: UUID
 
 class BondBase(BaseModel):
     user_id_2: UUID

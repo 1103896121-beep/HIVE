@@ -13,6 +13,8 @@ class User(Base):
     hashed_password = Column(String(255), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     is_active = Column(Boolean, default=True)
+    trial_start_at = Column(DateTime, default=datetime.utcnow)
+    subscription_end_at = Column(DateTime, nullable=True)
 
     profile = relationship("Profile", back_populates="user", uselist=False)
     focus_sessions = relationship("FocusSession", back_populates="user")
