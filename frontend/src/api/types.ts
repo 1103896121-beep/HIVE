@@ -70,6 +70,17 @@ export interface Bond {
     created_at: string;
 }
 
+export interface BondEnriched extends Bond {
+    other_user: {
+        user_id: string;
+        name: string;
+        avatar_url?: string;
+        city?: string;
+        total_focus_mins: number;
+        total_sparks: number;
+    };
+}
+
 export interface Report {
     id: number;
     reporter_id: string;

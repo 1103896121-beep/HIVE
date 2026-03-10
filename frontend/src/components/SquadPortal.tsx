@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, ShieldCheck, DoorOpen, Trash2, UserPlus, XCircle } from 'lucide-react';
-import type { Squad, Bond } from '../api/types';
+import type { Squad, BondEnriched } from '../api/types';
 import { socialService, userService } from '../api';
 
 interface SquadPortalProps {
     squads: Squad[];
-    bonds: Bond[];
+    bonds: BondEnriched[];
     userId: string;
     onCreate: (name: string) => Promise<void>;
     onLeave: (squadId: string) => Promise<void>;

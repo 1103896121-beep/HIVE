@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Play, Square, Settings, Users, Flame, ChevronLeft, MapPin, BookOpen, Clock, Zap, Maximize2 } from 'lucide-react';
+import { Play, Square, Settings, Users, Flame, ChevronLeft, MapPin, BookOpen, Clock, Zap, Maximize2, UserPlus } from 'lucide-react';
 import clsx from 'clsx';
 import { Sheet } from './components/Sheet';
 import { SubjectPicker } from './components/SubjectPicker';
@@ -13,7 +13,7 @@ import { ProfilePortal } from './components/ProfilePortal';
 import type { UserProfile } from './components/ProfilePortal';
 import { GlobalMap } from './components/GlobalMap';
 import { userService, focusService, socialService } from './api';
-import type { Subject, Squad, Bond } from './api/types';
+import type { Subject, Squad, BondEnriched } from './api/types';
 import { useHiveSocket } from './hooks/useHiveSocket';
 import { SubscriptionSheet } from './components/SubscriptionSheet';
 import { subscriptionService } from './api';
@@ -24,15 +24,15 @@ import { CustomModal } from './components/CustomModal';
 
 // 模拟网络房间中的核心小组同伴 (L1 Squad: 9人)
 const SQUAD_MEMBERS = [
-  { id: 1, name: 'Alex', status: 'focus', subject: 'GRE', avatar: 'https://i.pravatar.cc/150?u=1' },
-  { id: 2, name: 'Mia', status: 'break', subject: 'Design', avatar: 'https://i.pravatar.cc/150?u=2' },
-  { id: 3, name: 'David', status: 'focus', subject: 'Code', avatar: 'https://i.pravatar.cc/150?u=3' },
-  { id: 4, name: 'Emma', status: 'offline', subject: '', avatar: 'https://i.pravatar.cc/150?u=4' },
-  { id: 5, name: 'Chris', status: 'focus', subject: 'Math', avatar: 'https://i.pravatar.cc/150?u=5' },
-  { id: 6, name: 'Zoe', status: 'focus', subject: 'Reading', avatar: 'https://i.pravatar.cc/150?u=6' },
-  { id: 7, name: 'Leo', status: 'focus', subject: 'Physics', avatar: 'https://i.pravatar.cc/150?u=7' },
-  { id: 8, name: 'Nina', status: 'break', subject: 'Art', avatar: 'https://i.pravatar.cc/150?u=8' },
-  { id: 9, name: 'Sam', status: 'focus', subject: 'Lang', avatar: 'https://i.pravatar.cc/150?u=9' },
+  { id: 'f56b6938-72c6-4d0d-9b1e-e0921e25e97a', name: 'Alex', status: 'focus', subject: 'GRE', avatar: 'https://i.pravatar.cc/150?u=1' },
+  { id: '7a1b9204-629a-4e2b-8a8b-3e5f7a12b3c4', name: 'Mia', status: 'break', subject: 'Design', avatar: 'https://i.pravatar.cc/150?u=2' },
+  { id: 'a3b2c1d0-e4f5-46a7-b8c9-d0e1f2a3b4c5', name: 'David', status: 'focus', subject: 'Code', avatar: 'https://i.pravatar.cc/150?u=3' },
+  { id: 'd1e2f3a4-b5c6-47d8-9e0f-1a2b3c4d5e6f', name: 'Emma', status: 'offline', subject: '', avatar: 'https://i.pravatar.cc/150?u=4' },
+  { id: 'c1d2e3f4-a5b6-47c8-9d0e-1f2a3b4c5d6e', name: 'Chris', status: 'focus', subject: 'Math', avatar: 'https://i.pravatar.cc/150?u=5' },
+  { id: 'b1c2d3e4-f5a6-47b8-9c0d-1e2f3a4b5c6d', name: 'Zoe', status: 'focus', subject: 'Reading', avatar: 'https://i.pravatar.cc/150?u=6' },
+  { id: 'a1b2c3d4-e5f6-47a8-9b0c-1d2e3f4a5b6c', name: 'Leo', status: 'focus', subject: 'Physics', avatar: 'https://i.pravatar.cc/150?u=7' },
+  { id: '91a2b3c4-d5e6-4798-8a9b-0c1d2e3f4a5b', name: 'Nina', status: 'break', subject: 'Art', avatar: 'https://i.pravatar.cc/150?u=8' },
+  { id: '8192a3b4-c5d6-4789-7a8b-9c0d1e2f3a4b', name: 'Sam', status: 'focus', subject: 'Lang', avatar: 'https://i.pravatar.cc/150?u=9' },
 ];
 
 type SheetType = 'subject' | 'location' | 'timer' | 'squad' | 'bonds' | 'theme' | 'profile' | 'subscription' | null;
@@ -58,10 +58,18 @@ export default function App() {
   // 用户与会话状态
   const [userId, setUserId] = useState<string | null>(localStorage.getItem('hive_user_id'));
   const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('hive_token'));
+
+  // TEMPORARY: Expose userId for backend syncing
+  useEffect(() => {
+    if (userId) {
+      console.log(`ACTIVE_HIVE_USER_ID: ${userId}`);
+    }
+  }, [userId]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [squads, setSquads] = useState<Squad[]>([]);
-  const [bonds, setBonds] = useState<Bond[]>([]);
+  const [bonds, setBonds] = useState<BondEnriched[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [interactionUser, setInteractionUser] = useState<any | null>(null);
 
   // 用户个人资料
   const [userProfile, setUserProfile] = useState<UserProfile>({
@@ -311,21 +319,6 @@ export default function App() {
 
 
 
-  const handleReport = async (targetId: string, type: 'USER' | 'SQUAD') => {
-    if (!userId) return;
-    // NOTE: For prompt, we might still need native prompt or implement a custom prompt modal.
-    // Given the request is about "this kind of prompt" (confirm/alert in the screenshot),
-    // I'll leave the report prompt for now or implement it if really needed.
-    const reason = window.prompt(`Reason for reporting this ${type.toLowerCase()}:`);
-    if (!reason) return;
-    try {
-      await socialService.report(userId, targetId, type, reason);
-      showAlert('Report Received', 'Our team will review it shortly.');
-    } catch (err) {
-      console.error('Report failed:', err);
-      showAlert('Error', 'Failed to submit report.');
-    }
-  };
 
   const handleBlock = async (blockedId: string) => {
     if (!userId) return;
@@ -340,6 +333,27 @@ export default function App() {
         showAlert('Error', 'Failed to block user.');
       }
     });
+  };
+
+  const handleCreateBond = async (targetId: string) => {
+    if (!userId) return;
+    try {
+      await socialService.createBond(userId, targetId);
+      showAlert('Success', 'Bond request sent successfully!');
+      // Refresh bonds
+      const fetchedBonds = await socialService.getBonds(userId);
+      setBonds(fetchedBonds);
+    } catch (err: any) {
+      console.error('Add bond failed:', err);
+      // Ensure we display a string and try to get the most human-readable message
+      const errorMsg = err.message || (typeof err === 'string' ? err : 'Failed to send bond request.');
+      showAlert('Error', errorMsg);
+    }
+  };
+
+  const handleGridUserClick = (member: any) => {
+    if (member.status === 'offline') return;
+    setInteractionUser(member);
   };
 
   const handleSignOut = () => {
@@ -575,7 +589,7 @@ export default function App() {
                   return (
                     <div key={member.id} className={clsx("flex flex-col items-center", offsetClass)}>
                       <div
-                        onClick={() => sendNudge(member.id.toString())}
+                        onClick={() => handleGridUserClick(member)}
                         className={clsx(
                           "w-[66px] h-[76px] hex-clip relative group transition-all duration-500 cursor-pointer active:scale-95",
                           isFocus ? "bg-[#F5A623] breathing" : isOffline ? "bg-zinc-900 border border-zinc-800 opacity-40" : "bg-zinc-800"
@@ -591,10 +605,12 @@ export default function App() {
                           )}
                           {isFocus && <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(var(--accent-rgb), 0.4), transparent)' }}></div>}
 
-                          {/* 悬浮 Nudge 提示 */}
-                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
-                            <Zap size={14} className="text-[#F5A623] animate-bounce" />
-                          </div>
+                          {/* 悬停时的微小添加标识 */}
+                          {!isOffline && (
+                            <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <UserPlus size={12} className="text-[#F5A623]" />
+                            </div>
+                          )}
                         </div>
                       </div>
                       <div className="mt-1 text-center">
@@ -745,7 +761,6 @@ export default function App() {
               bonds={bonds}
               userId={userId || ''}
               onNudge={sendNudge}
-              onReport={handleReport}
               onBlock={handleBlock}
               onAlert={showAlert}
             />
@@ -796,6 +811,48 @@ export default function App() {
             }}
             onCancel={() => setModalConfig(prev => ({ ...prev, isOpen: false }))}
           />
+
+          {/* Grid Interaction Modal */}
+          {interactionUser && (
+            <div className="absolute inset-0 z-[110] flex items-center justify-center px-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+              <div className="w-full max-w-[300px] bg-zinc-900 border border-white/10 rounded-[32px] p-8 shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col items-center">
+                <div className="w-20 h-20 rounded-2xl overflow-hidden mb-4 border-2 border-white/5">
+                  <img src={interactionUser.avatar} alt={interactionUser.name} className="w-full h-full object-cover" />
+                </div>
+                <h3 className="text-xl font-bold text-white mb-1">{interactionUser.name}</h3>
+                <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mb-8">{interactionUser.subject || 'Relaxing'}</p>
+
+                <div className="flex w-full flex-col gap-3">
+                  <button
+                    onClick={() => {
+                      handleCreateBond(interactionUser.id);
+                      setInteractionUser(null);
+                    }}
+                    className="w-full py-4 rounded-2xl bg-[var(--accent)] text-black text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all shadow-lg"
+                    style={{ boxShadow: '0 8px 20px rgba(var(--accent-rgb), 0.3)' }}
+                  >
+                    申请好友
+                  </button>
+                  <button
+                    onClick={() => {
+                      sendNudge(interactionUser.id);
+                      setInteractionUser(null);
+                    }}
+                    className="w-full py-4 rounded-2xl bg-white/5 border border-white/10 text-white text-[10px] font-black uppercase tracking-widest hover:bg-white/10 active:scale-95 transition-all"
+                  >
+                    轻推
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => setInteractionUser(null)}
+                  className="mt-4 text-[10px] font-bold text-zinc-600 uppercase tracking-widest hover:text-zinc-400 p-2"
+                >
+                  取消
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

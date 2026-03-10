@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
-from app.schemas.social import SquadResponse, SquadCreate, BondResponse, ReportResponse, ReportCreate, BlockResponse, BlockCreate
+from app.schemas.social import SquadResponse, SquadCreate, BondResponse, BondEnrichedResponse, ReportResponse, ReportCreate, BlockResponse, BlockCreate
 from app.services.social import SocialService
 from uuid import UUID
 from typing import List
@@ -72,7 +72,7 @@ async def update_bond_status(user_id_1: UUID, user_id_2: UUID, status: str, db: 
 async def get_user_squads(user_id: UUID, db: AsyncSession = Depends(get_db)):
     return await SocialService.get_user_squads(db, user_id)
 
-@router.get("/bonds/{user_id}", response_model=List[BondResponse])
+@router.get("/bonds/{user_id}", response_model=List[BondEnrichedResponse])
 async def get_user_bonds(user_id: UUID, db: AsyncSession = Depends(get_db)):
     return await SocialService.get_user_bonds(db, user_id)
 

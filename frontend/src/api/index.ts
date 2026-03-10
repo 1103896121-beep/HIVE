@@ -52,7 +52,7 @@ export const socialService = {
     getSquads: (userId: string) =>
         apiClient.get<T.Squad[]>(`/social/squads/${userId}`),
     getBonds: (userId: string) =>
-        apiClient.get<T.Bond[]>(`/social/bonds/${userId}`),
+        apiClient.get<T.BondEnriched[]>(`/social/bonds/${userId}`),
     removeBond: (userId: string, targetId: string) =>
         apiClient.delete<{ status: string }>(`/social/bonds/${targetId}?user_id=${userId}`),
     report: (userId: string, targetId: string, targetType: string, reason: string) =>

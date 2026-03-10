@@ -8,8 +8,8 @@ from app.core.security import get_password_hash
 from sqlalchemy.future import select
 
 async def seed_many_bonds():
-    # Target User ID from the conversation context (david)
-    target_user_id = UUID("8750b191-6d30-4c1c-a05d-1f97b86f38fd")
+    # Target User ID identified from database (test_verify@example.com)
+    target_user_id = UUID("2f6d4a4c-1eaf-4503-baa4-b6c4fa3add60")
     
     async with SessionLocal() as db:
         hashed_pw = get_password_hash("password123")

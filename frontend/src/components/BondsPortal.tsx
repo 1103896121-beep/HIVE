@@ -1,19 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { UserPlus, Zap, ShieldAlert, MoreVertical, XCircle, Search, Loader2 } from 'lucide-react';
-import type { Bond, UserSearchResult } from '../api/types';
+import type { BondEnriched, UserSearchResult } from '../api/types';
 import { userService, socialService } from '../api';
 import { clsx } from 'clsx';
 
 interface BondsPortalProps {
-    bonds: Bond[];
+    bonds: BondEnriched[];
     userId: string;
     onNudge: (targetId: string) => void;
-    onReport: (targetId: string, type: 'USER' | 'SQUAD') => void;
     onBlock: (targetId: string) => void;
     onAlert: (title: string, message: string) => void;
 }
 
-export const BondsPortal: React.FC<BondsPortalProps> = ({ bonds, userId, onNudge, onReport, onBlock, onAlert }) => {
+export const BondsPortal: React.FC<BondsPortalProps> = ({ bonds, userId, onNudge, onBlock, onAlert }) => {
     const [nudged, setNudged] = useState<string | null>(null);
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -21,6 +20,7 @@ export const BondsPortal: React.FC<BondsPortalProps> = ({ bonds, userId, onNudge
     const [isSearching, setIsSearching] = useState(false);
     const [selectedUser, setSelectedUser] = useState<UserSearchResult | null>(null);
     const [isFetchingProfile, setIsFetchingProfile] = useState(false);
+    const [localSearchQuery, setLocalSearchQuery] = useState('');
 
     // Mock geolocation for dev - ideally this would come from the browser API or App.tsx
     const mockLocation = { lat: 39.9042, lon: 116.4074 }; // Beijing Center
@@ -104,12 +104,7 @@ export const BondsPortal: React.FC<BondsPortalProps> = ({ bonds, userId, onNudge
     };
 
     const handleBlock = async (targetId: string) => {
-        try {
-            await socialService.block(userId, targetId);
-            onAlert("Blocked", "User has been blocked.");
-        } catch (error: any) {
-            onAlert("Error", "Failed to block user.");
-        }
+        onBlock(targetId);
     };
 
     return (
@@ -137,14 +132,15 @@ export const BondsPortal: React.FC<BondsPortalProps> = ({ bonds, userId, onNudge
 
                 <div className="flex items-center justify-between">
                     <div className="flex -space-x-3">
-                        {bonds.slice(0, 3).map(bond => {
-                            const otherId = bond.user_id_1 === userId ? bond.user_id_2 : bond.user_id_1;
-                            return (
-                                <div key={otherId} className="w-10 h-10 rounded-full border-2 border-[#111] bg-zinc-800 flex items-center justify-center overflow-hidden">
-                                    <img src={`https://i.pravatar.cc/150?u=${otherId}`} alt="avatar" className="w-full h-full object-cover" />
-                                </div>
-                            );
-                        })}
+                        {bonds.filter(b => b.other_user).slice(0, 3).map(bond => (
+                            <div key={bond.other_user!.user_id} className="w-10 h-10 rounded-full border-2 border-[#111] bg-zinc-800 flex items-center justify-center overflow-hidden">
+                                <img
+                                    src={bond.other_user!.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${bond.other_user!.user_id}`}
+                                    alt="avatar"
+                                    className="w-full h-full object-cover"
+                                />
+                            </div>
+                        ))}
                     </div>
                     <div className="text-right">
                         <div className="text-sm font-black" style={{ color: 'var(--accent)' }}>{bonds.length} Active Bonds</div>
@@ -155,15 +151,32 @@ export const BondsPortal: React.FC<BondsPortalProps> = ({ bonds, userId, onNudge
 
             {/* Bonds List */}
             <div>
-                <div className="flex items-center justify-between mb-4 px-1">
-                    <h3 className="text-xs font-black uppercase tracking-[0.3em]" style={{ color: 'var(--text-secondary)' }}>Your Bonds</h3>
-                    <button
-                        onClick={() => setIsSearchOpen(true)}
-                        className="flex items-center gap-1.5 text-xs font-bold hover:opacity-80 transition-opacity"
-                        style={{ color: 'var(--accent)' }}
-                    >
-                        <UserPlus size={14} /> Link New
-                    </button>
+                <div className="flex flex-col gap-4 mb-4">
+                    <div className="flex items-center justify-between px-1">
+                        <h3 className="text-xs font-black uppercase tracking-[0.3em]" style={{ color: 'var(--text-secondary)' }}>Your Bonds</h3>
+                        <button
+                            onClick={() => setIsSearchOpen(true)}
+                            className="flex items-center gap-1.5 text-xs font-bold hover:opacity-80 transition-opacity"
+                            style={{ color: 'var(--accent)' }}
+                        >
+                            <UserPlus size={14} /> Link New
+                        </button>
+                    </div>
+
+                    {bonds.length > 5 && (
+                        <div className="relative mx-1">
+                            <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+                                <Search size={14} className="text-zinc-600" />
+                            </div>
+                            <input
+                                type="text"
+                                placeholder="Filter your bonds..."
+                                value={localSearchQuery}
+                                onChange={(e) => setLocalSearchQuery(e.target.value)}
+                                className="w-full bg-white/5 border border-white/5 rounded-2xl py-2.5 pl-10 pr-4 text-xs text-white placeholder-zinc-600 outline-none focus:border-[var(--accent)]/30 transition-all"
+                            />
+                        </div>
+                    )}
                 </div>
 
                 <div className="space-y-3">
@@ -172,77 +185,101 @@ export const BondsPortal: React.FC<BondsPortalProps> = ({ bonds, userId, onNudge
                             No Bonds established yet
                         </div>
                     ) : (
-                        bonds.map((bond) => {
-                            const otherId = bond.user_id_1 === userId ? bond.user_id_2 : bond.user_id_1;
-                            const isAccepted = bond.status === 'ACCEPTED';
+                        bonds
+                            .filter(b => b.other_user)
+                            .filter(b =>
+                                b.other_user!.name.toLowerCase().includes(localSearchQuery.toLowerCase()) ||
+                                (b.other_user!.city || '').toLowerCase().includes(localSearchQuery.toLowerCase())
+                            )
+                            .map((bond, index) => {
+                                const otherUser = bond.other_user!;
+                                const isAccepted = bond.status === 'ACCEPTED';
 
-                            return (
-                                <div
-                                    key={otherId}
-                                    className="flex items-center gap-4 p-5 rounded-3xl border transition-colors duration-500"
-                                    style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}
-                                >
-                                    <div className="relative">
-                                        <button
-                                            onClick={() => handleSelectUser(otherId)}
-                                            disabled={isFetchingProfile}
-                                            className={clsx(
-                                                "w-14 h-14 rounded-[20px] overflow-hidden border-2 transition-all duration-700 hover:scale-105 active:scale-95 cursor-pointer disabled:opacity-50",
-                                                isAccepted ? "border-[var(--accent)]" : "border-zinc-800 opacity-60"
-                                            )}
-                                        >
-                                            <img src={`https://i.pravatar.cc/150?u=${otherId}`} alt="Avatar" className="w-full h-full object-cover" />
-                                        </button>
-                                    </div>
-
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 mb-0.5">
-                                            <span className="font-bold text-white tracking-tight truncate">User {otherId.slice(0, 4)}</span>
-                                            {isAccepted && <ShieldAlert size={12} style={{ color: 'var(--accent)' }} />}
-                                        </div>
-                                        <div className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--text-secondary)' }}>
-                                            Status: {bond.status}
-                                        </div>
-                                    </div>
-
-                                    <div className="flex items-center gap-2">
-                                        {isAccepted && (
+                                return (
+                                    <div
+                                        key={otherUser.user_id}
+                                        className="flex items-center gap-4 p-5 rounded-[28px] border transition-all duration-500 backdrop-blur-md animate-in fade-in slide-in-from-bottom-4 hover:z-50 relative"
+                                        style={{
+                                            backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                                            borderColor: isAccepted ? 'rgba(var(--accent-rgb), 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                                            animationDelay: `${index * 50}ms`,
+                                            animationFillMode: 'both'
+                                        }}
+                                    >
+                                        <div className="relative">
                                             <button
-                                                onClick={() => handleNudge(otherId)}
+                                                onClick={() => handleSelectUser(otherUser.user_id)}
+                                                disabled={isFetchingProfile}
                                                 className={clsx(
-                                                    "p-3 rounded-2xl transition-all active:scale-90",
-                                                    nudged === otherId
-                                                        ? "text-black"
-                                                        : "bg-white/5 text-zinc-400 hover:text-white"
+                                                    "w-14 h-14 rounded-[22px] overflow-hidden border-2 transition-all duration-700 hover:scale-105 active:scale-95 cursor-pointer disabled:opacity-50",
+                                                    isAccepted ? "border-[var(--accent)]" : "border-zinc-800 opacity-60"
                                                 )}
-                                                style={{ backgroundColor: nudged === otherId ? 'var(--accent)' : undefined }}
                                             >
-                                                <Zap size={18} fill={nudged === otherId ? 'currentColor' : 'none'} className={clsx(nudged === otherId && "animate-bounce")} />
+                                                <img
+                                                    src={otherUser.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${otherUser.user_id}`}
+                                                    alt="Avatar"
+                                                    className="w-full h-full object-cover"
+                                                />
                                             </button>
-                                        )}
-                                        <div className="relative group/menu">
-                                            <button className="p-2 text-zinc-600 hover:text-white transition-colors">
-                                                <MoreVertical size={16} />
-                                            </button>
-                                            <div className="absolute right-0 top-full mt-2 w-32 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl py-2 hidden group-hover/menu:block z-50">
+                                            {isAccepted && (
+                                                <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-[var(--accent)] rounded-full border-2 border-[#111] flex items-center justify-center">
+                                                    <Zap size={10} fill="black" />
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 mb-0.5">
+                                                <span className="font-bold text-white tracking-tight truncate">{otherUser.name}</span>
+                                            </div>
+                                            <div className="text-[10px] font-bold" style={{ color: 'var(--text-secondary)' }}>
+                                                {otherUser.city || 'Digital Space'}
+                                            </div>
+                                            {!isAccepted && (
+                                                <div className="text-[9px] font-black uppercase tracking-widest mt-1" style={{ color: 'var(--accent)' }}>
+                                                    {bond.status}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="flex items-center gap-2">
+                                            {isAccepted && (
                                                 <button
-                                                    onClick={() => handleRemoveBond(otherId)}
-                                                    className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-amber-500 hover:bg-white/5 flex items-center gap-2"
+                                                    onClick={() => handleNudge(otherUser.user_id)}
+                                                    className={clsx(
+                                                        "p-3 rounded-2xl transition-all active:scale-90",
+                                                        nudged === otherUser.user_id
+                                                            ? "text-black"
+                                                            : "bg-white/5 text-zinc-400 hover:text-white"
+                                                    )}
+                                                    style={{ backgroundColor: nudged === otherUser.user_id ? 'var(--accent)' : undefined }}
                                                 >
-                                                    <XCircle size={12} /> Delete
+                                                    <Zap size={18} fill={nudged === otherUser.user_id ? 'currentColor' : 'none'} className={clsx(nudged === otherUser.user_id && "animate-bounce")} />
                                                 </button>
-                                                <button
-                                                    onClick={() => handleBlock(otherId)}
-                                                    className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-red-500 hover:bg-white/5 flex items-center gap-2"
-                                                >
-                                                    <ShieldAlert size={12} /> Block
+                                            )}
+                                            <div className="relative group/menu">
+                                                <button className="p-2 text-zinc-600 hover:text-white transition-colors">
+                                                    <MoreVertical size={16} />
                                                 </button>
+                                                <div className="absolute right-0 top-full mt-2 w-32 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl py-2 hidden group-hover/menu:block z-50">
+                                                    <button
+                                                        onClick={() => handleRemoveBond(otherUser.user_id)}
+                                                        className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-amber-500 hover:bg-white/5 flex items-center gap-2"
+                                                    >
+                                                        <XCircle size={12} /> Delete
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleBlock(otherUser.user_id)}
+                                                        className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-red-500 hover:bg-white/5 flex items-center gap-2"
+                                                    >
+                                                        <ShieldAlert size={12} /> Block
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                            );
-                        })
+                                );
+                            })
                     )}
                 </div>
             </div>

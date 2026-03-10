@@ -67,3 +67,24 @@ class BlockResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class ProfileSimpleResponse(BaseModel):
+    user_id: UUID
+    name: str
+    avatar_url: Optional[str] = None
+    city: Optional[str] = None
+    total_focus_mins: int = 0
+    total_sparks: int = 0
+
+    class Config:
+        from_attributes = True
+
+class BondEnrichedResponse(BaseModel):
+    user_id_1: UUID
+    user_id_2: UUID
+    status: str
+    created_at: datetime
+    other_user: ProfileSimpleResponse
+
+    class Config:
+        from_attributes = True

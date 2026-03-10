@@ -163,11 +163,48 @@ class SocialService:
 
     @staticmethod
     async def get_user_bonds(db: AsyncSession, user_id: UUID):
-        # 查找与该用户相关的所有羁绊（无论作为 user_id_1 还是 user_id_2）
-        result = await db.execute(
-            select(Bond).where((Bond.user_id_1 == user_id) | (Bond.user_id_2 == user_id))
+        # 查找与该用户相关的所有羁绊，并关联对方用户的 Profile
+        # 我们需要分别处理 user_id 在 user_id_1 和 user_id_2 的情况
+        
+        from app.models.user import Profile
+
+        # 1. 作为 user_id_1 时，关联 user_id_2 的 Profile
+        stmt1 = (
+            select(Bond, Profile)
+            .join(Profile, Bond.user_id_2 == Profile.user_id)
+            .where(Bond.user_id_1 == user_id)
         )
-        return result.scalars().all()
+        result1 = await db.execute(stmt1)
+        bonds1 = []
+        for bond, profile in result1.all():
+            bond_data = {
+                "user_id_1": bond.user_id_1,
+                "user_id_2": bond.user_id_2,
+                "status": bond.status,
+                "created_at": bond.created_at,
+                "other_user": profile
+            }
+            bonds1.append(bond_data)
+
+        # 2. 作为 user_id_2 时，关联 user_id_1 的 Profile
+        stmt2 = (
+            select(Bond, Profile)
+            .join(Profile, Bond.user_id_1 == Profile.user_id)
+            .where(Bond.user_id_2 == user_id)
+        )
+        result2 = await db.execute(stmt2)
+        bonds2 = []
+        for bond, profile in result2.all():
+            bond_data = {
+                "user_id_1": bond.user_id_1,
+                "user_id_2": bond.user_id_2,
+                "status": bond.status,
+                "created_at": bond.created_at,
+                "other_user": profile
+            }
+            bonds2.append(bond_data)
+
+        return bonds1 + bonds2
 
     @staticmethod
     async def create_report(db: AsyncSession, user_id: UUID, report_in: ReportCreate):
@@ -189,6 +226,10 @@ class SocialService:
             blocked_id=block_in.blocked_id
         )
         db.add(db_block)
+        
+        # 联动：拉黑时自动断开羁绊关系
+        await SocialService.remove_bond(db, user_id, block_in.blocked_id)
+        
         await db.commit()
         await db.refresh(db_block)
         return db_block
