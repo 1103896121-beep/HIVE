@@ -21,6 +21,7 @@ class ProfileBase(BaseModel):
     name: str
     avatar_url: Optional[str] = None
     bio: Optional[str] = None
+    city: Optional[str] = None
     theme_preference: Optional[str] = "classic"
     daily_goal_mins: Optional[int] = 120
 
@@ -38,6 +39,19 @@ class ProfileResponse(ProfileBase):
     trial_start_at: datetime
     subscription_end_at: Optional[datetime] = None
     updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class UserSearchResponse(BaseModel):
+    id: UUID
+    email: str
+    name: str
+    avatar_url: Optional[str] = None
+    city: Optional[str] = None
+    bio: Optional[str] = None
+    total_focus_mins: int = 0
+    total_sparks: int = 0
 
     class Config:
         from_attributes = True

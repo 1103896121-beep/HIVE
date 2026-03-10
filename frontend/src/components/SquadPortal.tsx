@@ -1,23 +1,72 @@
-import React, { useState } from 'react';
-import { Plus, ShieldCheck, DoorOpen, Trash2 } from 'lucide-react';
-import type { Squad } from '../api/types';
+import React, { useState, useEffect } from 'react';
+import { Plus, ShieldCheck, DoorOpen, Trash2, UserPlus, XCircle } from 'lucide-react';
+import type { Squad, Bond } from '../api/types';
+import { socialService, userService } from '../api';
 
 interface SquadPortalProps {
     squads: Squad[];
+    bonds: Bond[];
     userId: string;
-    onApply: (squadId: string) => Promise<void>;
     onCreate: (name: string) => Promise<void>;
     onLeave: (squadId: string) => Promise<void>;
     onDisband: (squadId: string) => Promise<void>;
+    onAlert: (title: string, message: string) => void;
 }
 
-export const SquadPortal: React.FC<SquadPortalProps> = ({ squads, userId, onApply, onCreate, onLeave, onDisband }) => {
+export const SquadPortal: React.FC<SquadPortalProps> = ({ squads, bonds, userId, onCreate, onLeave, onDisband, onAlert }) => {
     const [newSquadName, setNewSquadName] = useState('');
-    const [targetSquadId, setTargetSquadId] = useState('');
     const [isCreating, setIsCreating] = useState(false);
+
+    // Invite Modal State
+    const [isInviteOpen, setIsInviteOpen] = useState(false);
+    const [friends, setFriends] = useState<{ id: string, name: string, avatar?: string }[]>([]);
+    const [isLoadingFriends, setIsLoadingFriends] = useState(false);
 
     // Enforce 1-squad rule visually
     const currentSquad = squads.length > 0 ? squads[0] : null;
+
+    useEffect(() => {
+        if (isInviteOpen && currentSquad) {
+            loadFriends();
+        }
+    }, [isInviteOpen, currentSquad]);
+
+    const loadFriends = async () => {
+        setIsLoadingFriends(true);
+        try {
+            // Find all accepted bonds
+            const acceptedBonds = bonds.filter(b => b.status === 'ACCEPTED');
+            const friendIds = acceptedBonds.map(b => b.user_id_1 === userId ? b.user_id_2 : b.user_id_1);
+
+            // Fetch basic profile info for friends
+            // Note: In a real app we might have a dedicated batch endpoint
+            const friendProfiles = await Promise.all(
+                friendIds.map(async (id) => {
+                    try {
+                        const profile = await userService.getProfile(id);
+                        return { id, name: profile.name, avatar: profile.avatar_url };
+                    } catch (e) {
+                        return { id, name: `User ${id.slice(0, 4)}`, avatar: undefined };
+                    }
+                })
+            );
+            setFriends(friendProfiles);
+        } catch (error) {
+            console.error("Failed to load friends", error);
+        } finally {
+            setIsLoadingFriends(false);
+        }
+    };
+
+    const handleInvite = async (friendId: string) => {
+        if (!currentSquad) return;
+        try {
+            await socialService.inviteToSquad(userId, friendId, currentSquad.id);
+            onAlert("Success", "Invitation sent successfully!");
+        } catch (error: any) {
+            onAlert("Error", error.message || "Failed to invite friend.");
+        }
+    };
 
     return (
         <div className="space-y-8">
@@ -45,28 +94,15 @@ export const SquadPortal: React.FC<SquadPortalProps> = ({ squads, userId, onAppl
                             </div>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 gap-4">
                             <button
                                 onClick={() => setIsCreating(true)}
-                                className="flex flex-col items-center justify-center p-6 rounded-3xl text-black hover:scale-[1.02] transition-transform active:scale-95 shadow-xl"
+                                className="flex flex-col items-center justify-center p-8 rounded-[32px] text-black hover:scale-[1.02] transition-transform active:scale-95 shadow-xl"
                                 style={{ backgroundColor: 'var(--accent)', boxShadow: '0 10px 30px rgba(var(--accent-rgb), 0.2)' }}
                             >
-                                <Plus size={28} strokeWidth={3} />
-                                <span className="mt-2 text-center font-bold uppercase tracking-tighter leading-tight">Create Hive</span>
+                                <Plus size={32} strokeWidth={3} />
+                                <span className="mt-2 text-center font-bold uppercase tracking-tighter leading-tight">Create New Hive</span>
                             </button>
-
-                            <div className="flex flex-col justify-center p-4 rounded-3xl bg-white/5 border border-white/10 text-white">
-                                <input
-                                    placeholder="Enter Hive ID"
-                                    className="bg-transparent border-b border-white/10 mb-2 text-center text-xs outline-none focus:border-[var(--accent)] transition-colors"
-                                    value={targetSquadId}
-                                    onChange={e => setTargetSquadId(e.target.value)}
-                                />
-                                <button
-                                    onClick={() => onApply(targetSquadId)}
-                                    className="text-[10px] py-1 rounded-lg font-black uppercase tracking-widest text-[var(--accent)] hover:bg-white/5 active:scale-95 transition-all"
-                                >Apply to Join</button>
-                            </div>
                         </div>
                     )}
                 </div>
@@ -89,12 +125,21 @@ export const SquadPortal: React.FC<SquadPortalProps> = ({ squads, userId, onAppl
                                 </div>
                                 <div className="flex gap-2 mt-2">
                                     {currentSquad.created_by === userId ? (
-                                        <button
-                                            onClick={() => onDisband(currentSquad.id)}
-                                            className="flex-1 flex items-center justify-center gap-1 py-2 rounded-xl border border-red-500/20 text-red-400 hover:bg-red-500/10 active:scale-95 transition-all text-[10px] font-bold uppercase tracking-widest"
-                                        >
-                                            <Trash2 size={12} /> Disband
-                                        </button>
+                                        <>
+                                            <button
+                                                onClick={() => setIsInviteOpen(true)}
+                                                className="flex-1 flex items-center justify-center gap-1 py-2 rounded-xl text-black active:scale-95 transition-all text-[10px] font-bold uppercase tracking-widest shadow-lg"
+                                                style={{ backgroundColor: 'var(--accent)', boxShadow: '0 4px 15px rgba(var(--accent-rgb), 0.2)' }}
+                                            >
+                                                <UserPlus size={12} /> Invite
+                                            </button>
+                                            <button
+                                                onClick={() => onDisband(currentSquad.id)}
+                                                className="flex-1 flex items-center justify-center gap-1 py-2 rounded-xl border border-red-500/20 text-red-400 hover:bg-red-500/10 active:scale-95 transition-all text-[10px] font-bold uppercase tracking-widest"
+                                            >
+                                                <Trash2 size={12} /> Disband
+                                            </button>
+                                        </>
                                     ) : (
                                         <button
                                             onClick={() => onLeave(currentSquad.id)}
@@ -105,6 +150,55 @@ export const SquadPortal: React.FC<SquadPortalProps> = ({ squads, userId, onAppl
                                     )}
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Invite Friends Modal */}
+            {isInviteOpen && currentSquad && (
+                <div className="absolute inset-0 z-[100] flex items-end justify-center px-4 pb-8 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="w-full bg-zinc-900 border border-white/10 rounded-[32px] p-6 shadow-2xl animate-in slide-in-from-bottom-8 duration-300 flex flex-col max-h-[80%]">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-lg font-bold text-white tracking-tight">Invite Friends</h3>
+                            <button onClick={() => setIsInviteOpen(false)} className="p-2 text-zinc-500 hover:text-white transition-colors">
+                                <XCircle size={24} />
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto hide-scrollbar space-y-3 min-h-[150px]">
+                            {isLoadingFriends ? (
+                                <div className="flex items-center justify-center h-32 text-zinc-500">
+                                    Loading friends...
+                                </div>
+                            ) : friends.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center h-40 text-center px-4">
+                                    <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-3">
+                                        <ShieldCheck size={20} className="text-zinc-600" />
+                                    </div>
+                                    <p className="text-zinc-500 text-xs font-bold uppercase tracking-widest mb-2">No established bonds</p>
+                                    <p className="text-[10px] text-zinc-600 leading-relaxed">Form bonds in the Digital Bonds tab first before inviting to your Hive.</p>
+                                </div>
+                            ) : (
+                                friends.map(friend => (
+                                    <div key={friend.id} className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-full overflow-hidden bg-zinc-800">
+                                                <img src={friend.avatar || `https://i.pravatar.cc/150?u=${friend.id}`} alt={friend.name} className="w-full h-full object-cover" />
+                                            </div>
+                                            <div>
+                                                <div className="text-sm font-bold text-white">{friend.name}</div>
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={() => handleInvite(friend.id)}
+                                            className="px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest text-[#F5A623] border border-[#F5A623]/20 hover:bg-[#F5A623]/10 active:scale-95 transition-all"
+                                        >
+                                            Invite
+                                        </button>
+                                    </div>
+                                ))
+                            )}
                         </div>
                     </div>
                 </div>

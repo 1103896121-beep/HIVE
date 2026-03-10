@@ -1,5 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy import or_, and_
 from app.models.social import Squad, SquadMember, Bond, Nudge, Report, Block
 from app.schemas.social import SquadCreate, ReportCreate, BlockCreate
 import uuid
@@ -145,13 +146,42 @@ class SocialService:
 
     @staticmethod
     async def create_bond(db: AsyncSession, user_id_1: UUID, user_id_2: UUID):
-        # 排序 ID 以确保唯一性
+        # 1. 检查是否被拉黑 (双向)
+        block_check = await db.execute(
+            select(Block).where(
+                or_(
+                    and_(Block.user_id == user_id_1, Block.blocked_id == user_id_2),
+                    and_(Block.user_id == user_id_2, Block.blocked_id == user_id_1)
+                )
+            )
+        )
+        if block_check.scalars().first():
+            raise ValueError("Cannot form bond due to privacy blocks.")
+
+        # 2. 排序 ID 以确保唯一性
         u1, u2 = sorted([user_id_1, user_id_2])
+        
+        # 3. 检查是否已存在
+        existing = await db.execute(select(Bond).where(Bond.user_id_1 == u1, Bond.user_id_2 == u2))
+        if existing.scalars().first():
+            return existing.scalars().first()
+
         db_bond = Bond(user_id_1=u1, user_id_2=u2, status="PENDING")
         db.add(db_bond)
         await db.commit()
         await db.refresh(db_bond)
         return db_bond
+
+    @staticmethod
+    async def remove_bond(db: AsyncSession, user_id_1: UUID, user_id_2: UUID):
+        u1, u2 = sorted([user_id_1, user_id_2])
+        result = await db.execute(select(Bond).where(Bond.user_id_1 == u1, Bond.user_id_2 == u2))
+        db_bond = result.scalars().first()
+        if db_bond:
+            await db.delete(db_bond)
+            await db.commit()
+            return True
+        return False
 
     @staticmethod
     async def update_bond_status(db: AsyncSession, user_id_1: UUID, user_id_2: UUID, status: str):

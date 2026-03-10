@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
-from app.schemas.user import ProfileResponse, ProfileUpdate
+from app.schemas.user import ProfileResponse, ProfileUpdate, UserSearchResponse
 from app.services.user import UserService
 from uuid import UUID
+from typing import List
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -20,3 +21,22 @@ async def update_profile(user_id: UUID, profile_in: ProfileUpdate, db: AsyncSess
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
     return profile
+
+@router.get("/search", response_model=List[UserSearchResponse])
+async def search_users(
+    q: str, 
+    lat: float = None, 
+    lon: float = None,
+    user_id: str = "current-user-placeholder", # TODO: Use real auth dependency
+    db: AsyncSession = Depends(get_db)
+):
+    if not q or len(q) < 2:
+        return []
+    # Convert string placeholder to UUID if needed, but in real app this comes from JWT
+    from uuid import UUID
+    try:
+        curr_id = UUID(user_id) if "-" in user_id else UUID("00000000-0000-0000-0000-000000000000")
+    except:
+        curr_id = UUID("00000000-0000-0000-0000-000000000000")
+        
+    return await UserService.search_users(db, q, curr_id, lat, lon)

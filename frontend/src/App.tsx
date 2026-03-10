@@ -234,16 +234,6 @@ export default function App() {
     }
   };
 
-  const handleApplySquad = async (squadId: string) => {
-    if (!userId) return;
-    try {
-      await socialService.applyToSquad(userId, squadId);
-      showAlert('Success', 'Applied successfully! Wait for admin approval.');
-    } catch (err: any) {
-      showAlert('Error', err.message || 'Failed to apply.');
-    }
-  };
-
   const handleLeaveSquad = async (squadId: string) => {
     if (!userId) return;
     showConfirm('Leave Hive', 'Are you sure you want to leave this Hive?', async () => {
@@ -733,11 +723,12 @@ export default function App() {
           >
             <SquadPortal
               squads={squads}
+              bonds={bonds}
               userId={userId ?? ''}
-              onApply={handleApplySquad}
               onCreate={handleCreateSquad}
               onLeave={handleLeaveSquad}
               onDisband={handleDisbandSquad}
+              onAlert={showAlert}
             />
           </Sheet>
 
@@ -752,6 +743,7 @@ export default function App() {
               onNudge={sendNudge}
               onReport={handleReport}
               onBlock={handleBlock}
+              onAlert={showAlert}
             />
           </Sheet>
 

@@ -61,7 +61,17 @@ async def disband_squad(squad_id: UUID, admin_id: UUID, db: AsyncSession = Depen
 
 @router.post("/bonds", response_model=BondResponse)
 async def create_bond(user_id_2: UUID, user_id_1: UUID, db: AsyncSession = Depends(get_db)):
-    return await SocialService.create_bond(db, user_id_1, user_id_2)
+    try:
+        return await SocialService.create_bond(db, user_id_1, user_id_2)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.delete("/bonds/{target_id}")
+async def remove_bond(target_id: UUID, user_id: UUID, db: AsyncSession = Depends(get_db)):
+    success = await SocialService.remove_bond(db, user_id, target_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Bond not found")
+    return {"status": "success"}
 
 @router.patch("/bonds/status", response_model=BondResponse)
 async def update_bond_status(user_id_1: UUID, user_id_2: UUID, status: str, db: AsyncSession = Depends(get_db)):

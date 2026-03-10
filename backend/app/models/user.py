@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Boolean, DateTime, BigInteger, Integer, ForeignKey
+from sqlalchemy import Column, String, Boolean, DateTime, BigInteger, Integer, ForeignKey, Float
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 import uuid
@@ -30,6 +30,9 @@ class Profile(Base):
     daily_goal_mins = Column(Integer, default=120)
     total_focus_mins = Column(BigInteger, default=0)
     total_sparks = Column(Integer, default=0)
+    city = Column(String(100), nullable=True)
+    latitude = Column(Float, nullable=True)
+    longitude = Column(Float, nullable=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     user = relationship("User", back_populates="profile")

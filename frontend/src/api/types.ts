@@ -3,6 +3,17 @@ export interface UserBasic {
     email: string;
 }
 
+export interface UserSearchResult {
+    id: string;
+    email: string;
+    name: string;
+    avatar_url?: string;
+    city?: string;
+    bio?: string;
+    total_focus_mins: number;
+    total_sparks: number;
+}
+
 export interface Profile {
     user_id: string;
     name: string;

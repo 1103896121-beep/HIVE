@@ -13,6 +13,13 @@ export const userService = {
         apiClient.get<T.Profile>(`/users/profile/${userId}`),
     updateProfile: (userId: string, data: Partial<T.Profile>) =>
         apiClient.patch<T.Profile>(`/users/profile/${userId}`, data),
+    searchUsers: (query: string, lat?: number, lon?: number) => {
+        let url = `/users/search?q=${encodeURIComponent(query)}`;
+        if (lat !== undefined && lon !== undefined) {
+            url += `&lat=${lat}&lon=${lon}`;
+        }
+        return apiClient.get<T.UserSearchResult[]>(url);
+    },
 };
 
 export const focusService = {
@@ -50,6 +57,8 @@ export const socialService = {
         apiClient.get<T.Squad[]>(`/social/squads/${userId}`),
     getBonds: (userId: string) =>
         apiClient.get<T.Bond[]>(`/social/bonds/${userId}`),
+    removeBond: (userId: string, targetId: string) =>
+        apiClient.delete<{ status: string }>(`/social/bonds/${targetId}?user_id=${userId}`),
     report: (userId: string, targetId: string, targetType: string, reason: string) =>
         apiClient.post<T.Report>(`/social/reports?user_id=${userId}`, { target_id: targetId, target_type: targetType, reason }),
     block: (userId: string, blockedId: string) =>
