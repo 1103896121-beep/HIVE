@@ -8,16 +8,19 @@ interface BondsPortalProps {
     bonds: Bond[];
     userId: string;
     onNudge: (targetId: string) => void;
+    onReport: (targetId: string, type: 'USER' | 'SQUAD') => void;
+    onBlock: (targetId: string) => void;
     onAlert: (title: string, message: string) => void;
 }
 
-export const BondsPortal: React.FC<BondsPortalProps> = ({ bonds, userId, onNudge, onAlert }) => {
+export const BondsPortal: React.FC<BondsPortalProps> = ({ bonds, userId, onNudge, onReport, onBlock, onAlert }) => {
     const [nudged, setNudged] = useState<string | null>(null);
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
     const [isSearching, setIsSearching] = useState(false);
     const [selectedUser, setSelectedUser] = useState<UserSearchResult | null>(null);
+    const [isFetchingProfile, setIsFetchingProfile] = useState(false);
 
     // Mock geolocation for dev - ideally this would come from the browser API or App.tsx
     const mockLocation = { lat: 39.9042, lon: 116.4074 }; // Beijing Center
@@ -53,6 +56,29 @@ export const BondsPortal: React.FC<BondsPortalProps> = ({ bonds, userId, onNudge
         setNudged(targetId);
         onNudge(targetId);
         setTimeout(() => setNudged(null), 2000);
+    };
+
+    const handleSelectUser = async (userId: string) => {
+        setIsFetchingProfile(true);
+        try {
+            const profile = await userService.getProfile(userId);
+            // Map Profile to UserSearchResult for the modal
+            setSelectedUser({
+                id: profile.user_id,
+                name: profile.name,
+                email: '', // Not provided by getProfile for privacy
+                avatar_url: profile.avatar_url,
+                city: profile.city,
+                bio: profile.bio,
+                total_focus_mins: profile.total_focus_mins,
+                total_sparks: profile.total_sparks
+            } as any);
+        } catch (error) {
+            console.error("Failed to fetch profile:", error);
+            onAlert("Error", "Could not load user profile.");
+        } finally {
+            setIsFetchingProfile(false);
+        }
     };
 
     const handleAddBond = async (targetId: string) => {
@@ -158,15 +184,10 @@ export const BondsPortal: React.FC<BondsPortalProps> = ({ bonds, userId, onNudge
                                 >
                                     <div className="relative">
                                         <button
-                                            onClick={() => setSelectedUser({
-                                                id: otherId,
-                                                name: `User ${otherId.slice(0, 4)}`,
-                                                email: '...',
-                                                total_focus_mins: 0,
-                                                total_sparks: 0
-                                            } as any)}
+                                            onClick={() => handleSelectUser(otherId)}
+                                            disabled={isFetchingProfile}
                                             className={clsx(
-                                                "w-14 h-14 rounded-[20px] overflow-hidden border-2 transition-all duration-700 hover:scale-105 active:scale-95 cursor-pointer",
+                                                "w-14 h-14 rounded-[20px] overflow-hidden border-2 transition-all duration-700 hover:scale-105 active:scale-95 cursor-pointer disabled:opacity-50",
                                                 isAccepted ? "border-[var(--accent)]" : "border-zinc-800 opacity-60"
                                             )}
                                         >
@@ -309,9 +330,9 @@ export const BondsPortal: React.FC<BondsPortalProps> = ({ bonds, userId, onNudge
                         </div>
 
                         {/* Profile Info */}
-                        <div className="px-8 pb-10 -mt-16 text-center">
-                            <div className="inline-block p-1.5 bg-zinc-900 rounded-[32px] mb-4">
-                                <div className="w-28 h-28 rounded-[28px] overflow-hidden border-4 border-zinc-800">
+                        <div className="px-8 pb-10 -mt-16 text-center relative z-10">
+                            <div className="inline-block p-1.5 bg-zinc-900 rounded-[32px] mb-4 shadow-2xl">
+                                <div className="w-28 h-28 rounded-[28px] overflow-hidden border-4 border-zinc-800 bg-zinc-800">
                                     <img src={selectedUser.avatar_url || `https://i.pravatar.cc/150?u=${selectedUser.id}`} alt={selectedUser.name} className="w-full h-full object-cover" />
                                 </div>
                             </div>

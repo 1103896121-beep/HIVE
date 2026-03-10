@@ -6,6 +6,7 @@ export interface UserProfile {
     name: string;
     avatar: string;
     bio: string;
+    city: string;
     goal: number; // 每日专注目标(分钟)
     totalFocus: number; // 累计专注时长(分钟)
     sparks: number; // 累计获得的 Sparks
@@ -83,6 +84,12 @@ export function ProfilePortal({ profile, onUpdate, onSignOut }: ProfilePortalPro
                             onChange={e => setEditForm({ ...editForm, name: e.target.value })}
                             placeholder="Your Name"
                         />
+                        <input
+                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-center text-xs font-bold text-[var(--accent)] focus:outline-none focus:border-[var(--accent)] uppercase tracking-widest"
+                            value={editForm.city}
+                            onChange={e => setEditForm({ ...editForm, city: e.target.value })}
+                            placeholder="Your City"
+                        />
                         <textarea
                             className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-center text-xs text-zinc-400 focus:outline-none focus:border-[var(--accent)] resize-none"
                             rows={2}
@@ -94,7 +101,8 @@ export function ProfilePortal({ profile, onUpdate, onSignOut }: ProfilePortalPro
                 ) : (
                     <div className="mt-5 text-center">
                         <h2 className="text-2xl font-black text-white tracking-tight">{profile.name}</h2>
-                        <p className="mt-2 text-xs text-zinc-500 italic max-w-[200px] leading-relaxed">"{profile.bio}"</p>
+                        <p className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-[0.2em] mt-1">{profile.city || 'Digital Space'}</p>
+                        <p className="mt-3 text-xs text-zinc-500 italic max-w-[200px] leading-relaxed mx-auto">"{profile.bio}"</p>
                     </div>
                 )}
 

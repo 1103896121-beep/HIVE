@@ -39,12 +39,8 @@ export const focusService = {
 export const socialService = {
     createSquad: (userId: string, name: string, isPrivate: boolean = false) =>
         apiClient.post<T.Squad>(`/social/squads?user_id=${userId}`, { name, is_private: isPrivate }),
-    applyToSquad: (userId: string, squadId: string) =>
-        apiClient.post<T.SquadMember>(`/social/squads/${squadId}/apply?user_id=${userId}`, {}),
     inviteToSquad: (adminId: string, userId: string, squadId: string) =>
         apiClient.post<T.SquadMember>(`/social/squads/${squadId}/invite?admin_id=${adminId}&user_id=${userId}`, {}),
-    reviewApplication: (adminId: string, userId: string, squadId: string, approve: boolean) =>
-        apiClient.post<T.SquadMember | null>(`/social/squads/${squadId}/applications/review?admin_id=${adminId}&user_id=${userId}&approve=${approve}`, {}),
     reviewInvitation: (userId: string, squadId: string, accept: boolean) =>
         apiClient.post<T.SquadMember | null>(`/social/squads/${squadId}/invitations/review?user_id=${userId}&accept=${accept}`, {}),
     leaveSquad: (userId: string, squadId: string) =>

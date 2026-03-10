@@ -19,6 +19,7 @@ export interface Profile {
     name: string;
     avatar_url?: string;
     bio?: string;
+    city?: string;
     theme_preference: string;
     daily_goal_mins: number;
     total_focus_mins: number;

@@ -36,26 +36,6 @@ class SocialService:
         await db.refresh(db_squad)
         return db_squad
 
-    @staticmethod
-    async def apply_to_squad(db: AsyncSession, user_id: UUID, squad_id: UUID):
-        if await SocialService._check_user_in_squad(db, user_id):
-            raise ValueError("User is already in an active squad.")
-            
-        result = await db.execute(select(Squad).where(Squad.id == squad_id))
-        squad = result.scalars().first()
-        if not squad:
-            raise ValueError("Squad not found.")
-
-        # Check existing membership
-        member_check = await db.execute(select(SquadMember).where(SquadMember.squad_id == squad_id, SquadMember.user_id == user_id))
-        existing = member_check.scalars().first()
-        if existing:
-            return existing
-
-        member = SquadMember(squad_id=squad_id, user_id=user_id, status="PENDING_APPROVAL")
-        db.add(member)
-        await db.commit()
-        return member
 
     @staticmethod
     async def invite_to_squad(db: AsyncSession, admin_id: UUID, user_id: UUID, squad_id: UUID):
@@ -75,29 +55,6 @@ class SocialService:
         await db.commit()
         return member
 
-    @staticmethod
-    async def review_application(db: AsyncSession, admin_id: UUID, user_id: UUID, squad_id: UUID, approve: bool):
-        # Verify admin
-        admin_check = await db.execute(select(SquadMember).where(SquadMember.squad_id == squad_id, SquadMember.user_id == admin_id, SquadMember.role == "ADMIN", SquadMember.status == "ACTIVE"))
-        if not admin_check.scalars().first():
-            raise ValueError("Only an active admin can review applications.")
-
-        member_check = await db.execute(select(SquadMember).where(SquadMember.squad_id == squad_id, SquadMember.user_id == user_id, SquadMember.status == "PENDING_APPROVAL"))
-        member = member_check.scalars().first()
-        if not member:
-            raise ValueError("Application not found.")
-
-        if approve:
-            if await SocialService._check_user_in_squad(db, user_id):
-                db.delete(member) # Reject automatically if they joined another squad
-                await db.commit()
-                raise ValueError("User has already joined another squad.")
-            member.status = "ACTIVE"
-        else:
-            db.delete(member)
-        
-        await db.commit()
-        return member if approve else None
 
     @staticmethod
     async def review_invitation(db: AsyncSession, user_id: UUID, squad_id: UUID, accept: bool):

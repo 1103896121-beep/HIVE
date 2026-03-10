@@ -29,6 +29,7 @@ class ProfileUpdate(BaseModel):
     name: Optional[str] = None
     avatar_url: Optional[str] = None
     bio: Optional[str] = None
+    city: Optional[str] = None
     theme_preference: Optional[str] = None
     daily_goal_mins: Optional[int] = None
 

@@ -160,8 +160,11 @@ export const SquadPortal: React.FC<SquadPortalProps> = ({ squads, bonds, userId,
                 <div className="absolute inset-0 z-[100] flex items-end justify-center px-4 pb-8 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
                     <div className="w-full bg-zinc-900 border border-white/10 rounded-[32px] p-6 shadow-2xl animate-in slide-in-from-bottom-8 duration-300 flex flex-col max-h-[80%]">
                         <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-lg font-bold text-white tracking-tight">Invite Friends</h3>
-                            <button onClick={() => setIsInviteOpen(false)} className="p-2 text-zinc-500 hover:text-white transition-colors">
+                            <div className="flex flex-col">
+                                <h3 className="text-xl font-black text-white tracking-tight">Invite Friends</h3>
+                                <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mt-0.5">Build your digital squad</p>
+                            </div>
+                            <button onClick={() => setIsInviteOpen(false)} className="p-2 bg-white/5 rounded-full text-zinc-500 hover:text-white transition-colors">
                                 <XCircle size={24} />
                             </button>
                         </div>
@@ -181,18 +184,23 @@ export const SquadPortal: React.FC<SquadPortalProps> = ({ squads, bonds, userId,
                                 </div>
                             ) : (
                                 friends.map(friend => (
-                                    <div key={friend.id} className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-full overflow-hidden bg-zinc-800">
-                                                <img src={friend.avatar || `https://i.pravatar.cc/150?u=${friend.id}`} alt={friend.name} className="w-full h-full object-cover" />
+                                    <div key={friend.id} className="group flex items-center justify-between p-4 rounded-3xl bg-white/5 border border-white/5 hover:bg-white/[0.08] transition-all duration-300">
+                                        <div className="flex items-center gap-4">
+                                            <div className="relative">
+                                                <div className="w-12 h-12 rounded-2xl overflow-hidden bg-zinc-800 border-2 border-white/5 group-hover:border-[var(--accent)]/30 transition-all">
+                                                    <img src={friend.avatar || `https://i.pravatar.cc/150?u=${friend.id}`} alt={friend.name} className="w-full h-full object-cover" />
+                                                </div>
+                                                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-zinc-900 rounded-full" />
                                             </div>
                                             <div>
-                                                <div className="text-sm font-bold text-white">{friend.name}</div>
+                                                <div className="text-sm font-black text-white tracking-tight">{friend.name}</div>
+                                                <div className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">Active Bond</div>
                                             </div>
                                         </div>
                                         <button
                                             onClick={() => handleInvite(friend.id)}
-                                            className="px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest text-[#F5A623] border border-[#F5A623]/20 hover:bg-[#F5A623]/10 active:scale-95 transition-all"
+                                            className="px-6 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-[0.15em] text-black active:scale-90 transition-all shadow-lg"
+                                            style={{ backgroundColor: 'var(--accent)', boxShadow: '0 4px 15px rgba(var(--accent-rgb), 0.2)' }}
                                         >
                                             Invite
                                         </button>

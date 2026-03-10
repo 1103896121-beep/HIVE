@@ -15,12 +15,6 @@ async def create_squad(squad_in: SquadCreate, user_id: UUID, db: AsyncSession = 
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.post("/squads/{squad_id}/apply")
-async def apply_to_squad(squad_id: UUID, user_id: UUID, db: AsyncSession = Depends(get_db)):
-    try:
-        return await SocialService.apply_to_squad(db, user_id, squad_id)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/squads/{squad_id}/invite")
 async def invite_to_squad(squad_id: UUID, admin_id: UUID, user_id: UUID, db: AsyncSession = Depends(get_db)):
@@ -29,12 +23,6 @@ async def invite_to_squad(squad_id: UUID, admin_id: UUID, user_id: UUID, db: Asy
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.post("/squads/{squad_id}/applications/review")
-async def review_application(squad_id: UUID, admin_id: UUID, user_id: UUID, approve: bool, db: AsyncSession = Depends(get_db)):
-    try:
-        return await SocialService.review_application(db, admin_id, user_id, squad_id, approve)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/squads/{squad_id}/invitations/review")
 async def review_invitation(squad_id: UUID, user_id: UUID, accept: bool, db: AsyncSession = Depends(get_db)):

@@ -117,10 +117,18 @@ class UserService:
                 "total_sparks": u.total_sparks
             }
             
-            # 计算距离 (欧几里得近似)
+            # 计算距离 (Haversine 公式)
             dist = float('inf')
             if lat is not None and lon is not None and u.latitude is not None and u.longitude is not None:
-                dist = math.sqrt((u.latitude - lat)**2 + (u.longitude - lon)**2)
+                # 将经纬度转换为弧度
+                phi1, phi2 = math.radians(lat), math.radians(u.latitude)
+                dphi = math.radians(u.latitude - lat)
+                dlambda = math.radians(u.longitude - lon)
+                
+                # Haversine 公式计算
+                a = math.sin(dphi / 2)**2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2)**2
+                c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+                dist = 6371 * c # 地球平均半径 (km)
             
             user_list.append((user_data, dist))
         

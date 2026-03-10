@@ -68,6 +68,7 @@ export default function App() {
     name: 'David',
     avatar: 'https://i.pravatar.cc/150?u=my-unique-id',
     bio: 'Coding the future, one hexagon at a time. 🐝',
+    city: 'Beijing',
     goal: 120,
     totalFocus: 45,
     sparks: 128,
@@ -145,6 +146,7 @@ export default function App() {
             name: profile.name,
             avatar: profile.avatar_url || 'https://i.pravatar.cc/150?u=my-unique-id',
             bio: profile.bio || '',
+            city: profile.city || '',
             goal: profile.daily_goal_mins,
             totalFocus: profile.total_focus_mins,
             sparks: profile.total_sparks,
@@ -222,6 +224,7 @@ export default function App() {
       const resp = await userService.updateProfile(userId, {
         name: updates.name,
         bio: updates.bio,
+        city: updates.city,
         avatar_url: updates.avatar,
         daily_goal_mins: updates.goal,
         theme_preference: theme
@@ -374,6 +377,7 @@ export default function App() {
             name: updatedProfile.name,
             avatar: updatedProfile.avatar_url || userProfile.avatar,
             bio: updatedProfile.bio || '',
+            city: updatedProfile.city || '',
             goal: updatedProfile.daily_goal_mins,
             totalFocus: updatedProfile.total_focus_mins,
             sparks: updatedProfile.total_sparks,
