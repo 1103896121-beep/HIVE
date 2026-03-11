@@ -49,6 +49,8 @@
         "active_bonds": "Active Bonds",
         "no_bonds": "Form bonds to see each other's status.",
         "request_sent": "Bond request sent successfully!",
+        "request_bond": "Add Bond",
+        "nudge": "Nudge",
         "removed_success": "Bond connection has been removed.",
         "pacts": "Bond Pacts",
         "accountability": "Shared Accountability",
@@ -96,7 +98,9 @@
         "hide_location": "Hide My Location",
         "show_location": "Show My Location",
         "location_synced": "Location Synced",
-        "location_failed": "Location Failed"
+        "location_failed": "Location Failed",
+        "delete_account": "Delete Account",
+        "delete_account_confirm": "This will permanently delete all your focus data. Are you sure?"
     },
     "legal": {
         "privacy_policy": "Privacy Policy",
@@ -105,7 +109,19 @@
         "eula_content": "By using Hive, you agree to focus deeply, respect other dwellers, and avoid spamming nudges. Unauthorized use of 'Queen Bee' privileges is prohibited."
     },
     "subscription": {
-        "success_msg": "You are now subscribed to Hive {{plan}}."
+        "success_msg": "You are now subscribed to Hive {{plan}}.",
+        "unlock_title": "Unlock Your Full Focus",
+        "trial_finished": "7-Day trial finished. Choose your path to stay in the Hive.",
+        "monthly": "Monthly",
+        "quarterly": "Quarterly",
+        "annual": "Annual",
+        "lifetime": "Lifetime",
+        "monthly_desc": "Flexibility for beginners",
+        "quarterly_desc": "Best for deep missions",
+        "annual_desc": "Save 40% annually",
+        "lifetime_desc": "One-time. Pure peace.",
+        "badge_popular": "Popular",
+        "secure_note": "Safe & Secure: Managed by App Store. Data remains perfectly synced. Cancel anytime."
     },
     "timer": {
         "deep_work": "Deep Work",
@@ -162,5 +178,31 @@
         "deep_calm": "Deep & Calm",
         "clean_ice": "Clean & Ice",
         "morandi_desc": "* Morandi color palettes are designed to reduce visual fatigue during long deep work sessions."
+    },
+    "auth": {
+        "login": "Login",
+        "register": "Register",
+        "full_name": "Full Name",
+        "email": "Email Address",
+        "password": "Password",
+        "enter_hive": "Enter the Hive",
+        "create_account": "Create Account",
+        "no_account": "Don't have an account? Sign Up",
+        "already_member": "Already member? Sign In",
+        "fields_required": "Please fill in all blanks to join",
+        "credentials_required": "Credentials required",
+        "failed": "Authentication failed",
+        "name_placeholder": "Enter your name",
+        "email_placeholder": "name@example.com",
+        "deep_work_community": "Deep Work Community"
+    },
+    "global_map": {
+        "status_title": "Planet Hive Global Status",
+        "total_focusing": "Total Users Focusing",
+        "active_hives": "Active Hives",
+        "daily_sparks": "Daily Sparks",
+        "live_sync": "Live Sync",
+        "manifesto": "Every golden spark is a real person fighting distraction. You are one of them.",
+        "return_squad": "Return to Squad"
     }
 }

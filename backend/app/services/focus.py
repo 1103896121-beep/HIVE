@@ -5,7 +5,7 @@ from app.schemas.focus import FocusSessionCreate
 from uuid import UUID
 from datetime import datetime, timedelta
 from fastapi import HTTPException, status
-from app.models.user import User
+from app.models.user import User, Profile
 
 class FocusService:
     @staticmethod
@@ -55,6 +55,13 @@ class FocusService:
         db_session.end_time = datetime.utcnow()
         db_session.duration_mins = duration_mins
         db_session.status = "COMPLETED"
+
+        # 核心：同步更新用户的总专注时长和星火 (1分钟 = 1星火)
+        prof_result = await db.execute(select(Profile).where(Profile.user_id == db_session.user_id))
+        db_profile = prof_result.scalars().first()
+        if db_profile:
+            db_profile.total_focus_mins += duration_mins
+            db_profile.total_sparks += duration_mins
         
         await db.commit()
         await db.refresh(db_session)

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { Minimize2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 /**
  * 使用 Three.js 渲染摄影级地球
@@ -11,6 +12,7 @@ const EARTH_TEXTURE_URL = 'https://unpkg.com/three-globe@2.31.1/example/img/eart
 const EARTH_NIGHT_URL = 'https://unpkg.com/three-globe@2.31.1/example/img/earth-night.jpg';
 
 export const GlobalMap: React.FC<{ onExit: () => void }> = ({ onExit }) => {
+    const { t } = useTranslation();
     const mountRef = useRef<HTMLDivElement>(null);
     const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
 
@@ -134,7 +136,7 @@ export const GlobalMap: React.FC<{ onExit: () => void }> = ({ onExit }) => {
             sprite.position.set(
                 -sRadius * Math.sin(sPhi) * Math.cos(sTheta),
                 sRadius * Math.cos(sPhi),
-                sRadius * Math.sin(sPhi) * Math.sin(sTheta)
+                sRadius * Math.sin(sPhi) * Math.sin(theta)
             );
             sprite.scale.set(0.008, 0.008, 1);
             // 为每个光点设置随机 opacity
@@ -195,17 +197,17 @@ export const GlobalMap: React.FC<{ onExit: () => void }> = ({ onExit }) => {
             {/* Header */}
             <div className="absolute top-16 left-0 right-0 px-8 flex justify-between items-start pointer-events-none z-10 w-full">
                 <div className="animate-in fade-in slide-in-from-top-4 duration-700 delay-300">
-                    <div className="text-[10px] text-[#F5A623] font-black uppercase tracking-[0.4em] mb-1">Planet Hive Global Status</div>
+                    <div className="text-[10px] text-[#F5A623] font-black uppercase tracking-[0.4em] mb-1">{t('global_map.status_title')}</div>
                     <div className="text-3xl font-black text-white tracking-tighter">24,302</div>
-                    <div className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mt-1">Total Users Focusing</div>
+                    <div className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mt-1">{t('global_map.total_focusing')}</div>
 
                     <div className="mt-8 flex gap-8">
                         <div>
-                            <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest mb-1">Active Hives</div>
+                            <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest mb-1">{t('global_map.active_hives')}</div>
                             <div className="text-lg font-black text-zinc-300">1,204</div>
                         </div>
                         <div>
-                            <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest mb-1">Daily Sparks</div>
+                            <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest mb-1">{t('global_map.daily_sparks')}</div>
                             <div className="text-lg font-black text-zinc-300">8.4M</div>
                         </div>
                     </div>
@@ -213,7 +215,7 @@ export const GlobalMap: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                 <div className="flex flex-col items-end gap-3">
                     <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.03] border border-white/5 backdrop-blur-md">
                         <div className="w-1.5 h-1.5 rounded-full bg-[#F5A623] animate-pulse"></div>
-                        <span className="text-[9px] text-zinc-400 font-bold uppercase tracking-widest">Live Sync</span>
+                        <span className="text-[9px] text-zinc-400 font-bold uppercase tracking-widest">{t('global_map.live_sync')}</span>
                     </div>
                 </div>
             </div>
@@ -225,7 +227,7 @@ export const GlobalMap: React.FC<{ onExit: () => void }> = ({ onExit }) => {
             <div className="absolute bottom-12 left-0 right-0 px-8 flex flex-col items-center gap-5 z-10">
                 <div className="p-4 rounded-3xl bg-white/[0.03] border border-white/5 backdrop-blur-xl text-center max-w-[280px]">
                     <p className="text-xs text-zinc-400 leading-relaxed font-medium">
-                        Every golden spark is a real person fighting distraction. You are one of them.
+                        {t('global_map.manifesto')}
                     </p>
                 </div>
 
@@ -234,7 +236,7 @@ export const GlobalMap: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                     className="flex items-center gap-3 px-8 py-4 rounded-full bg-white text-black font-bold uppercase tracking-widest text-xs hover:scale-105 active:scale-95 transition-all shadow-2xl"
                 >
                     <Minimize2 size={16} strokeWidth={3} />
-                    Return to Squad
+                    {t('global_map.return_squad')}
                 </button>
             </div>
         </div>

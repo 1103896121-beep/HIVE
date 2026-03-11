@@ -6,6 +6,7 @@ from app.models.user import Profile, User
 from app.models.focus import FocusSession, Subject
 from app.schemas.social import SquadCreate, ReportCreate, BlockCreate, HiveMatchTile, HiveMatchingResponse
 from datetime import datetime, timedelta
+from app.core.exceptions import LogicConflictException, PermissionDeniedException, ResourceNotFoundException
 import uuid
 import random
 import string
@@ -21,7 +22,7 @@ class SocialService:
     @staticmethod
     async def create_squad(db: AsyncSession, user_id: UUID, squad_in: SquadCreate):
         if await SocialService._check_user_in_squad(db, user_id):
-            raise ValueError("User is already in an active squad.")
+            raise LogicConflictException("User is already in an active squad.")
 
         db_squad = Squad(
             name=squad_in.name,
@@ -45,7 +46,7 @@ class SocialService:
         # Verify admin
         admin_check = await db.execute(select(SquadMember).where(SquadMember.squad_id == squad_id, SquadMember.user_id == admin_id, SquadMember.role == "ADMIN", SquadMember.status == "ACTIVE"))
         if not admin_check.scalars().first():
-            raise ValueError("Only an active admin can invite.")
+            raise PermissionDeniedException("Only an active admin can invite.")
 
         # Check existing membership
         member_check = await db.execute(select(SquadMember).where(SquadMember.squad_id == squad_id, SquadMember.user_id == user_id))
@@ -64,11 +65,11 @@ class SocialService:
         member_check = await db.execute(select(SquadMember).where(SquadMember.squad_id == squad_id, SquadMember.user_id == user_id, SquadMember.status == "PENDING_INVITE"))
         member = member_check.scalars().first()
         if not member:
-            raise ValueError("Invitation not found.")
+            raise ResourceNotFoundException("Invitation not found.")
 
         if accept:
             if await SocialService._check_user_in_squad(db, user_id):
-                raise ValueError("You are already in an active squad.")
+                raise LogicConflictException("You are already in an active squad.")
             member.status = "ACTIVE"
         else:
             db.delete(member)
@@ -81,10 +82,10 @@ class SocialService:
         member_check = await db.execute(select(SquadMember).where(SquadMember.squad_id == squad_id, SquadMember.user_id == user_id))
         member = member_check.scalars().first()
         if not member:
-            raise ValueError("Member not found in squad.")
+            raise ResourceNotFoundException("Member not found in squad.")
         
         if member.role == "ADMIN":
-            raise ValueError("Creator cannot leave the squad. Disband it instead.")
+            raise LogicConflictException("Creator cannot leave the squad. Disband it instead.")
 
         db.delete(member)
         await db.commit()
@@ -94,7 +95,7 @@ class SocialService:
     async def disband_squad(db: AsyncSession, admin_id: UUID, squad_id: UUID):
         admin_check = await db.execute(select(SquadMember).where(SquadMember.squad_id == squad_id, SquadMember.user_id == admin_id, SquadMember.role == "ADMIN", SquadMember.status == "ACTIVE"))
         if not admin_check.scalars().first():
-            raise ValueError("Only an active admin can disband the squad.")
+            raise PermissionDeniedException("Only an active admin can disband the squad.")
 
         await db.execute(SquadMember.__table__.delete().where(SquadMember.squad_id == squad_id))
         result = await db.execute(select(Squad).where(Squad.id == squad_id))
@@ -255,6 +256,7 @@ class SocialService:
                 .join(SquadMember, User.id == SquadMember.user_id)
                 .where(SquadMember.squad_id == squad_id, User.id != user_id, SquadMember.status == "ACTIVE")
             )
+            # 在生产环境下，由于是队友，通常可以看到，除非用户极度隐私
             s_res = await db.execute(squad_stmt)
             squad_members = s_res.all()
 
@@ -330,7 +332,12 @@ class SocialService:
             ambient_stmt = (
                 select(Profile, User.id)
                 .join(User, Profile.user_id == User.id)
-                .where(User.id.not_in(exclude_ids | set(tiles_dict.keys())))
+                .where(
+                    and_(
+                        User.id.not_in(exclude_ids | set(tiles_dict.keys())),
+                        Profile.show_location == True # 仅展示愿意公开位置/状态的用户作为 Ambient
+                    )
+                )
                 .order_by(Profile.updated_at.desc())
                 .limit(9 - len(tiles_dict))
             )

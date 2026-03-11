@@ -5,11 +5,15 @@ from slowapi.errors import RateLimitExceeded
 from fastapi.middleware.cors import CORSMiddleware
 from app.api import user, focus, social, socket, subscription, auth
 from app.core.database import engine, Base
+from app.core.exceptions import HiveException
+from fastapi.responses import JSONResponse
 from app.models.user import User
 from app.models.social import Squad, SquadMember, Bond, Nudge
 from app.models.focus import Subject, FocusSession
 import traceback
+import asyncio
 from datetime import datetime
+from app.core.websocket import manager
 
 # 配置限流器 (Rate Limiting)
 limiter = Limiter(key_func=get_remote_address)
@@ -20,6 +24,13 @@ app = FastAPI(
 )
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+@app.exception_handler(HiveException)
+async def hive_exception_handler(request: Request, exc: HiveException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.message, "error_code": exc.__class__.__name__},
+    )
 
 # 异常记录中间件
 @app.middleware("http")
@@ -58,6 +69,14 @@ app.include_router(auth.router)
 async def startup():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    
+    # 启动 WebSocket 心跳检测任务 (每 30 秒一次)
+    async def heartbeat_loop():
+        while True:
+            await manager.ping_all()
+            await asyncio.sleep(30)
+    
+    asyncio.create_task(heartbeat_loop())
 
 @app.get("/")
 async def root():

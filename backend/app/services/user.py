@@ -64,6 +64,23 @@ class UserService:
         return True, "Password updated successfully"
 
     @staticmethod
+    async def delete_account(db: AsyncSession, user_id: UUID):
+        # 1. 删除关联的 Profile (Cascade 应该处理，但手动确保安全)
+        result = await db.execute(select(Profile).where(Profile.user_id == user_id))
+        profile = result.scalars().first()
+        if profile:
+            await db.delete(profile)
+        
+        # 2. 删除 User
+        result = await db.execute(select(User).where(User.id == user_id))
+        user = result.scalars().first()
+        if user:
+            await db.delete(user)
+        
+        await db.commit()
+        return True
+
+    @staticmethod
     async def increment_sparks(db: AsyncSession, user_id: UUID, sparks: int, mins: int):
         result = await db.execute(select(Profile).where(Profile.user_id == user_id))
         db_profile = result.scalars().first()

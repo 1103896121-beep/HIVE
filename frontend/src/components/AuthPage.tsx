@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Mail, Lock, User, ArrowRight, Zap, Loader2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { authService } from '../api';
 
 interface AuthPageProps {
@@ -7,6 +8,7 @@ interface AuthPageProps {
 }
 
 export function AuthPage({ onSuccess }: AuthPageProps) {
+    const { t } = useTranslation();
     const [mode, setMode] = useState<'login' | 'register'>('login');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -25,7 +27,7 @@ export function AuthPage({ onSuccess }: AuthPageProps) {
 
         // 基础字段校验
         if (!email || !password || (mode === 'register' && !name)) {
-            setError(mode === 'register' ? 'Please fill in all blanks to join' : 'Credentials required');
+            setError(mode === 'register' ? t('auth.fields_required') : t('auth.credentials_required'));
             triggerShake();
             return;
         }
@@ -41,7 +43,7 @@ export function AuthPage({ onSuccess }: AuthPageProps) {
                 onSuccess(resp.user_id, resp.access_token);
             }
         } catch (err: any) {
-            setError(err.message || 'Authentication failed');
+            setError(err.message || t('auth.failed'));
         } finally {
             setLoading(false);
         }
@@ -61,14 +63,14 @@ export function AuthPage({ onSuccess }: AuthPageProps) {
                         <Zap size={40} className="text-black fill-current" />
                     </div>
                     <h1 className="text-4xl font-black text-white uppercase tracking-tighter italic">Hive</h1>
-                    <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-[0.3em] mt-2">Deep Work Community</p>
+                    <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-[0.3em] mt-2">{t('auth.deep_work_community')}</p>
                 </div>
 
                 <div className={`glass-nav backdrop-blur-2xl p-8 rounded-[40px] border border-white/10 shadow-2xl ${isShaking ? 'animate-shake' : ''}`}>
                     <form onSubmit={handleSubmit} noValidate className="space-y-5">
                         {mode === 'register' && (
                             <div className="space-y-1.5">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">Full Name</label>
+                                <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">{t('auth.full_name')}</label>
                                 <div className="relative group">
                                     <User className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within:text-[#F5A623] transition-colors" size={18} />
                                     <input
@@ -76,14 +78,14 @@ export function AuthPage({ onSuccess }: AuthPageProps) {
                                         value={name}
                                         onChange={(e) => setName(e.target.value)}
                                         className="w-full bg-white/5 border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-white focus:outline-none focus:border-[#F5A623]/50 focus:bg-white/[0.08] transition-all"
-                                        placeholder="Enter your name"
+                                        placeholder={t('auth.name_placeholder')}
                                     />
                                 </div>
                             </div>
                         )}
 
                         <div className="space-y-1.5">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">Email Address</label>
+                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">{t('auth.email')}</label>
                             <div className="relative group">
                                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within:text-[#F5A623] transition-colors" size={18} />
                                 <input
@@ -91,13 +93,13 @@ export function AuthPage({ onSuccess }: AuthPageProps) {
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     className="w-full bg-white/5 border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-white focus:outline-none focus:border-[#F5A623]/50 focus:bg-white/[0.08] transition-all"
-                                    placeholder="name@example.com"
+                                    placeholder={t('auth.email_placeholder')}
                                 />
                             </div>
                         </div>
 
                         <div className="space-y-1.5">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">Password</label>
+                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">{t('auth.password')}</label>
                             <div className="relative group">
                                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within:text-[#F5A623] transition-colors" size={18} />
                                 <input
@@ -125,7 +127,7 @@ export function AuthPage({ onSuccess }: AuthPageProps) {
                                 <Loader2 className="animate-spin" size={20} />
                             ) : (
                                 <>
-                                    {mode === 'login' ? 'Enter the Hive' : 'Create Account'}
+                                    {mode === 'login' ? t('auth.enter_hive') : t('auth.create_account')}
                                     <ArrowRight size={18} />
                                 </>
                             )}
@@ -136,7 +138,7 @@ export function AuthPage({ onSuccess }: AuthPageProps) {
                         onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
                         className="w-full text-center mt-8 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 hover:text-white transition-colors"
                     >
-                        {mode === 'login' ? "Don't have an account? Sign Up" : 'Already member? Sign In'}
+                        {mode === 'login' ? t('auth.no_account') : t('auth.already_member')}
                     </button>
                 </div>
 

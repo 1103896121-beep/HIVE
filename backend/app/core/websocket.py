@@ -26,12 +26,34 @@ class ConnectionManager:
 
     async def send_personal_message(self, message: dict, user_id: UUID):
         if user_id in self.active_connections:
-            await self.active_connections[user_id].send_text(json.dumps(message))
+            try:
+                await self.active_connections[user_id].send_text(json.dumps(message))
+            except Exception:
+                self.disconnect(user_id)
 
     async def broadcast_to_squad(self, message: dict, squad_id: UUID, exclude_user: UUID = None):
         if squad_id in self.squad_rooms:
+            dead_users = []
             for user_id in self.squad_rooms[squad_id]:
                 if user_id != exclude_user and user_id in self.active_connections:
-                    await self.active_connections[user_id].send_text(json.dumps(message))
+                    try:
+                        await self.active_connections[user_id].send_text(json.dumps(message))
+                    except Exception:
+                        dead_users.append(user_id)
+            
+            for d_user in dead_users:
+                self.disconnect(d_user, squad_id)
+
+    async def ping_all(self):
+        """Send a ping to all active connections to keep them alive"""
+        dead_users = []
+        for user_id, websocket in self.active_connections.items():
+            try:
+                await websocket.send_json({"type": "PING"})
+            except Exception:
+                dead_users.append(user_id)
+        
+        for d_user in dead_users:
+            self.disconnect(d_user)
 
 manager = ConnectionManager()

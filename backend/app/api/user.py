@@ -22,6 +22,13 @@ async def update_profile(user_id: UUID, profile_in: ProfileUpdate, db: AsyncSess
         raise HTTPException(status_code=404, detail="Profile not found")
     return profile
 
+@router.delete("/profile/{user_id}")
+async def delete_account(user_id: UUID, db: AsyncSession = Depends(get_db)):
+    success = await UserService.delete_account(db, user_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"status": "success", "message": "Account deleted successfully"}
+
 @router.post("/profile/{user_id}/password")
 async def update_password(user_id: UUID, pwd_in: PasswordUpdate, db: AsyncSession = Depends(get_db)):
     success, message = await UserService.update_password(db, user_id, pwd_in.current_password, pwd_in.new_password, pwd_in.confirm_password)

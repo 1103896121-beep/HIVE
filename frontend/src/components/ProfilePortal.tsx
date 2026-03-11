@@ -359,6 +359,23 @@ export function ProfilePortal({ userId, profile, onUpdate, onSignOut, onAlert }:
             >
                 {t('common.sign_out')}
             </button>
+
+            {/* Account Deletion - App Store Compliance */}
+            <button
+                onClick={async () => {
+                    if (window.confirm(t('profile.delete_account_confirm'))) {
+                        try {
+                            await userService.deleteAccount(userId);
+                            onSignOut();
+                        } catch (err) {
+                            onAlert(t('common.error'), t('common.error'));
+                        }
+                    }
+                }}
+                className="w-full mt-2 text-[8px] font-bold text-zinc-700 hover:text-red-900 uppercase tracking-tighter transition-colors py-2"
+            >
+                {t('profile.delete_account')}
+            </button>
         </div>
     );
 }

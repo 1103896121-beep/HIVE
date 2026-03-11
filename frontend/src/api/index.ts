@@ -22,6 +22,8 @@ export const userService = {
     },
     updatePassword: (userId: string, data: T.PasswordUpdate) =>
         apiClient.post<{ status: string; message: string }>(`/users/profile/${userId}/password`, data),
+    deleteAccount: (userId: string) =>
+        apiClient.delete<{ status: string; message: string }>(`/users/profile/${userId}`),
 };
 
 export const focusService = {
@@ -66,6 +68,6 @@ export const socialService = {
 };
 
 export const subscriptionService = {
-    subscribe: (userId: string, plan: 'monthly' | 'yearly') =>
+    subscribe: (userId: string, plan: 'monthly' | 'quarterly' | 'yearly' | 'lifetime') =>
         apiClient.post<{ status: string; expires_at: string }>('/subscription/subscribe', { user_id: userId, plan }),
 };

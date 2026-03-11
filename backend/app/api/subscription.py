@@ -16,13 +16,26 @@ class SubscribeRequest(BaseModel):
 @router.post("/subscribe")
 async def subscribe(req: SubscribeRequest, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.id == req.user_id))
-    user = result.scalars().first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+    db_user = result.scalars().first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User found")
     
-    days = 31 if req.plan == "monthly" else 366
+    user = db_user # 保持后续逻辑中的 user 变量名
     
-    # Calculate new expiry date
+    # 定义时长映射 (天)
+    PLAN_DURATION = {
+        "monthly": 31,
+        "quarterly": 92,
+        "yearly": 366,
+        "lifetime": 36500 # 100年视为买断
+    }
+    
+    if req.plan not in PLAN_DURATION:
+        raise HTTPException(status_code=400, detail="Invalid plan type")
+        
+    days = PLAN_DURATION[req.plan]
+    
+    # 计算新的过期时间
     current_expiry = user.subscription_end_at if user.subscription_end_at and user.subscription_end_at > datetime.utcnow() else datetime.utcnow()
     user.subscription_end_at = current_expiry + timedelta(days=days)
     

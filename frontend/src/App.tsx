@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Play, Square, Settings, Flame, ChevronLeft, MapPin, BookOpen, Clock, Zap, Maximize2 } from 'lucide-react';
+import { Play, Square, X, Settings, Flame, ChevronLeft, MapPin, BookOpen, Clock, Zap, Maximize2 } from 'lucide-react';
 import clsx from 'clsx';
 import { Sheet } from './components/Sheet';
 import { SubjectPicker } from './components/SubjectPicker';
@@ -66,17 +66,39 @@ export default function App() {
   const [hiveTiles, setHiveTiles] = useState<HiveMatchTile[]>([]);
   const [ambientCount, setAmbientCount] = useState(24302);
 
-  // 用户个人资料
+  // 用户个人资料 - 初始状态调整为更中性的空状态，等待 API 加载
   const [userProfile, setUserProfile] = useState<UserProfile>({
-    name: 'David',
+    name: '...',
     avatar: 'https://i.pravatar.cc/150?u=my-unique-id',
-    bio: 'Coding the future, one hexagon at a time. 🐝',
-    city: 'Beijing',
-    totalFocus: 45,
-    sparks: 128,
+    bio: 'Focusing on the moment... 🐝',
+    city: '...',
+    totalFocus: 0,
+    sparks: 0,
     trialStartAt: new Date().toISOString(),
     showLocation: true,
   });
+
+  // 商业化逻辑：判定试用与订阅状态
+  const trialStatus = useMemo(() => {
+    if (!userProfile.trialStartAt) return { isExpired: false, daysLeft: 7, isPremium: false };
+    
+    // 检查订阅是否有效（若已过期则回退到试用判定）
+    const now = new Date();
+    if (userProfile.subscriptionEndAt && new Date(userProfile.subscriptionEndAt) > now) {
+      return { isExpired: false, isPremium: true, daysLeft: 0 };
+    }
+
+    const start = new Date(userProfile.trialStartAt).getTime();
+    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+    const elapsed = Date.now() - start;
+    const daysLeft = Math.max(0, Math.ceil((sevenDaysMs - elapsed) / (1000 * 60 * 60 * 24)));
+    
+    return {
+      isExpired: elapsed > sevenDaysMs,
+      daysLeft,
+      isPremium: false
+    };
+  }, [userProfile.trialStartAt, userProfile.subscriptionEndAt]);
   const [isSubscribing, setIsSubscribing] = useState(false);
 
   // Modal State
@@ -117,20 +139,19 @@ export default function App() {
     });
   };
 
-  // Calculate a dynamic but consistent number of ambient users based on the location name
+  // Calculate a dynamic count of ambient users - In real app, this should fetch from backend geo-stats
   const dynamicAmbientCount = useMemo(() => {
-    if (currentLocation === 'Global') return 24302; // Global default from map
+    // NOTE: For demo, we keep the consistent hash, but in production this should be a real-time API value
+    if (currentLocation === 'Global') return ambientCount || 24302; 
 
-    // Simple string hash to generate a consistent pseudo-random number
     let hash = 0;
     for (let i = 0; i < currentLocation.length; i++) {
       hash = ((hash << 5) - hash) + currentLocation.charCodeAt(i);
-      hash |= 0; // Convert to 32bit integer
+      hash |= 0;
     }
-
-    // Generate a number between 12 and 1500 depending on the hash
-    return Math.floor(Math.abs(hash) % 1488) + 12;
-  }, [currentLocation]);
+    // Base count on the hash but fallback to ambientCount if available
+    return (Math.floor(Math.abs(hash) % 150)) + (ambientCount % 100);
+  }, [currentLocation, ambientCount]);
 
   // 初始化加载
   useEffect(() => {
@@ -208,16 +229,25 @@ export default function App() {
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  // 模拟倒计时
+  // 模拟倒计时 - 改为基于目标结束时间戳的精确计算，防止 iOS 后台进程挂起导致的偏差
+  const [targetEndTime, setTargetEndTime] = useState<number | null>(null);
+
   useEffect(() => {
     let timer: ReturnType<typeof setInterval>;
-    if (isFocusing && timeLeft > 0) {
-      timer = setInterval(() => setTimeLeft((prev) => prev - 1), 1000);
-    } else if (timeLeft === 0) {
-      setIsFocusing(false);
+    if (isFocusing && targetEndTime) {
+      timer = setInterval(() => {
+        const now = Date.now();
+        const diff = Math.max(0, Math.floor((targetEndTime - now) / 1000));
+        setTimeLeft(diff);
+        
+        if (diff === 0) {
+          setIsFocusing(false);
+          setTargetEndTime(null);
+        }
+      }, 1000);
     }
     return () => clearInterval(timer);
-  }, [isFocusing, timeLeft]);
+  }, [isFocusing, targetEndTime]);
 
   const { messages, sendNudge } = useHiveSocket(userId || '');
 
@@ -310,7 +340,7 @@ export default function App() {
     }
   };
 
-  const handleSubscribe = async (plan: 'monthly' | 'yearly') => {
+  const handleSubscribe = async (plan: 'monthly' | 'quarterly' | 'yearly' | 'lifetime') => {
     if (!userId) return;
     setIsSubscribing(true);
     try {
@@ -322,7 +352,13 @@ export default function App() {
           subscriptionEndAt: profile.subscription_end_at
         }));
         setActiveSheet(null);
-        showAlert(t('common.success'), t('subscription.success_msg', { plan: plan === 'monthly' ? 'Monthly' : 'Annual' }));
+        const planName = {
+          monthly: 'Monthly',
+          quarterly: 'Quarterly',
+          yearly: 'Annual',
+          lifetime: 'Lifetime'
+        }[plan];
+        showAlert(t('common.success'), t('subscription.success_msg', { plan: planName }));
       }
     } catch (err) {
       console.error('Subscription failed:', err);
@@ -395,39 +431,66 @@ export default function App() {
     setIsAuthenticated(true);
   };
 
+  const handleEndFocus = async (shouldResetTime = false) => {
+    if (!userId || !activeSessionId) return;
+    try {
+      // 基于时间戳差值计算真实的专注时长
+      const actualDurationMins = targetEndTime 
+        ? Math.floor((maxTime - Math.max(0, Math.floor((targetEndTime - Date.now()) / 1000))) / 1000 / 60)
+        : Math.floor((maxTime - timeLeft) / 60);
+        
+      await focusService.endSession(activeSessionId, actualDurationMins);
+
+      // 更新本地资料统计
+      const updatedProfile = await userService.getProfile(userId);
+      setUserProfile({
+        name: updatedProfile.name,
+        avatar: updatedProfile.avatar_url || userProfile.avatar,
+        bio: updatedProfile.bio || '',
+        city: updatedProfile.city || '',
+        totalFocus: updatedProfile.total_focus_mins,
+        sparks: updatedProfile.total_sparks,
+        trialStartAt: updatedProfile.trial_start_at,
+        subscriptionEndAt: updatedProfile.subscription_end_at,
+        latitude: updatedProfile.latitude,
+        longitude: updatedProfile.longitude,
+        showLocation: updatedProfile.show_location,
+      });
+
+      setIsFocusing(false);
+      setActiveSessionId(null);
+      setTargetEndTime(null);
+      if (shouldResetTime) {
+        setTimeLeft(maxTime);
+      }
+
+      // 刷新网格
+      const matchData = await socialService.getHiveMatching(userId);
+      setHiveTiles(matchData.tiles);
+    } catch (err) {
+      console.error('End focus failed:', err);
+      showAlert('Error', 'Failed to end focus session.');
+    }
+  };
+
   const toggleFocus = async () => {
     if (!userId) return;
     try {
       if (!isFocusing) {
-        // 开始专注
-        const subject = subjects.find(s => s.name === currentSubject);
-        const session = await focusService.startSession(userId, subject?.id || 1);
-        setActiveSessionId(session.id);
+        // 开始或恢复专注
+        if (!activeSessionId) {
+          const subject = subjects.find(s => s.name === currentSubject);
+          const session = await focusService.startSession(userId, subject?.id || 1);
+          setActiveSessionId(session.id);
+        }
+        
+        // 重新计算目标结束时间 (当前剩余时间)
+        setTargetEndTime(Date.now() + timeLeft * 1000);
         setIsFocusing(true);
       } else {
-        // 结束专注
-        if (activeSessionId) {
-          const durationMins = Math.floor((maxTime - timeLeft) / 60);
-          await focusService.endSession(activeSessionId, durationMins);
-
-          // 更新本地资料统计
-          const updatedProfile = await userService.getProfile(userId);
-          setUserProfile({
-            name: updatedProfile.name,
-            avatar: updatedProfile.avatar_url || userProfile.avatar,
-            bio: updatedProfile.bio || '',
-            city: updatedProfile.city || '',
-            totalFocus: updatedProfile.total_focus_mins,
-            sparks: updatedProfile.total_sparks,
-            trialStartAt: updatedProfile.trial_start_at,
-            subscriptionEndAt: updatedProfile.subscription_end_at,
-            latitude: updatedProfile.latitude,
-            longitude: updatedProfile.longitude,
-            showLocation: updatedProfile.show_location,
-          });
-        }
+        // 暂停专注 (保留 session，仅停止计时)
         setIsFocusing(false);
-        setActiveSessionId(null);
+        setTargetEndTime(null);
       }
 
       // 状态切换后刷新网格
@@ -449,6 +512,10 @@ export default function App() {
     const secs = mins * 60;
     setTimeLeft(secs);
     setMaxTime(secs);
+    // 重置目标时间
+    if (isFocusing) {
+      setTargetEndTime(Date.now() + secs * 1000);
+    }
     setActiveSheet(null);
   };
 
@@ -682,7 +749,18 @@ export default function App() {
           </div>
 
           {/* 底部悬浮控制底座 */}
-          <div className="absolute bottom-0 w-full pt-10 pb-12 px-8 bg-gradient-to-t from-[#050505] via-[#050505]/90 to-transparent flex justify-center z-20">
+          <div className="absolute bottom-0 w-full pt-10 pb-12 px-8 bg-gradient-to-t from-[#050505] via-[#050505]/90 to-transparent flex items-center justify-center gap-8 z-20">
+            {/* 只有在专注或暂停（session存在）时显示的“结束并保存”按钮 */}
+            {activeSessionId && (
+                <button
+                onClick={() => handleEndFocus(true)}
+                className="w-12 h-12 rounded-full flex items-center justify-center bg-white/5 border border-white/10 text-zinc-500 hover:text-red-400 hover:border-red-400/30 transition-all active:scale-90"
+                title={t('common.end', 'End and Reset')}
+                >
+                <X size={20} />
+                </button>
+            )}
+
             <button
               onClick={toggleFocus}
               className={clsx(
@@ -696,10 +774,13 @@ export default function App() {
                 boxShadow: isFocusing ? undefined : '0 10px 30px rgba(var(--accent-rgb), 0.3)'
               }}
             >
-
               {isFocusing ? <Square size={28} className="fill-current" /> : <Play size={32} className="ml-1 fill-current" />}
             </button>
-            {isFocusing && <div className="absolute bottom-6 w-full h-1 bg-[#F5A623] blur-xl opacity-30"></div>}
+
+            {/* 占位符以保持主按钮居中 */}
+            {activeSessionId && <div className="w-12" />}
+            
+            {activeSessionId && isFocusing && <div className="absolute bottom-6 w-full h-1 bg-[#F5A623] blur-xl opacity-30"></div>}
           </div>
 
           {/* Sheets */}
@@ -788,9 +869,14 @@ export default function App() {
             />
           </Sheet>
 
+          {/* Subscription Sheet - App Store Compliance & Trial Enforcement */}
           <Sheet
-            isOpen={activeSheet === 'subscription'}
-            onClose={() => setActiveSheet(null)}
+            isOpen={activeSheet === 'subscription' || (isAuthenticated && trialStatus.isExpired && !trialStatus.isPremium)}
+            onClose={() => {
+              // 强制逻辑：若试用过期且非会员，不允许手动关闭弹窗
+              if (trialStatus.isExpired && !trialStatus.isPremium) return;
+              setActiveSheet(null);
+            }}
             title={t('sheets.hive_membership')}
           >
             <SubscriptionSheet
@@ -821,7 +907,11 @@ export default function App() {
                   <img src={interactionUser.avatar_url || `https://i.pravatar.cc/150?u=${interactionUser.user_id}`} alt={interactionUser.name} className="w-full h-full object-cover" />
                 </div>
                 <h3 className="text-xl font-bold text-white mb-1">{interactionUser.name}</h3>
-                <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mb-8">{interactionUser.subject || t('common.relaxing')}</p>
+                <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mb-8">
+                  {interactionUser.subject 
+                    ? (t(`subjects.${interactionUser.subject.toLowerCase()}`, interactionUser.subject) as string)
+                    : (t('common.relaxing') as string)}
+                </p>
 
                 <div className="flex w-full flex-col gap-3">
                   <button
@@ -832,7 +922,7 @@ export default function App() {
                     className="w-full py-4 rounded-2xl bg-[var(--accent)] text-black text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all shadow-lg"
                     style={{ boxShadow: '0 8px 20px rgba(var(--accent-rgb), 0.3)' }}
                   >
-                    {t('bonds.request_bond', '申请好友')}
+                    {t('bonds.request_bond')}
                   </button>
                   <button
                     onClick={() => {
@@ -841,7 +931,7 @@ export default function App() {
                     }}
                     className="w-full py-4 rounded-2xl bg-white/5 border border-white/10 text-white text-[10px] font-black uppercase tracking-widest hover:bg-white/10 active:scale-95 transition-all"
                   >
-                    {t('bonds.nudge', '轻推')}
+                    {t('bonds.nudge')}
                   </button>
                 </div>
 

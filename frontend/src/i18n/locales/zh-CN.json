@@ -48,6 +48,9 @@
         "search_placeholder": "寻找志同道合的人...",
         "active_bonds": "活跃羁绊",
         "no_bonds": "建立羁绊以查看对方状态。",
+        "request_sent": "羁绊请求已发送！",
+        "request_bond": "申请好友",
+        "nudge": "轻推",
         "removed_success": "羁绊连接已移除。",
         "pacts": "羁绊契约",
         "accountability": "共同监督",
@@ -95,7 +98,9 @@
         "hide_location": "不显示我的位置",
         "show_location": "显示我的位置",
         "location_synced": "位置已同步",
-        "location_failed": "无法获取位置"
+        "location_failed": "无法获取位置",
+        "delete_account": "注销并删除账号",
+        "delete_account_confirm": "此操作将永久删除您的所有专注数据。确定继续吗？"
     },
     "legal": {
         "privacy_policy": "隐私政策",
@@ -104,7 +109,19 @@
         "eula_content": "使用 Hive 即表示您同意深度专注、尊重其他用户并避免滥用提醒功能。严禁未经授权使用“蜂后”权限。"
     },
     "subscription": {
-        "success_msg": "您现在已成功订阅 Hive {{plan}}。"
+        "success_msg": "您现在已成功订阅 Hive {{plan}}。",
+        "unlock_title": "解锁您的完整潜能",
+        "trial_finished": "7天试用已结束。选择您的计划以留在 Hive。",
+        "monthly": "按月订阅",
+        "quarterly": "按季订阅",
+        "annual": "按年订阅",
+        "lifetime": "终身会员",
+        "monthly_desc": "适合入门者的灵活性",
+        "quarterly_desc": "深度任务的最佳选择",
+        "annual_desc": "每年节省 40%",
+        "lifetime_desc": "一次性支付。永享宁静。",
+        "badge_popular": "最受欢迎",
+        "secure_note": "安全保障：由 App Store 管理。数据完美同步，随时取消。"
     },
     "timer": {
         "deep_work": "深度工作中",
@@ -161,5 +178,31 @@
         "deep_calm": "深邃宁静",
         "clean_ice": "纯净冰感",
         "morandi_desc": "* 莫兰迪色系设计旨在减轻长时间深度专注时的视觉疲劳。"
+    },
+    "auth": {
+        "login": "登录",
+        "register": "注册",
+        "full_name": "全名",
+        "email": "邮箱地址",
+        "password": "密码",
+        "enter_hive": "进入 Hive",
+        "create_account": "创建账号",
+        "no_account": "还没有账号？去注册",
+        "already_member": "已经是成员？去登录",
+        "fields_required": "请填写所有字段以加入",
+        "credentials_required": "需要验证信息",
+        "failed": "身份验证失败",
+        "name_placeholder": "输入您的姓名",
+        "email_placeholder": "name@example.com",
+        "deep_work_community": "深度工作社区"
+    },
+    "global_map": {
+        "status_title": "全球 Hive 活跃状态",
+        "total_focusing": "正在专注的用户总数",
+        "active_hives": "活跃 Hive",
+        "daily_sparks": "每日星火",
+        "live_sync": "实时同步",
+        "manifesto": "每一颗金色的星火，都是一个正在对抗干扰的灵魂。你也是其中之一。",
+        "return_squad": "返回小队"
     }
 }

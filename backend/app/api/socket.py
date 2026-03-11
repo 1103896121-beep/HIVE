@@ -28,6 +28,10 @@ async def websocket_endpoint(websocket: WebSocket, user_id: UUID, squad_id: UUID
                     {"type": "NUDGE_RECEIVED", "sender_id": str(user_id)},
                     receiver_id
                 )
+            
+            # 处理 PONG (心跳响应)
+            elif message.get("type") == "PONG":
+                pass # 仅用于维持 recv 循环，表明链路畅通
     
     except WebSocketDisconnect:
         manager.disconnect(user_id, squad_id)
