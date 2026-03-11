@@ -24,19 +24,26 @@ async def seed_subjects():
                 Subject(name='Science', icon='Microchip', color_hex='#FFD700'),
                 Subject(name='Music', icon='Music', color_hex='#FFD700'),
                 Subject(name='Literature', icon='Book', color_hex='#FFD700'),
-                Subject(name='Social', icon='Activity', color_hex='#FFD700'),
+                Subject(name='Others', icon='Hash', color_hex='#FFD700'),
             ]
             session.add_all(new_subjects)
             await session.commit()
             print("Added 8 subjects.")
         else:
-            # If some exist, add the missing ones
+            # If some exist, rename Social to Others if present
+            for s in subjects:
+                if s.name == 'Social':
+                    s.name = 'Others'
+                    s.icon = 'Hash'
+            await session.commit()
+            
+            # Then add the missing ones
             existing_names = {s.name for s in subjects}
             extra_subjects = [
                 Subject(name='Science', icon='Microchip', color_hex='#FFD700'),
                 Subject(name='Music', icon='Music', color_hex='#FFD700'),
                 Subject(name='Literature', icon='Book', color_hex='#FFD700'),
-                Subject(name='Social', icon='Activity', color_hex='#FFD700'),
+                Subject(name='Others', icon='Hash', color_hex='#FFD700'),
             ]
             to_add = [s for s in extra_subjects if s.name not in existing_names]
             if to_add:

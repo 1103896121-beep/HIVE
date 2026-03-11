@@ -1,15 +1,18 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Clock, Coffee, Zap } from 'lucide-react';
 import { clsx } from 'clsx';
 
 const OPTIONS = [
-    { value: 15, label: 'Sprint', icon: Zap, desc: 'Short burst focus' },
-    { value: 25, label: 'Classic', icon: Clock, desc: 'Standard Pomodoro' },
-    { value: 45, label: 'Deep', icon: Coffee, desc: 'Deep work session' },
-    { value: 60, label: 'Master', icon: Clock, desc: 'Maximum endurance' },
+    { value: 15, key: 'sprint', icon: Zap },
+    { value: 25, key: 'classic', icon: Clock },
+    { value: 45, key: 'deep', icon: Coffee },
+    { value: 60, key: 'master', icon: Clock },
 ];
 
 export const TimerSettings: React.FC<{ current: number, onSelect: (mins: number) => void }> = ({ current, onSelect }) => {
+    const { t } = useTranslation();
+
     return (
         <div className="space-y-6">
             <div className="grid grid-cols-1 gap-3">
@@ -29,22 +32,15 @@ export const TimerSettings: React.FC<{ current: number, onSelect: (mins: number)
                         </div>
                         <div className="flex-1 text-left">
                             <div className="font-bold flex items-center justify-between">
-                                {opt.label}
+                                {t(`timer.${opt.key}`)}
                                 <span className="text-xl font-black">{opt.value}m</span>
                             </div>
                             <div className={clsx("text-xs", current === opt.value * 60 ? "text-black/60" : "text-zinc-500")}>
-                                {opt.desc}
+                                {t(`timer.${opt.key}_desc`)}
                             </div>
                         </div>
                     </button>
                 ))}
-            </div>
-
-            <div className="p-6 rounded-3xl bg-zinc-900/50 border border-white/5">
-                <div className="text-xs font-black uppercase tracking-[0.2em] text-zinc-500 mb-2">Notice</div>
-                <div className="text-sm text-zinc-400 leading-relaxed">
-                    Once started, switching Apps will break your focus streak and alert your hive members.
-                </div>
             </div>
         </div>
     );

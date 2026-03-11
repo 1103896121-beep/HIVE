@@ -21,12 +21,14 @@ export interface Profile {
     bio?: string;
     city?: string;
     theme_preference: string;
-    daily_goal_mins: number;
     total_focus_mins: number;
     total_sparks: number;
     trial_start_at: string;
     subscription_end_at?: string;
     updated_at: string;
+    latitude?: number;
+    longitude?: number;
+    show_location: boolean;
 }
 
 export interface Subject {
@@ -101,4 +103,26 @@ export interface Token {
     access_token: string;
     token_type: string;
     user_id: string;
+}
+
+export interface HiveMatchTile {
+    user_id: string;
+    name: string;
+    avatar_url?: string;
+    status: 'focus' | 'break' | 'offline';
+    subject?: string;
+    is_bond: boolean;
+    is_squad: boolean;
+    last_active: string;
+}
+
+export interface HiveMatchingResponse {
+    tiles: HiveMatchTile[];
+    ambient_count: number;
+}
+
+export interface PasswordUpdate {
+    current_password: string;
+    new_password: string;
+    confirm_password: string;
 }

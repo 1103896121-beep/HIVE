@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
-from app.schemas.user import ProfileResponse, ProfileUpdate, UserSearchResponse
+from app.schemas.user import ProfileResponse, ProfileUpdate, UserSearchResponse, PasswordUpdate
 from app.services.user import UserService
 from uuid import UUID
 from typing import List
@@ -21,6 +21,13 @@ async def update_profile(user_id: UUID, profile_in: ProfileUpdate, db: AsyncSess
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
     return profile
+
+@router.post("/profile/{user_id}/password")
+async def update_password(user_id: UUID, pwd_in: PasswordUpdate, db: AsyncSession = Depends(get_db)):
+    success, message = await UserService.update_password(db, user_id, pwd_in.current_password, pwd_in.new_password, pwd_in.confirm_password)
+    if not success:
+        raise HTTPException(status_code=400, detail=message)
+    return {"status": "success", "message": message}
 
 @router.get("/search", response_model=List[UserSearchResponse])
 async def search_users(

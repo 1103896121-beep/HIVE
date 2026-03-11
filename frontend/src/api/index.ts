@@ -20,6 +20,8 @@ export const userService = {
         }
         return apiClient.get<T.UserSearchResult[]>(url);
     },
+    updatePassword: (userId: string, data: T.PasswordUpdate) =>
+        apiClient.post<{ status: string; message: string }>(`/users/profile/${userId}/password`, data),
 };
 
 export const focusService = {
@@ -59,6 +61,8 @@ export const socialService = {
         apiClient.post<T.Report>(`/social/reports?user_id=${userId}`, { target_id: targetId, target_type: targetType, reason }),
     block: (userId: string, blockedId: string) =>
         apiClient.post<T.Block>(`/social/blocks?user_id=${userId}`, { blocked_id: blockedId }),
+    getHiveMatching: (userId: string) =>
+        apiClient.get<T.HiveMatchingResponse>(`/social/hive/matching?user_id=${userId}`),
 };
 
 export const subscriptionService = {

@@ -66,7 +66,6 @@
         "title": "個人資料",
         "focus_mins": "專注分鐘",
         "sparks": "星火",
-        "daily_goal": "每日目標",
         "language": "語言",
         "select_language": "選擇語言",
         "english": "英文",
@@ -85,10 +84,19 @@
         "global_ranking": "全球排名：前 5%",
         "deep_focus_label": "深度專注",
         "hives_count": "分布在 {{count}} 個 Hive 中",
-        "completed": "已完成：{{count}}m",
-        "target": "目標：{{count}}m",
-        "visible_info": "您的個人資料對您的羈絆好友和 Hive 成員可見。讓數據證明您的自律。",
-        "plus_sparks": "+{{count}} 星火"
+        "completed": "已累計專注：{{count}}m",
+        "visible_info": "您的數據由自律驅動。城市信息基於地理位置自動通過系統校驗。",
+        "plus_sparks": "+{{count}} 星火",
+        "change_password": "修改密碼",
+        "current_password": "當前密碼",
+        "new_password": "新密碼",
+        "confirm_password": "確認新密碼",
+        "passwords_not_match": "兩次輸入的新密碼不一致",
+        "sync_location": "同步地理位置",
+        "hide_location": "不顯示我的位置",
+        "show_location": "顯示我的位置",
+        "location_synced": "位置已同步",
+        "location_failed": "無法獲取位置"
     },
     "legal": {
         "privacy_policy": "隱私政策",
@@ -101,7 +109,15 @@
     },
     "timer": {
         "deep_work": "深度工作中",
-        "ready_to_focus": "準備專注"
+        "ready_to_focus": "準備專注",
+        "sprint": "衝刺",
+        "sprint_desc": "短時間高強度專注",
+        "classic": "經典",
+        "classic_desc": "標準番茄鐘",
+        "deep": "深度",
+        "deep_desc": "深度工作時段",
+        "master": "掌控",
+        "master_desc": "極限耐力挑戰"
     },
     "trial": {
         "expired": "試用已過期",
@@ -124,5 +140,27 @@
         "inappropriate_content": "內容包含不合規或敏感詞彙，請修改。",
         "file_too_large": "圖片大小超過 5MB 限制。",
         "invalid_file_type": "無效的圖片格式。請上傳 JPEG, PNG 或 WEBP。"
+    },
+    "subjects": {
+        "mathematics": "數學",
+        "coding": "編程",
+        "languages": "語言",
+        "art": "藝術",
+        "science": "科學",
+        "music": "音樂",
+        "literature": "文學",
+        "others": "其他"
+    },
+    "themes": {
+        "classic": "經典 Hive",
+        "morandi_sage": "莫蘭迪·鼠尾草",
+        "morandi_rose": "莫蘭迪·玫瑰",
+        "ocean_night": "深海之夜",
+        "nordic_cold": "北歐極地",
+        "high_contrast": "高對比度",
+        "muted_soft": "柔和靜謐",
+        "deep_calm": "深邃寧靜",
+        "clean_ice": "純淨冰感",
+        "morandi_desc": "* 莫蘭迪色系設計旨在減輕長時間深度專注時的視覺疲勞。"
     }
 }

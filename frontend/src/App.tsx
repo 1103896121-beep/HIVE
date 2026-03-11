@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Play, Square, Settings, Users, Flame, ChevronLeft, MapPin, BookOpen, Clock, Zap, Maximize2, UserPlus } from 'lucide-react';
+import { Play, Square, Settings, Flame, ChevronLeft, MapPin, BookOpen, Clock, Zap, Maximize2 } from 'lucide-react';
 import clsx from 'clsx';
 import { Sheet } from './components/Sheet';
 import { SubjectPicker } from './components/SubjectPicker';
@@ -13,8 +13,9 @@ import type { Theme } from './components/ThemePicker';
 import { ProfilePortal } from './components/ProfilePortal';
 import type { UserProfile } from './components/ProfilePortal';
 import { GlobalMap } from './components/GlobalMap';
+import { HiveGrid } from './components/HiveGrid';
 import { userService, focusService, socialService } from './api';
-import type { Subject, Squad, BondEnriched } from './api/types';
+import type { Subject, Squad, BondEnriched, HiveMatchTile } from './api/types';
 import { useHiveSocket } from './hooks/useHiveSocket';
 import { SubscriptionSheet } from './components/SubscriptionSheet';
 import { subscriptionService } from './api';
@@ -24,18 +25,7 @@ import { LanguageSwitcher } from './components/LanguageSwitcher';
 
 
 
-// 模拟网络房间中的核心小组同伴 (L1 Squad: 9人)
-const SQUAD_MEMBERS = [
-  { id: 'f56b6938-72c6-4d0d-9b1e-e0921e25e97a', name: 'Alex', status: 'focus', subject: 'GRE', avatar: 'https://i.pravatar.cc/150?u=1' },
-  { id: '7a1b9204-629a-4e2b-8a8b-3e5f7a12b3c4', name: 'Mia', status: 'break', subject: 'Design', avatar: 'https://i.pravatar.cc/150?u=2' },
-  { id: 'a3b2c1d0-e4f5-46a7-b8c9-d0e1f2a3b4c5', name: 'David', status: 'focus', subject: 'Code', avatar: 'https://i.pravatar.cc/150?u=3' },
-  { id: 'd1e2f3a4-b5c6-47d8-9e0f-1a2b3c4d5e6f', name: 'Emma', status: 'offline', subject: '', avatar: 'https://i.pravatar.cc/150?u=4' },
-  { id: 'c1d2e3f4-a5b6-47c8-9d0e-1f2a3b4c5d6e', name: 'Chris', status: 'focus', subject: 'Math', avatar: 'https://i.pravatar.cc/150?u=5' },
-  { id: 'b1c2d3e4-f5a6-47b8-9c0d-1e2f3a4b5c6d', name: 'Zoe', status: 'focus', subject: 'Reading', avatar: 'https://i.pravatar.cc/150?u=6' },
-  { id: 'a1b2c3d4-e5f6-47a8-9b0c-1d2e3f4a5b6c', name: 'Leo', status: 'focus', subject: 'Physics', avatar: 'https://i.pravatar.cc/150?u=7' },
-  { id: '91a2b3c4-d5e6-4798-8a9b-0c1d2e3f4a5b', name: 'Nina', status: 'break', subject: 'Art', avatar: 'https://i.pravatar.cc/150?u=8' },
-  { id: '8192a3b4-c5d6-4789-7a8b-9c0d1e2f3a4b', name: 'Sam', status: 'focus', subject: 'Lang', avatar: 'https://i.pravatar.cc/150?u=9' },
-];
+// Initial state for dynamic matching
 
 type SheetType = 'subject' | 'location' | 'timer' | 'squad' | 'bonds' | 'theme' | 'profile' | 'subscription' | null;
 
@@ -49,7 +39,7 @@ export default function App() {
 
   // 状态控制
   const [viewMode, setViewMode] = useState<'squad' | 'global'>('squad');
-  const [currentSubject, setCurrentSubject] = useState('Code');
+  const [currentSubject, setCurrentSubject] = useState('Coding');
   const [currentLocation, setCurrentLocation] = useState('Global');
   const [currentSquad, setCurrentSquad] = useState('Global Hive');
 
@@ -73,6 +63,8 @@ export default function App() {
   const [bonds, setBonds] = useState<BondEnriched[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [interactionUser, setInteractionUser] = useState<any | null>(null);
+  const [hiveTiles, setHiveTiles] = useState<HiveMatchTile[]>([]);
+  const [ambientCount, setAmbientCount] = useState(24302);
 
   // 用户个人资料
   const [userProfile, setUserProfile] = useState<UserProfile>({
@@ -80,10 +72,10 @@ export default function App() {
     avatar: 'https://i.pravatar.cc/150?u=my-unique-id',
     bio: 'Coding the future, one hexagon at a time. 🐝',
     city: 'Beijing',
-    goal: 120,
     totalFocus: 45,
     sparks: 128,
     trialStartAt: new Date().toISOString(),
+    showLocation: true,
   });
   const [isSubscribing, setIsSubscribing] = useState(false);
 
@@ -158,11 +150,13 @@ export default function App() {
             avatar: profile.avatar_url || 'https://i.pravatar.cc/150?u=my-unique-id',
             bio: profile.bio || '',
             city: profile.city || '',
-            goal: profile.daily_goal_mins,
             totalFocus: profile.total_focus_mins,
             sparks: profile.total_sparks,
             trialStartAt: profile.trial_start_at,
             subscriptionEndAt: profile.subscription_end_at,
+            latitude: profile.latitude,
+            longitude: profile.longitude,
+            showLocation: profile.show_location,
           });
           setTheme(profile.theme_preference as any);
         }
@@ -180,6 +174,11 @@ export default function App() {
         } else {
           setCurrentSquad('Global Hive');
         }
+
+        // 加载动态网格
+        const matchData = await socialService.getHiveMatching(userId);
+        setHiveTiles(matchData.tiles);
+        setAmbientCount(matchData.ambient_count);
       } catch (err: any) {
         console.error('Failed to init data:', err);
         if (err.message.includes('401')) {
@@ -191,10 +190,15 @@ export default function App() {
   }, [userId, isAuthenticated]);
 
 
-  // 同步主题到 DOM
+  // 同步主题与语言到 DOM
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
+
+  const { i18n } = useTranslation();
+  useEffect(() => {
+    document.documentElement.lang = i18n.language || 'en';
+  }, [i18n.language]);
 
 
   // 格式化时间
@@ -233,12 +237,14 @@ export default function App() {
     if (!userId) return;
     try {
       const resp = await userService.updateProfile(userId, {
-        name: updates.name,
-        bio: updates.bio,
-        city: updates.city,
-        avatar_url: updates.avatar,
-        daily_goal_mins: updates.goal,
-        theme_preference: theme
+        name: updates.name ?? userProfile.name,
+        bio: updates.bio ?? userProfile.bio,
+        city: updates.city ?? userProfile.city,
+        avatar_url: updates.avatar ?? userProfile.avatar,
+        theme_preference: theme,
+        latitude: updates.latitude ?? userProfile.latitude,
+        longitude: updates.longitude ?? userProfile.longitude,
+        show_location: updates.showLocation !== undefined ? updates.showLocation : userProfile.showLocation,
       });
       if (resp) {
         // Fetch explicitly to guarantee identical DB mapping
@@ -249,11 +255,13 @@ export default function App() {
             avatar: freshProfile.avatar_url || 'https://i.pravatar.cc/150?u=my-unique-id',
             bio: freshProfile.bio || '',
             city: freshProfile.city || '',
-            goal: freshProfile.daily_goal_mins,
             totalFocus: freshProfile.total_focus_mins,
             sparks: freshProfile.total_sparks,
             trialStartAt: freshProfile.trial_start_at,
             subscriptionEndAt: freshProfile.subscription_end_at,
+            latitude: freshProfile.latitude,
+            longitude: freshProfile.longitude,
+            showLocation: freshProfile.show_location,
           });
         }
       }
@@ -409,15 +417,23 @@ export default function App() {
             avatar: updatedProfile.avatar_url || userProfile.avatar,
             bio: updatedProfile.bio || '',
             city: updatedProfile.city || '',
-            goal: updatedProfile.daily_goal_mins,
             totalFocus: updatedProfile.total_focus_mins,
             sparks: updatedProfile.total_sparks,
             trialStartAt: updatedProfile.trial_start_at,
             subscriptionEndAt: updatedProfile.subscription_end_at,
+            latitude: updatedProfile.latitude,
+            longitude: updatedProfile.longitude,
+            showLocation: updatedProfile.show_location,
           });
         }
         setIsFocusing(false);
         setActiveSessionId(null);
+      }
+
+      // 状态切换后刷新网格
+      if (userId) {
+        const matchData = await socialService.getHiveMatching(userId);
+        setHiveTiles(matchData.tiles);
       }
     } catch (err: any) {
       if (err.response?.status === 402) {
@@ -560,7 +576,7 @@ export default function App() {
                 className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-white/5 border border-white/5 text-zinc-300 hover:bg-white/10 active:scale-95 transition-all"
               >
                 <BookOpen size={14} className="text-[#F5A623]" />
-                <span className="text-xs font-bold uppercase tracking-wider">{currentSubject}</span>
+                <span className="text-xs font-bold uppercase tracking-wider">{t(`subjects.${currentSubject.toLowerCase()}`)}</span>
               </button>
               <button
                 onClick={() => setActiveSheet('location')}
@@ -596,50 +612,11 @@ export default function App() {
               {/* 背景光晕 */}
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[280px] h-[280px] rounded-full bg-[#F5A623]/[0.02] blur-3xl pointer-events-none"></div>
 
-              {/* L1 核心蜂窝 3×3 */}
-              <div className="grid grid-cols-3 gap-x-1 gap-y-0 w-fit relative z-10 transition-transform duration-700">
-                {SQUAD_MEMBERS.map((member, index) => {
-                  const isFocus = member.status === 'focus';
-                  const isOffline = member.status === 'offline';
-                  const offsetClass = index % 3 === 1 ? 'translate-y-[34px]' : '';
-
-                  return (
-                    <div key={member.id} className={clsx("flex flex-col items-center", offsetClass)}>
-                      <div
-                        onClick={() => handleGridUserClick(member)}
-                        className={clsx(
-                          "w-[66px] h-[76px] hex-clip relative group transition-all duration-500 cursor-pointer active:scale-95",
-                          isFocus ? "bg-[#F5A623] breathing" : isOffline ? "bg-zinc-900 border border-zinc-800 opacity-40" : "bg-zinc-800"
-                        )}
-                      >
-                        <div className="absolute inset-[2px] hex-clip bg-[#111] overflow-hidden">
-                          {!isOffline ? (
-                            <img src={member.avatar} alt={member.name} className={clsx("w-full h-full object-cover transition-opacity", !isFocus && "opacity-50 grayscale")} />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-zinc-700">
-                              <Users size={18} />
-                            </div>
-                          )}
-                          {isFocus && <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(var(--accent-rgb), 0.4), transparent)' }}></div>}
-
-                          {/* 悬停时的微小添加标识 */}
-                          {!isOffline && (
-                            <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <UserPlus size={12} className="text-[#F5A623]" />
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <div className="mt-1 text-center">
-                        <div className="text-[10px] font-bold text-zinc-300">{member.name}</div>
-                        <div className={clsx("text-[7px] font-black uppercase tracking-widest", isFocus ? "text-[#F5A623]" : "text-zinc-600")}>
-                          {isFocus ? member.subject : (isOffline ? 'OFF' : (member.subject === 'Design' ? 'BREAK' : 'BREAK')) /* Placeholder for BREAK translation if needed, but keeping for now */}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              {/* L1 核心蜂巢 3×3 - 现在使用动态 HiveGrid */}
+              <HiveGrid
+                tiles={hiveTiles}
+                onUserClick={handleGridUserClick}
+              />
 
               {/* L2 人数统计 */}
               <div
@@ -655,7 +632,7 @@ export default function App() {
                     />
                   ))}
                 </div>
-                <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-400">+{dynamicAmbientCount} near {currentLocation}</span>
+                <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-400">+{ambientCount} near {currentLocation}</span>
               </div>
 
 
@@ -841,7 +818,7 @@ export default function App() {
             <div className="absolute inset-0 z-[110] flex items-center justify-center px-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
               <div className="w-full max-w-[300px] bg-zinc-900 border border-white/10 rounded-[32px] p-8 shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col items-center">
                 <div className="w-20 h-20 rounded-2xl overflow-hidden mb-4 border-2 border-white/5">
-                  <img src={interactionUser.avatar} alt={interactionUser.name} className="w-full h-full object-cover" />
+                  <img src={interactionUser.avatar_url || `https://i.pravatar.cc/150?u=${interactionUser.user_id}`} alt={interactionUser.name} className="w-full h-full object-cover" />
                 </div>
                 <h3 className="text-xl font-bold text-white mb-1">{interactionUser.name}</h3>
                 <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mb-8">{interactionUser.subject || t('common.relaxing')}</p>
@@ -849,7 +826,7 @@ export default function App() {
                 <div className="flex w-full flex-col gap-3">
                   <button
                     onClick={() => {
-                      handleCreateBond(interactionUser.id);
+                      handleCreateBond(interactionUser.user_id);
                       setInteractionUser(null);
                     }}
                     className="w-full py-4 rounded-2xl bg-[var(--accent)] text-black text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all shadow-lg"
@@ -859,7 +836,7 @@ export default function App() {
                   </button>
                   <button
                     onClick={() => {
-                      sendNudge(interactionUser.id);
+                      sendNudge(interactionUser.user_id);
                       setInteractionUser(null);
                     }}
                     className="w-full py-4 rounded-2xl bg-white/5 border border-white/10 text-white text-[10px] font-black uppercase tracking-widest hover:bg-white/10 active:scale-95 transition-all"

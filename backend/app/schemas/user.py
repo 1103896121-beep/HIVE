@@ -23,7 +23,9 @@ class ProfileBase(BaseModel):
     bio: Optional[str] = None
     city: Optional[str] = None
     theme_preference: Optional[str] = "classic"
-    daily_goal_mins: Optional[int] = 120
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    show_location: bool = True
 
 class ProfileUpdate(BaseModel):
     name: Optional[str] = None
@@ -31,7 +33,8 @@ class ProfileUpdate(BaseModel):
     bio: Optional[str] = None
     city: Optional[str] = None
     theme_preference: Optional[str] = None
-    daily_goal_mins: Optional[int] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
 
 class ProfileResponse(ProfileBase):
     user_id: UUID
@@ -43,6 +46,11 @@ class ProfileResponse(ProfileBase):
 
     class Config:
         from_attributes = True
+
+class PasswordUpdate(BaseModel):
+    current_password: str
+    new_password: str
+    confirm_password: str
 
 class UserSearchResponse(BaseModel):
     id: UUID

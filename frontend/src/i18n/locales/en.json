@@ -66,7 +66,6 @@
         "title": "Profile",
         "focus_mins": "Focus Mins",
         "sparks": "Sparks",
-        "daily_goal": "Daily Goal",
         "language": "Language",
         "select_language": "Select Language",
         "english": "English",
@@ -85,10 +84,19 @@
         "global_ranking": "Global Ranking: Top 5%",
         "deep_focus_label": "Deep Focus",
         "hives_count": "Across {{count}} Hives",
-        "completed": "Completed: {{count}}m",
-        "target": "Target: {{count}}m",
-        "visible_info": "Your profile is visible to your Bonds and fellow Hive members. Let your statistics demonstrate your discipline.",
-        "plus_sparks": "+{{count}} Sparks"
+        "completed": "Total Focus: {{count}}m",
+        "visible_info": "Your stats are fueled by discipline. City info is auto-verified via geolocation.",
+        "plus_sparks": "+{{count}} Sparks",
+        "change_password": "Change Password",
+        "current_password": "Current Password",
+        "new_password": "New Password",
+        "confirm_password": "Confirm New Password",
+        "passwords_not_match": "New passwords do not match",
+        "sync_location": "Sync Location",
+        "hide_location": "Hide My Location",
+        "show_location": "Show My Location",
+        "location_synced": "Location Synced",
+        "location_failed": "Location Failed"
     },
     "legal": {
         "privacy_policy": "Privacy Policy",
@@ -101,7 +109,15 @@
     },
     "timer": {
         "deep_work": "Deep Work",
-        "ready_to_focus": "Ready to focus"
+        "ready_to_focus": "Ready to focus",
+        "sprint": "Sprint",
+        "sprint_desc": "Short burst focus",
+        "classic": "Classic",
+        "classic_desc": "Standard Pomodoro",
+        "deep": "Deep",
+        "deep_desc": "Deep work session",
+        "master": "Master",
+        "master_desc": "Maximum endurance"
     },
     "trial": {
         "expired": "Trial Expired",
@@ -124,5 +140,27 @@
         "inappropriate_content": "Content contains inappropriate or reserved words. Please revise.",
         "file_too_large": "Image size exceeds the 5MB limit.",
         "invalid_file_type": "Invalid image format. Please upload JPEG, PNG, or WEBP."
+    },
+    "subjects": {
+        "mathematics": "Mathematics",
+        "coding": "Coding",
+        "languages": "Languages",
+        "art": "Art",
+        "science": "Science",
+        "music": "Music",
+        "literature": "Literature",
+        "others": "Others"
+    },
+    "themes": {
+        "classic": "Classic Hive",
+        "morandi_sage": "Morandi Sage",
+        "morandi_rose": "Morandi Rose",
+        "ocean_night": "Ocean Night",
+        "nordic_cold": "Nordic Cold",
+        "high_contrast": "High Contrast",
+        "muted_soft": "Muted & Soft",
+        "deep_calm": "Deep & Calm",
+        "clean_ice": "Clean & Ice",
+        "morandi_desc": "* Morandi color palettes are designed to reduce visual fatigue during long deep work sessions."
     }
 }

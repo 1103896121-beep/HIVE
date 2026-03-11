@@ -27,12 +27,12 @@ class Profile(Base):
     avatar_url = Column(String, nullable=True)
     bio = Column(String(200), nullable=True)
     theme_preference = Column(String(30), default="classic")
-    daily_goal_mins = Column(Integer, default=120)
     total_focus_mins = Column(BigInteger, default=0)
     total_sparks = Column(Integer, default=0)
     city = Column(String(100), nullable=True)
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
+    show_location = Column(Boolean, default=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     user = relationship("User", back_populates="profile")

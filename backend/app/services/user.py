@@ -6,6 +6,7 @@ from app.schemas.user import UserCreate, ProfileUpdate
 from uuid import UUID
 import math
 from sqlalchemy import or_, and_
+from app.core.security import verify_password, get_password_hash
 
 class UserService:
     @staticmethod
@@ -44,6 +45,23 @@ class UserService:
         await db.commit()
         await db.refresh(db_profile)
         return db_profile
+
+    @staticmethod
+    async def update_password(db: AsyncSession, user_id: UUID, current_password: str, new_password: str, confirm_password: str):
+        if new_password != confirm_password:
+            return False, "Passwords do not match"
+        
+        result = await db.execute(select(User).where(User.id == user_id))
+        user = result.scalars().first()
+        if not user:
+            return False, "User not found"
+        
+        if not verify_password(current_password, user.hashed_password):
+            return False, "Incorrect current password"
+        
+        user.hashed_password = get_password_hash(new_password)
+        await db.commit()
+        return True, "Password updated successfully"
 
     @staticmethod
     async def increment_sparks(db: AsyncSession, user_id: UUID, sparks: int, mins: int):

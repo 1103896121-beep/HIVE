@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
-from app.schemas.social import SquadResponse, SquadCreate, BondResponse, BondEnrichedResponse, ReportResponse, ReportCreate, BlockResponse, BlockCreate
+from app.schemas.social import SquadResponse, SquadCreate, BondResponse, BondEnrichedResponse, ReportResponse, ReportCreate, BlockResponse, BlockCreate, HiveMatchingResponse
 from app.services.social import SocialService
 from uuid import UUID
 from typing import List
@@ -83,3 +83,7 @@ async def create_report(report_in: ReportCreate, user_id: UUID, db: AsyncSession
 @router.post("/blocks", response_model=BlockResponse)
 async def block_user(block_in: BlockCreate, user_id: UUID, db: AsyncSession = Depends(get_db)):
     return await SocialService.block_user(db, user_id, block_in)
+
+@router.get("/hive/matching", response_model=HiveMatchingResponse)
+async def get_hive_matching(user_id: UUID, db: AsyncSession = Depends(get_db)):
+    return await SocialService.get_hive_matching(db, user_id)

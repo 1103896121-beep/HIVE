@@ -2,7 +2,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import or_, and_
 from app.models.social import Squad, SquadMember, Bond, Nudge, Report, Block
-from app.schemas.social import SquadCreate, ReportCreate, BlockCreate
+from app.models.user import Profile, User
+from app.models.focus import FocusSession, Subject
+from app.schemas.social import SquadCreate, ReportCreate, BlockCreate, HiveMatchTile, HiveMatchingResponse
+from datetime import datetime, timedelta
 import uuid
 import random
 import string
@@ -233,3 +236,108 @@ class SocialService:
         await db.commit()
         await db.refresh(db_block)
         return db_block
+
+    @staticmethod
+    async def get_hive_matching(db: AsyncSession, user_id: UUID) -> HiveMatchingResponse:
+        # 1. 获取用户所在的小队 ID
+        squad_result = await db.execute(
+            select(SquadMember.squad_id).where(SquadMember.user_id == user_id, SquadMember.status == "ACTIVE")
+        )
+        squad_id = squad_result.scalars().first()
+
+        # 2. 确定席位逻辑 (搭子 + 队友 + 同城/同路人)
+        # 获取队友
+        squad_members = []
+        if squad_id:
+            squad_stmt = (
+                select(Profile, User.id)
+                .join(User, Profile.user_id == User.id)
+                .join(SquadMember, User.id == SquadMember.user_id)
+                .where(SquadMember.squad_id == squad_id, User.id != user_id, SquadMember.status == "ACTIVE")
+            )
+            s_res = await db.execute(squad_stmt)
+            squad_members = s_res.all()
+
+        # 获取已接受的羁绊
+        bonds_stmt = (
+            select(Profile, User.id)
+            .join(User, Profile.user_id == User.id)
+            .join(Bond, or_(
+                and_(Bond.user_id_1 == user_id, Bond.user_id_2 == User.id),
+                and_(Bond.user_id_2 == user_id, Bond.user_id_1 == User.id)
+            ))
+            .where(Bond.status == "ACCEPTED")
+        )
+        b_res = await db.execute(bonds_stmt)
+        bonds_members = b_res.all()
+
+        # 排除已拉黑或被拉黑的用户
+        block_query = await db.execute(select(Block.blocked_id).where(Block.user_id == user_id))
+        blocked_by_me = [r[0] for r in block_query.all()]
+        blocker_query = await db.execute(select(Block.user_id).where(Block.blocked_id == user_id))
+        blocked_me = [r[0] for r in blocker_query.all()]
+        exclude_ids = set(blocked_by_me + blocked_me + [user_id])
+
+        # 获取活跃用户 (最近 30 分钟)
+        active_cutoff = datetime.utcnow() - timedelta(minutes=30)
+        
+        # 结果集字典，用于去重
+        tiles_dict = {}
+
+        async def add_to_tiles(profiles_with_ids, is_squad=False, is_bond=False):
+            for profile, uid in profiles_with_ids:
+                if uid in exclude_ids or uid in tiles_dict:
+                    continue
+                
+                # 获取该用户的最新专注状态
+                session_stmt = (
+                    select(FocusSession, Subject.name)
+                    .join(Subject, FocusSession.subject_id == Subject.id)
+                    .where(FocusSession.user_id == uid)
+                    .order_by(FocusSession.start_time.desc())
+                    .limit(1)
+                )
+                session_res = await db.execute(session_stmt)
+                session_data = session_res.first()
+                
+                status = "offline"
+                subject_name = None
+                if session_data:
+                    session, sub_name = session_data
+                    if session.end_time is None:
+                        status = "focus"
+                        subject_name = sub_name
+                    elif session.end_time > active_cutoff:
+                        status = "break"
+                
+                tiles_dict[uid] = HiveMatchTile(
+                    user_id=uid,
+                    name=profile.name,
+                    avatar_url=profile.avatar_url,
+                    status=status,
+                    subject=subject_name,
+                    is_bond=is_bond,
+                    is_squad=is_squad,
+                    last_active=profile.updated_at or datetime.utcnow()
+                )
+
+        # 按优先级添加
+        await add_to_tiles(squad_members, is_squad=True)
+        await add_to_tiles(bonds_members, is_bond=True)
+
+        # 补齐 ambient 用户 (模拟同数展示库，实际可以随机拉取一些最近活跃的其他用户)
+        if len(tiles_dict) < 9:
+            ambient_stmt = (
+                select(Profile, User.id)
+                .join(User, Profile.user_id == User.id)
+                .where(User.id.not_in(exclude_ids | set(tiles_dict.keys())))
+                .order_by(Profile.updated_at.desc())
+                .limit(9 - len(tiles_dict))
+            )
+            a_res = await db.execute(ambient_stmt)
+            await add_to_tiles(a_res.all())
+
+        return HiveMatchingResponse(
+            tiles=list(tiles_dict.values()),
+            ambient_count=random.randint(50, 500) # Mock 附近总人数
+        )

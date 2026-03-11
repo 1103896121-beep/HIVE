@@ -1,7 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Camera, Edit2, Check, Award, Flame, Target, Info, ExternalLink, ShieldCheck } from 'lucide-react';
+import { Camera, Edit2, Check, Award, Flame, Info, ExternalLink, ShieldCheck, KeyRound, MapPin, Navigation, Loader2, Eye, EyeOff } from 'lucide-react';
 import { validateContent, validateImage } from '../utils/validation';
+import { userService } from '../api';
+import clsx from 'clsx';
 
 
 export interface UserProfile {
@@ -9,11 +11,13 @@ export interface UserProfile {
     avatar: string;
     bio: string;
     city: string;
-    goal: number; // 每日专注目标(分钟)
     totalFocus: number; // 累计专注时长(分钟)
     sparks: number; // 累计获得的 Sparks
     trialStartAt: string;
     subscriptionEndAt?: string;
+    latitude?: number;
+    longitude?: number;
+    showLocation: boolean;
 }
 
 interface ProfilePortalProps {
@@ -24,14 +28,20 @@ interface ProfilePortalProps {
     onAlert: (title: string, message: string) => void;
 }
 
-export function ProfilePortal({ profile, onUpdate, onSignOut, onAlert }: ProfilePortalProps) {
+export function ProfilePortal({ userId, profile, onUpdate, onSignOut, onAlert }: ProfilePortalProps) {
     const { t, i18n } = useTranslation();
     const [isEditing, setIsEditing] = useState(false);
     const [editForm, setEditForm] = useState(profile);
+    const [isSyncingLocation, setIsSyncingLocation] = useState(false);
+    
+    // Password change state
+    const [showPasswordForm, setShowPasswordForm] = useState(false);
+    const [passwordData, setPasswordData] = useState({ current: '', new: '', confirm: '' });
+    const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Sync form with profile when not editing
-    // This prevents stale initialization state from wiping data
     useEffect(() => {
         if (!isEditing) {
             setEditForm(profile);
@@ -51,7 +61,7 @@ export function ProfilePortal({ profile, onUpdate, onSignOut, onAlert }: Profile
                 return;
             }
 
-            // 真实场景下应上传到服务器并返回 URL
+            // Realistically we'd upload this
             const url = URL.createObjectURL(file);
             await onUpdate({ avatar: url });
         }
@@ -61,8 +71,8 @@ export function ProfilePortal({ profile, onUpdate, onSignOut, onAlert }: Profile
         const nameCheck = validateContent(editForm.name, 'name');
         if (!nameCheck.isValid) return onAlert(t('common.error'), t(nameCheck.errorKey as any));
 
-        const cityCheck = validateContent(editForm.city, 'city');
-        if (!cityCheck.isValid) return onAlert(t('common.error'), t(cityCheck.errorKey as any));
+        const cityCheck = validateContent(editForm.city || '', 'city');
+        if (!cityCheck.isValid && editForm.city) return onAlert(t('common.error'), t(cityCheck.errorKey as any));
 
         const bioCheck = validateContent(editForm.bio, 'bio');
         if (!bioCheck.isValid) return onAlert(t('common.error'), t(bioCheck.errorKey as any));
@@ -71,8 +81,69 @@ export function ProfilePortal({ profile, onUpdate, onSignOut, onAlert }: Profile
         setIsEditing(false);
     };
 
+    const handleSyncLocation = async () => {
+        if (!navigator.geolocation) {
+            onAlert(t('common.error'), 'Geolocation not supported');
+            return;
+        }
+
+        setIsSyncingLocation(true);
+        navigator.geolocation.getCurrentPosition(async (position) => {
+            const { latitude, longitude } = position.coords;
+            try {
+                const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`);
+                const data = await response.json();
+                const city = data.address.city || data.address.town || data.address.village || data.address.state || '';
+                
+                await onUpdate({ 
+                    city, 
+                    latitude, 
+                    longitude 
+                });
+                onAlert(t('common.success'), t('profile.location_synced'));
+            } catch (error) {
+                console.error('Location sync failed:', error);
+                onAlert(t('common.error'), t('profile.location_failed'));
+            } finally {
+                setIsSyncingLocation(false);
+            }
+        }, (error) => {
+            console.error('Geolocation error:', error);
+            onAlert(t('common.error'), t('profile.location_failed'));
+            setIsSyncingLocation(false);
+        });
+    };
+
+    const handleChangePassword = async () => {
+        if (!passwordData.current || !passwordData.new || !passwordData.confirm) {
+            onAlert(t('common.error'), t('validation.empty_required_field'));
+            return;
+        }
+
+        if (passwordData.new !== passwordData.confirm) {
+            onAlert(t('common.error'), t('profile.passwords_not_match'));
+            return;
+        }
+
+        setIsUpdatingPassword(true);
+        try {
+            await userService.updatePassword(userId, {
+                current_password: passwordData.current,
+                new_password: passwordData.new,
+                confirm_password: passwordData.confirm
+            });
+            onAlert(t('common.success'), t('common.success'));
+            setShowPasswordForm(false);
+            setPasswordData({ current: '', new: '', confirm: '' });
+        } catch (err: any) {
+            onAlert(t('common.error'), err.response?.data?.detail || t('common.error'));
+        } finally {
+            setIsUpdatingPassword(false);
+        }
+    };
+
     return (
-        <div className="flex flex-col gap-6 py-2 px-1">
+        <div className="flex flex-col gap-6 py-2 px-1 pb-10">
             {/* 头像与基本信息卡片 */}
             <div className="relative flex flex-col items-center p-8 rounded-[40px] border transition-colors duration-500 overflow-hidden"
                 style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}>
@@ -111,12 +182,31 @@ export function ProfilePortal({ profile, onUpdate, onSignOut, onAlert }: Profile
                             onChange={e => setEditForm({ ...editForm, name: e.target.value })}
                             placeholder={t('profile.your_name')}
                         />
-                        <input
-                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-center text-xs font-bold text-[var(--accent)] focus:outline-none focus:border-[var(--accent)] uppercase tracking-widest"
-                            value={editForm.city}
-                            onChange={e => setEditForm({ ...editForm, city: e.target.value })}
-                            placeholder={t('profile.your_city')}
-                        />
+                        <div className="flex items-center justify-center gap-3 py-1">
+                            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10">
+                                <MapPin size={10} className={clsx(profile.showLocation ? "text-[var(--accent)]" : "text-zinc-500")} />
+                                <span className={clsx("text-[9px] font-bold uppercase tracking-widest", profile.showLocation ? "text-white" : "text-zinc-500")}>
+                                    {profile.showLocation ? (profile.city || t('common.digital_space')) : t('profile.hide_location')}
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                                <button
+                                    onClick={handleSyncLocation}
+                                    disabled={isSyncingLocation}
+                                    className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-[var(--accent)] transition-colors active:scale-90"
+                                    title={t('profile.sync_location')}
+                                >
+                                    {isSyncingLocation ? <Loader2 size={12} className="animate-spin" /> : <Navigation size={12} />}
+                                </button>
+                                <button
+                                    onClick={() => setEditForm({ ...editForm, showLocation: !editForm.showLocation })}
+                                    className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white transition-colors active:scale-90"
+                                    title={editForm.showLocation ? t('profile.hide_location') : t('profile.show_location')}
+                                >
+                                    {editForm.showLocation ? <Eye size={12} /> : <EyeOff size={12} />}
+                                </button>
+                            </div>
+                        </div>
                         <textarea
                             className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-center text-xs text-zinc-400 focus:outline-none focus:border-[var(--accent)] resize-none"
                             rows={2}
@@ -128,7 +218,14 @@ export function ProfilePortal({ profile, onUpdate, onSignOut, onAlert }: Profile
                 ) : (
                     <div className="mt-5 text-center">
                         <h2 className="text-2xl font-black text-white tracking-tight">{profile.name}</h2>
-                        <p className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-[0.2em] mt-1">{profile.city || t('common.digital_space')}</p>
+                        {profile.showLocation && profile.city ? (
+                            <div className="flex items-center justify-center gap-1 mt-1">
+                                <MapPin size={10} className="text-[var(--accent)]" />
+                                <p className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-[0.2em]">{profile.city}</p>
+                            </div>
+                        ) : (
+                            <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-[0.2em] mt-1">{t('common.digital_space')}</p>
+                        )}
                         <p className="mt-3 text-xs text-zinc-500 italic max-w-[200px] leading-relaxed mx-auto">"{profile.bio || t('profile.no_bio')}"</p>
                     </div>
                 )}
@@ -146,6 +243,7 @@ export function ProfilePortal({ profile, onUpdate, onSignOut, onAlert }: Profile
                     {isEditing ? <><Check size={12} strokeWidth={3} /> {t('profile.save_profile')}</> : <><Edit2 size={12} /> {t('profile.edit_profile')}</>}
                 </button>
             </div>
+
 
             {/* 统计数据网格 */}
             <div className="grid grid-cols-2 gap-4">
@@ -166,51 +264,8 @@ export function ProfilePortal({ profile, onUpdate, onSignOut, onAlert }: Profile
                         <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">{t('profile.deep_focus_label')}</span>
                     </div>
                     <div className="text-2xl font-black text-white">{Math.floor(profile.totalFocus / 60)}h <span className="text-sm">{profile.totalFocus % 60}m</span></div>
-                    <div className="text-[9px] text-zinc-600 font-bold uppercase mt-1">{t('profile.hives_count', { count: 12 })}</div>
+                    <div className="text-[9px] text-zinc-600 font-bold uppercase mt-1">{t('profile.completed', { count: profile.totalFocus })}</div>
                 </div>
-            </div>
-
-            {/* 专注目标设置 */}
-            <div className="p-6 rounded-[32px] border transition-colors duration-500"
-                style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}>
-                <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-2">
-                        <Target size={18} style={{ color: 'var(--accent)' }} />
-                        <span className="text-xs font-black uppercase tracking-widest text-white">{t('profile.daily_goal')}</span>
-                    </div>
-                    {isEditing && (
-                        <div className="text-[var(--accent)] font-bold text-sm tracking-tighter">{editForm.goal}m</div>
-                    )}
-                </div>
-
-                {isEditing ? (
-                    <input
-                        type="range"
-                        min="30"
-                        max="480"
-                        step="15"
-                        value={editForm.goal}
-                        onChange={e => setEditForm({ ...editForm, goal: parseInt(e.target.value) })}
-                        className="w-full h-1.5 rounded-full appearance-none cursor-pointer accent-[var(--accent)] bg-white/10"
-                    />
-                ) : (
-                    <div className="space-y-3">
-                        <div className="w-full h-2 rounded-full bg-white/5 overflow-hidden">
-                            <div
-                                className="h-full transition-all duration-1000"
-                                style={{
-                                    width: `${Math.min((profile.totalFocus / profile.goal) * 100, 100)}%`,
-                                    backgroundColor: 'var(--accent)',
-                                    boxShadow: '0 0 10px rgba(var(--accent-rgb), 0.5)'
-                                }}
-                            ></div>
-                        </div>
-                        <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-zinc-500">
-                            <span>{t('profile.completed', { count: profile.totalFocus })}</span>
-                            <span>{t('profile.target', { count: profile.goal })}</span>
-                        </div>
-                    </div>
-                )}
             </div>
 
             <div className="flex items-start gap-3 p-4 rounded-2xl bg-white/[0.02] border border-white/[0.05]">
@@ -248,13 +303,79 @@ export function ProfilePortal({ profile, onUpdate, onSignOut, onAlert }: Profile
                 </a>
             </div>
 
+            {/* Change Password - Moved to bottom and shrunken */}
+            <div className="flex flex-col gap-2 mt-4">
+                <button
+                    onClick={() => setShowPasswordForm(!showPasswordForm)}
+                    className="flex items-center justify-between px-5 py-3 rounded-[20px] bg-white/[0.02] hover:bg-white/[0.04] transition-all border border-white/[0.03] group active:scale-[0.98]"
+                >
+                    <div className="flex items-center gap-2.5">
+                        <KeyRound size={12} className="text-purple-400" />
+                        <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400">{t('profile.change_password')}</span>
+                    </div>
+                    <ChevronRight size={12} className={clsx("text-zinc-700 transition-transform", showPasswordForm && "rotate-90")} />
+                </button>
+                
+                {showPasswordForm && (
+                    <div className="p-4 rounded-[20px] bg-purple-500/[0.02] border border-purple-500/10 flex flex-col gap-2.5 animate-in slide-in-from-top-2 duration-300">
+                        <input
+                            type="password"
+                            className="w-full bg-black/40 border border-white/5 rounded-lg px-3 py-2 text-[10px] text-white focus:outline-none focus:border-purple-500/50"
+                            placeholder={t('profile.current_password')}
+                            value={passwordData.current}
+                            onChange={e => setPasswordData({ ...passwordData, current: e.target.value })}
+                        />
+                        <div className="grid grid-cols-2 gap-2">
+                            <input
+                                type="password"
+                                className="w-full bg-black/40 border border-white/5 rounded-lg px-3 py-2 text-[10px] text-white focus:outline-none focus:border-purple-500/50"
+                                placeholder={t('profile.new_password')}
+                                value={passwordData.new}
+                                onChange={e => setPasswordData({ ...passwordData, new: e.target.value })}
+                            />
+                            <input
+                                type="password"
+                                className="w-full bg-black/40 border border-white/5 rounded-lg px-3 py-2 text-[10px] text-white focus:outline-none focus:border-purple-500/50"
+                                placeholder={t('profile.confirm_password')}
+                                value={passwordData.confirm}
+                                onChange={e => setPasswordData({ ...passwordData, confirm: e.target.value })}
+                            />
+                        </div>
+                        <button
+                            onClick={handleChangePassword}
+                            disabled={isUpdatingPassword}
+                            className="w-full py-2 rounded-lg bg-purple-600/80 hover:bg-purple-600 text-white text-[9px] font-black uppercase tracking-widest active:scale-95 disabled:opacity-50 transition-all border border-purple-400/20"
+                        >
+                            {isUpdatingPassword ? <Loader2 size={10} className="animate-spin mx-auto" /> : t('common.save')}
+                        </button>
+                    </div>
+                )}
+            </div>
+
             {/* Logout Button */}
             <button
                 onClick={onSignOut}
-                className="mt-6 w-full flex items-center justify-center gap-2 p-4 rounded-[24px] bg-red-500/10 hover:bg-red-500/20 transition-all border border-red-500/20 text-red-500 text-[10px] font-black uppercase tracking-widest"
+                className="w-full flex items-center justify-center gap-2 p-4 rounded-[24px] bg-red-500/10 hover:bg-red-500/20 transition-all border border-red-500/20 text-red-500 text-[10px] font-black uppercase tracking-widest"
             >
                 {t('common.sign_out')}
             </button>
         </div>
     );
 }
+
+const ChevronRight = ({ className, size }: { className?: string, size?: number }) => (
+    <svg 
+        xmlns="http://www.w3.org/2000/svg" 
+        width={size || 24} 
+        height={size || 24} 
+        viewBox="0 0 24 24" 
+        fill="none" 
+        stroke="currentColor" 
+        strokeWidth="2" 
+        strokeLinecap="round" 
+        strokeLinejoin="round" 
+        className={className}
+    >
+        <path d="m9 18 6-6-6-6" />
+    </svg>
+);

@@ -88,3 +88,17 @@ class BondEnrichedResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class HiveMatchTile(BaseModel):
+    user_id: UUID
+    name: str
+    avatar_url: Optional[str] = None
+    status: str  # 'focus', 'break', 'offline'
+    subject: Optional[str] = None
+    is_bond: bool = False
+    is_squad: bool = False
+    last_active: datetime
+
+class HiveMatchingResponse(BaseModel):
+    tiles: List[HiveMatchTile]
+    ambient_count: int

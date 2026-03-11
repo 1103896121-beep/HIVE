@@ -64,8 +64,24 @@
     background-color: var(--bg-primary);
     color: var(--text-primary);
     min-height: 100vh;
+    font-family: 'Inter', -apple-system, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Source Han Sans CN", system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
     transition: background-color 0.5s ease, color 0.5s ease;
+  }
+
+  /* Optimize readability for Chinese characters at small sizes */
+  :lang(zh-CN), :lang(zh-TW) {
+    font-weight: 400; /* Chinese characters can look "cluttered" with heavy weights */
+    letter-spacing: 0.01em;
+  }
+
+  /* Global bump for small text in Chinese */
+  :lang(zh-CN) .text-\[9px\], :lang(zh-TW) .text-\[9px\],
+  :lang(zh-CN) .text-\[10px\], :lang(zh-TW) .text-\[10px\],
+  :lang(zh-CN) .text-xs, :lang(zh-TW) .text-xs {
+    font-size: clamp(11px, 1.1em, 13px);
+    line-height: 1.4;
   }
 }
 
