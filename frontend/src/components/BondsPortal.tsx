@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { UserPlus, Zap, ShieldAlert, MoreVertical, XCircle, Search, Loader2 } from 'lucide-react';
 import type { BondEnriched, UserSearchResult } from '../api/types';
 import { userService, socialService } from '../api';
@@ -13,6 +14,7 @@ interface BondsPortalProps {
 }
 
 export const BondsPortal: React.FC<BondsPortalProps> = ({ bonds, userId, onNudge, onBlock, onAlert }) => {
+    const { t } = useTranslation();
     const [nudged, setNudged] = useState<string | null>(null);
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -21,6 +23,7 @@ export const BondsPortal: React.FC<BondsPortalProps> = ({ bonds, userId, onNudge
     const [selectedUser, setSelectedUser] = useState<UserSearchResult | null>(null);
     const [isFetchingProfile, setIsFetchingProfile] = useState(false);
     const [localSearchQuery, setLocalSearchQuery] = useState('');
+    const [actionUser, setActionUser] = useState<BondEnriched | null>(null);
 
     // Mock geolocation for dev - ideally this would come from the browser API or App.tsx
     const mockLocation = { lat: 39.9042, lon: 116.4074 }; // Beijing Center
@@ -75,7 +78,7 @@ export const BondsPortal: React.FC<BondsPortalProps> = ({ bonds, userId, onNudge
             } as any);
         } catch (error) {
             console.error("Failed to fetch profile:", error);
-            onAlert("Error", "Could not load user profile.");
+            onAlert(t('common.error'), t('error.profile_load_failed', 'Could not load user profile.'));
         } finally {
             setIsFetchingProfile(false);
         }
@@ -86,20 +89,20 @@ export const BondsPortal: React.FC<BondsPortalProps> = ({ bonds, userId, onNudge
             await socialService.createBond(userId, targetId);
             setIsSearchOpen(false);
             setSearchQuery('');
-            onAlert("Success", "Bond request sent successfully!");
+            onAlert(t('common.success'), t('bonds.request_sent'));
         } catch (error: any) {
             console.error("Add bond failed:", error);
-            onAlert("Error", error.message || "Failed to send bond request.");
+            onAlert(t('common.error'), error.message || t('error.request_bond_failed', "Failed to send bond request."));
         }
     };
 
     const handleRemoveBond = async (targetId: string) => {
         try {
             await socialService.removeBond(userId, targetId);
-            onAlert("Removed", "Bond connection has been removed.");
+            onAlert(t('common.remove'), t('bonds.removed_success'));
             // Ideally trigger a refresh of bonds here
         } catch (error: any) {
-            onAlert("Error", "Failed to remove bond.");
+            onAlert(t('common.error'), t('error.remove_bond_failed', "Failed to remove bond."));
         }
     };
 
@@ -125,8 +128,8 @@ export const BondsPortal: React.FC<BondsPortalProps> = ({ bonds, userId, onNudge
                         <ShieldAlert size={20} />
                     </div>
                     <div>
-                        <h3 className="font-bold text-white tracking-tight">Bond Pacts</h3>
-                        <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Shared Accountability</p>
+                        <h3 className="font-bold text-white tracking-tight">{t('bonds.pacts')}</h3>
+                        <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>{t('bonds.accountability')}</p>
                     </div>
                 </div>
 
@@ -143,8 +146,8 @@ export const BondsPortal: React.FC<BondsPortalProps> = ({ bonds, userId, onNudge
                         ))}
                     </div>
                     <div className="text-right">
-                        <div className="text-sm font-black" style={{ color: 'var(--accent)' }}>{bonds.length} Active Bonds</div>
-                        <div className="text-[10px] font-bold" style={{ color: 'var(--text-secondary)' }}>Connected for focus</div>
+                        <div className="text-sm font-black" style={{ color: 'var(--accent)' }}>{t('bonds.active_count', { count: bonds.length })}</div>
+                        <div className="text-[10px] font-bold" style={{ color: 'var(--text-secondary)' }}>{t('bonds.connected_desc')}</div>
                     </div>
                 </div>
             </div>
@@ -153,13 +156,13 @@ export const BondsPortal: React.FC<BondsPortalProps> = ({ bonds, userId, onNudge
             <div>
                 <div className="flex flex-col gap-4 mb-4">
                     <div className="flex items-center justify-between px-1">
-                        <h3 className="text-xs font-black uppercase tracking-[0.3em]" style={{ color: 'var(--text-secondary)' }}>Your Bonds</h3>
+                        <h3 className="text-xs font-black uppercase tracking-[0.3em]" style={{ color: 'var(--text-secondary)' }}>{t('bonds.your_bonds')}</h3>
                         <button
                             onClick={() => setIsSearchOpen(true)}
                             className="flex items-center gap-1.5 text-xs font-bold hover:opacity-80 transition-opacity"
                             style={{ color: 'var(--accent)' }}
                         >
-                            <UserPlus size={14} /> Link New
+                            <UserPlus size={14} /> {t('bonds.link_new')}
                         </button>
                     </div>
 
@@ -170,7 +173,7 @@ export const BondsPortal: React.FC<BondsPortalProps> = ({ bonds, userId, onNudge
                             </div>
                             <input
                                 type="text"
-                                placeholder="Filter your bonds..."
+                                placeholder={t('bonds.filter_placeholder')}
                                 value={localSearchQuery}
                                 onChange={(e) => setLocalSearchQuery(e.target.value)}
                                 className="w-full bg-white/5 border border-white/5 rounded-2xl py-2.5 pl-10 pr-4 text-xs text-white placeholder-zinc-600 outline-none focus:border-[var(--accent)]/30 transition-all"
@@ -182,7 +185,7 @@ export const BondsPortal: React.FC<BondsPortalProps> = ({ bonds, userId, onNudge
                 <div className="space-y-3">
                     {bonds.length === 0 ? (
                         <div className="p-8 text-center text-zinc-600 border border-dashed border-zinc-800 rounded-3xl font-bold uppercase text-[10px] tracking-widest">
-                            No Bonds established yet
+                            {t('bonds.no_bonds')}
                         </div>
                     ) : (
                         bonds
@@ -233,7 +236,7 @@ export const BondsPortal: React.FC<BondsPortalProps> = ({ bonds, userId, onNudge
                                                 <span className="font-bold text-white tracking-tight truncate">{otherUser.name}</span>
                                             </div>
                                             <div className="text-[10px] font-bold" style={{ color: 'var(--text-secondary)' }}>
-                                                {otherUser.city || 'Digital Space'}
+                                                {otherUser.city || t('common.digital_space')}
                                             </div>
                                             {!isAccepted && (
                                                 <div className="text-[9px] font-black uppercase tracking-widest mt-1" style={{ color: 'var(--accent)' }}>
@@ -257,25 +260,12 @@ export const BondsPortal: React.FC<BondsPortalProps> = ({ bonds, userId, onNudge
                                                     <Zap size={18} fill={nudged === otherUser.user_id ? 'currentColor' : 'none'} className={clsx(nudged === otherUser.user_id && "animate-bounce")} />
                                                 </button>
                                             )}
-                                            <div className="relative group/menu">
-                                                <button className="p-2 text-zinc-600 hover:text-white transition-colors">
-                                                    <MoreVertical size={16} />
-                                                </button>
-                                                <div className="absolute right-0 top-full mt-2 w-32 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl py-2 hidden group-hover/menu:block z-50">
-                                                    <button
-                                                        onClick={() => handleRemoveBond(otherUser.user_id)}
-                                                        className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-amber-500 hover:bg-white/5 flex items-center gap-2"
-                                                    >
-                                                        <XCircle size={12} /> Delete
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleBlock(otherUser.user_id)}
-                                                        className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-red-500 hover:bg-white/5 flex items-center gap-2"
-                                                    >
-                                                        <ShieldAlert size={12} /> Block
-                                                    </button>
-                                                </div>
-                                            </div>
+                                            <button
+                                                onClick={() => setActionUser(bond)}
+                                                className="p-3 bg-white/5 rounded-2xl text-zinc-600 hover:text-white transition-colors active:scale-90"
+                                            >
+                                                <MoreVertical size={16} />
+                                            </button>
                                         </div>
                                     </div>
                                 );
@@ -284,12 +274,64 @@ export const BondsPortal: React.FC<BondsPortalProps> = ({ bonds, userId, onNudge
                 </div>
             </div>
 
+            {/* iOS Style Action Sheet */}
+            {actionUser && (
+                <div className="fixed inset-0 z-[200] flex items-end justify-center px-6 pb-12 transition-all duration-500">
+                    <div
+                        className="absolute inset-0 bg-black/40 backdrop-blur-md animate-in fade-in duration-500"
+                        onClick={() => setActionUser(null)}
+                    />
+                    <div className="w-full max-w-[280px] bg-[#1a1a1a]/80 backdrop-blur-2xl border border-white/10 rounded-[32px] overflow-hidden shadow-[0_32px_64px_-12px_rgba(0,0,0,0.8)] animate-in slide-in-from-bottom-12 duration-700 relative z-10">
+                        <div className="pt-6 pb-2 text-center">
+                            <h3 className="text-xs font-black text-white/90 uppercase tracking-[0.2em]">{actionUser.other_user?.name}</h3>
+                        </div>
+
+                        <div className="p-3 space-y-1.5">
+                            <button
+                                onClick={() => {
+                                    handleRemoveBond(actionUser.other_user!.user_id);
+                                    setActionUser(null);
+                                }}
+                                className="w-full flex items-center gap-3 p-4 rounded-2xl bg-white/5 hover:bg-white/10 active:scale-95 transition-all group"
+                            >
+                                <div className="p-2 rounded-xl bg-amber-500/10 text-amber-500 group-hover:bg-amber-500/20 transition-colors">
+                                    <XCircle size={16} />
+                                </div>
+                                <span className="text-[11px] font-black text-white/80 uppercase tracking-widest">{t('common.remove')}</span>
+                            </button>
+
+                            <button
+                                onClick={() => {
+                                    handleBlock(actionUser.other_user!.user_id);
+                                    setActionUser(null);
+                                }}
+                                className="w-full flex items-center gap-3 p-4 rounded-2xl bg-red-500/5 hover:bg-red-500/10 active:scale-95 transition-all group"
+                            >
+                                <div className="p-2 rounded-xl bg-red-500/10 text-red-500 group-hover:bg-red-500/20 transition-colors">
+                                    <ShieldAlert size={16} />
+                                </div>
+                                <span className="text-[11px] font-black text-white/80 uppercase tracking-widest">{t('common.block')}</span>
+                            </button>
+                        </div>
+
+                        <div className="p-3 pt-0">
+                            <button
+                                onClick={() => setActionUser(null)}
+                                className="w-full py-4 rounded-2xl bg-white/5 hover:bg-white/10 text-zinc-500 font-bold text-[10px] uppercase tracking-[0.2em] transition-all active:scale-95"
+                            >
+                                {t('common.cancel')}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* User Search Modal */}
             {isSearchOpen && (
                 <div className="absolute inset-0 z-[100] flex items-end justify-center px-4 pb-8 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
                     <div className="w-full bg-zinc-900 border border-white/10 rounded-[32px] p-6 shadow-2xl animate-in slide-in-from-bottom-8 duration-300 flex flex-col max-h-[80%]">
                         <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-lg font-bold text-white tracking-tight">Form New Bond</h3>
+                            <h3 className="text-lg font-bold text-white tracking-tight">{t('bonds.form_new_title')}</h3>
                             <button onClick={() => setIsSearchOpen(false)} className="p-2 text-zinc-500 hover:text-white transition-colors">
                                 <XCircle size={24} />
                             </button>
@@ -301,7 +343,7 @@ export const BondsPortal: React.FC<BondsPortalProps> = ({ bonds, userId, onNudge
                             </div>
                             <input
                                 type="text"
-                                placeholder="Search by name or email..."
+                                placeholder={t('bonds.search_placeholder')}
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="w-full bg-black/40 border border-white/10 rounded-2xl py-3 pl-11 pr-4 text-sm text-white placeholder-zinc-500 outline-none focus:border-[var(--accent)] transition-colors"
@@ -312,15 +354,15 @@ export const BondsPortal: React.FC<BondsPortalProps> = ({ bonds, userId, onNudge
                         <div className="flex-1 overflow-y-auto hide-scrollbar space-y-3 min-h-[150px]">
                             {isSearching ? (
                                 <div className="flex items-center justify-center h-32 text-zinc-500">
-                                    <Loader2 className="animate-spin mr-2" size={20} /> Searching...
+                                    <Loader2 className="animate-spin mr-2" size={20} /> {t('common.searching')}
                                 </div>
                             ) : searchQuery.length > 0 && searchQuery.length < 2 ? (
                                 <div className="flex items-center justify-center h-32 text-zinc-600 text-xs font-bold uppercase tracking-widest text-center px-4">
-                                    Type at least 2 characters
+                                    {t('bonds.type_2_chars')}
                                 </div>
                             ) : searchResults.length === 0 && searchQuery.length >= 2 ? (
                                 <div className="flex items-center justify-center h-32 text-zinc-600 text-xs font-bold uppercase tracking-widest text-center px-4">
-                                    No users found
+                                    {t('bonds.no_users_found')}
                                 </div>
                             ) : (
                                 searchResults.map(user => (
@@ -334,7 +376,7 @@ export const BondsPortal: React.FC<BondsPortalProps> = ({ bonds, userId, onNudge
                                             </button>
                                             <div>
                                                 <div className="text-sm font-bold text-white">{user.name}</div>
-                                                <div className="text-[10px] text-zinc-500">{user.city || 'Digital World'}</div>
+                                                <div className="text-[10px] text-zinc-500">{user.city || t('common.digital_space')}</div>
                                             </div>
                                         </div>
                                         <button
@@ -342,7 +384,7 @@ export const BondsPortal: React.FC<BondsPortalProps> = ({ bonds, userId, onNudge
                                             className="px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest text-black active:scale-95 transition-transform"
                                             style={{ backgroundColor: 'var(--accent)' }}
                                         >
-                                            Add
+                                            {t('common.add')}
                                         </button>
                                     </div>
                                 ))
@@ -375,25 +417,25 @@ export const BondsPortal: React.FC<BondsPortalProps> = ({ bonds, userId, onNudge
                             </div>
 
                             <h2 className="text-2xl font-black text-white tracking-tight mb-1">{selectedUser.name}</h2>
-                            <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-6">{selectedUser.city || 'Digital Space'}</p>
+                            <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-6">{selectedUser.city || t('common.digital_space')}</p>
 
                             <div className="grid grid-cols-2 gap-4 mb-8">
                                 <div className="bg-white/5 rounded-3xl p-4 border border-white/5">
                                     <div className="text-[var(--accent)] mb-1 flex justify-center"><Zap size={16} fill="currentColor" /></div>
                                     <div className="text-lg font-black text-white leading-tight">{selectedUser.total_sparks || 0}</div>
-                                    <div className="text-[8px] font-black uppercase tracking-widest text-zinc-500">Sparks Earned</div>
+                                    <div className="text-[8px] font-black uppercase tracking-widest text-zinc-500">{t('profile.sparks_earned')}</div>
                                 </div>
                                 <div className="bg-white/5 rounded-3xl p-4 border border-white/5">
                                     <div className="text-[var(--accent)] mb-1 flex justify-center"><ShieldAlert size={16} /></div>
                                     <div className="text-lg font-black text-white leading-tight">{Math.round((selectedUser.total_focus_mins || 0) / 60)}h</div>
-                                    <div className="text-[8px] font-black uppercase tracking-widest text-zinc-500">Focus Hours</div>
+                                    <div className="text-[8px] font-black uppercase tracking-widest text-zinc-500">{t('profile.focus_hours')}</div>
                                 </div>
                             </div>
 
                             <div className="text-left bg-white/5 rounded-3xl p-5 border border-white/5">
-                                <h4 className="text-[9px] font-black uppercase tracking-widest text-zinc-500 mb-2">Manifesto</h4>
+                                <h4 className="text-[9px] font-black uppercase tracking-widest text-zinc-500 mb-2">{t('profile.manifesto')}</h4>
                                 <p className="text-sm text-zinc-300 leading-relaxed italic">
-                                    "{selectedUser.bio || 'This wanderer has not written a bio yet. Pure focus, no distractions.'}"
+                                    "{selectedUser.bio || t('profile.no_bio')}"
                                 </p>
                             </div>
                         </div>

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Play, Square, Settings, Users, Flame, ChevronLeft, MapPin, BookOpen, Clock, Zap, Maximize2, UserPlus } from 'lucide-react';
 import clsx from 'clsx';
 import { Sheet } from './components/Sheet';
@@ -19,6 +20,7 @@ import { SubscriptionSheet } from './components/SubscriptionSheet';
 import { subscriptionService } from './api';
 import { AuthPage } from './components/AuthPage';
 import { CustomModal } from './components/CustomModal';
+import { LanguageSwitcher } from './components/LanguageSwitcher';
 
 
 
@@ -40,6 +42,7 @@ type SheetType = 'subject' | 'location' | 'timer' | 'squad' | 'bonds' | 'theme' 
 
 
 export default function App() {
+  const { t } = useTranslation();
   const [isFocusing, setIsFocusing] = useState(false);
   const [timeLeft, setTimeLeft] = useState(25 * 60);
   const [maxTime, setMaxTime] = useState(25 * 60);
@@ -238,7 +241,21 @@ export default function App() {
         theme_preference: theme
       });
       if (resp) {
-        setUserProfile(prev => ({ ...prev, ...updates }));
+        // Fetch explicitly to guarantee identical DB mapping
+        const freshProfile = await userService.getProfile(userId);
+        if (freshProfile) {
+          setUserProfile({
+            name: freshProfile.name,
+            avatar: freshProfile.avatar_url || 'https://i.pravatar.cc/150?u=my-unique-id',
+            bio: freshProfile.bio || '',
+            city: freshProfile.city || '',
+            goal: freshProfile.daily_goal_mins,
+            totalFocus: freshProfile.total_focus_mins,
+            sparks: freshProfile.total_sparks,
+            trialStartAt: freshProfile.trial_start_at,
+            subscriptionEndAt: freshProfile.subscription_end_at,
+          });
+        }
       }
     } catch (err) {
       console.error('Update profile failed:', err);
@@ -247,7 +264,7 @@ export default function App() {
 
   const handleLeaveSquad = async (squadId: string) => {
     if (!userId) return;
-    showConfirm('Leave Hive', 'Are you sure you want to leave this Hive?', async () => {
+    showConfirm(t('squad.leave'), t('squad.leave_confirm', 'Are you sure you want to leave this Hive?'), async () => {
       try {
         await socialService.leaveSquad(userId, squadId);
         setSquads([]);
@@ -261,7 +278,7 @@ export default function App() {
 
   const handleDisbandSquad = async (squadId: string) => {
     if (!userId) return;
-    showConfirm('Disband Hive', 'Are you sure you want to DISBAND this Hive forever?', async () => {
+    showConfirm(t('squad.disband'), t('squad.disband_confirm', 'Are you sure you want to DISBAND this Hive forever?'), async () => {
       try {
         await socialService.disbandSquad(userId, squadId);
         setSquads([]);
@@ -297,7 +314,7 @@ export default function App() {
           subscriptionEndAt: profile.subscription_end_at
         }));
         setActiveSheet(null);
-        showAlert('Success', `You are now subscribed to Hive ${plan === 'monthly' ? 'Monthly' : 'Annual'}.`);
+        showAlert(t('common.success'), t('subscription.success_msg', { plan: plan === 'monthly' ? 'Monthly' : 'Annual' }));
       }
     } catch (err) {
       console.error('Subscription failed:', err);
@@ -322,12 +339,12 @@ export default function App() {
 
   const handleBlock = async (blockedId: string) => {
     if (!userId) return;
-    showConfirm('Block User', 'Are you sure you want to block this user? They will no longer be able to interact with you.', async () => {
+    showConfirm(t('bonds.block'), t('bonds.block_confirm', 'Are you sure you want to block this user? They will no longer be able to interact with you.'), async () => {
       try {
         await socialService.block(userId, blockedId);
         const fetchedBonds = await socialService.getBonds(userId);
         setBonds(fetchedBonds);
-        showAlert('Blocked', 'User blocked successfully.');
+        showAlert(t('bonds.block'), t('bonds.block_success', 'User blocked successfully.'));
       } catch (err) {
         console.error('Block failed:', err);
         showAlert('Error', 'Failed to block user.');
@@ -339,7 +356,7 @@ export default function App() {
     if (!userId) return;
     try {
       await socialService.createBond(userId, targetId);
-      showAlert('Success', 'Bond request sent successfully!');
+      showAlert(t('common.success'), t('bonds.request_sent'));
       // Refresh bonds
       const fetchedBonds = await socialService.getBonds(userId);
       setBonds(fetchedBonds);
@@ -472,7 +489,7 @@ export default function App() {
                 onClick={() => setActiveSheet('squad')}
                 className="text-white font-bold text-lg tracking-wide uppercase flex items-center gap-1 hover:opacity-80 active:scale-95 transition-all"
               >
-                {currentSquad} <ChevronLeft size={14} className="-rotate-90 text-zinc-600" />
+                {currentSquad === 'Global Hive' ? t('nav.global') + ' Hive' : currentSquad} <ChevronLeft size={14} className="-rotate-90 text-zinc-600" />
               </button>
               <div className="text-[10px] font-bold tracking-[0.2em] uppercase flex items-center gap-1" style={{ color: 'var(--accent)' }}>
                 <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: 'var(--accent)' }}></span>
@@ -519,7 +536,7 @@ export default function App() {
               <div className="flex items-center gap-2">
                 <Zap size={14} style={{ color: 'var(--accent)' }} />
                 <span className="text-[10px] font-black uppercase tracking-widest text-zinc-300">
-                  {getTrialDaysRemaining() === 0 ? 'Trial Expired' : `${getTrialDaysRemaining()} Days Trial Left`}
+                  {getTrialDaysRemaining() === 0 ? t('trial.expired') : t('trial.left', { count: getTrialDaysRemaining() })}
                 </span>
               </div>
               <button
@@ -527,7 +544,7 @@ export default function App() {
                 className="text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
                 style={{ color: 'var(--accent)' }}
               >
-                Subscribe
+                {t('trial.subscribe')}
               </button>
             </div>
           )}
@@ -616,7 +633,7 @@ export default function App() {
                       <div className="mt-1 text-center">
                         <div className="text-[10px] font-bold text-zinc-300">{member.name}</div>
                         <div className={clsx("text-[7px] font-black uppercase tracking-widest", isFocus ? "text-[#F5A623]" : "text-zinc-600")}>
-                          {isFocus ? member.subject : (isOffline ? 'OFF' : 'BREAK')}
+                          {isFocus ? member.subject : (isOffline ? 'OFF' : (member.subject === 'Design' ? 'BREAK' : 'BREAK')) /* Placeholder for BREAK translation if needed, but keeping for now */}
                         </div>
                       </div>
                     </div>
@@ -648,7 +665,7 @@ export default function App() {
                 className="mt-4 flex items-center gap-2 px-4 py-2 rounded-full bg-white/[0.03] border border-white/5 text-zinc-500 hover:text-[#F5A623] hover:border-[#F5A623]/30 transition-all group active:scale-95"
               >
                 <Maximize2 size={12} className="group-hover:scale-110 transition-transform" />
-                <span className="text-[10px] font-black uppercase tracking-widest">Explore Global Hive</span>
+                <span className="text-[10px] font-black uppercase tracking-widest">{t('nav.global')} Hive</span>
               </button>
             </div>
 
@@ -672,13 +689,13 @@ export default function App() {
                     {formatTime(timeLeft)}
                   </div>
                   <div className="text-xs text-zinc-500 font-bold uppercase tracking-[0.3em] mt-3 flex items-center gap-1.5 font-sans">
-                    {isFocusing ? "Deep Work" : "Ready to focus"}
+                    {isFocusing ? t('timer.deep_work') : t('timer.ready_to_focus')}
                     {!isFocusing && <Clock size={12} className="text-zinc-700" />}
                   </div>
                   {isFocusing && (
                     <div className="mt-4 px-4 py-1.5 rounded-full flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2" style={{ backgroundColor: 'rgba(var(--accent-rgb), 0.1)', border: '1px solid rgba(var(--accent-rgb), 0.2)' }}>
                       <Flame size={12} style={{ color: 'var(--accent)' }} />
-                      <span className="text-[10px] font-black tracking-widest" style={{ color: 'var(--accent)' }}>+12 Sparks</span>
+                      <span className="text-[10px] font-black tracking-widest" style={{ color: 'var(--accent)' }}>{t('profile.plus_sparks', { count: 12 })}</span>
                     </div>
 
                   )}
@@ -712,7 +729,7 @@ export default function App() {
           <Sheet
             isOpen={activeSheet === 'subject'}
             onClose={() => setActiveSheet(null)}
-            title="Select Subject"
+            title={t('sheets.select_subject')}
           >
             <SubjectPicker
               subjects={subjects}
@@ -723,7 +740,7 @@ export default function App() {
           <Sheet
             isOpen={activeSheet === 'location'}
             onClose={() => setActiveSheet(null)}
-            title="Choose Location"
+            title={t('sheets.choose_location')}
           >
             <LocationPicker onSelect={(l) => { setCurrentLocation(l); setActiveSheet(null); }} />
           </Sheet>
@@ -731,7 +748,7 @@ export default function App() {
           <Sheet
             isOpen={activeSheet === 'timer'}
             onClose={() => setActiveSheet(null)}
-            title="Focus Duration"
+            title={t('sheets.focus_duration')}
           >
             <TimerSettings current={timeLeft} onSelect={handleTimeSelect} />
           </Sheet>
@@ -739,7 +756,7 @@ export default function App() {
           <Sheet
             isOpen={activeSheet === 'squad'}
             onClose={() => setActiveSheet(null)}
-            title="Hive HQ"
+            title={t('sheets.hive_hq')}
           >
             <SquadPortal
               squads={squads}
@@ -755,7 +772,7 @@ export default function App() {
           <Sheet
             isOpen={activeSheet === 'bonds'}
             onClose={() => setActiveSheet(null)}
-            title="Digital Bonds"
+            title={t('sheets.digital_bonds')}
           >
             <BondsPortal
               bonds={bonds}
@@ -769,28 +786,35 @@ export default function App() {
           <Sheet
             isOpen={activeSheet === 'theme'}
             onClose={() => setActiveSheet(null)}
-            title="Personalize Hive"
+            title={t('nav.settings')}
           >
-            <ThemePicker current={theme} onSelect={(t) => { setTheme(t); }} />
+            <div className="space-y-8 pb-8">
+              <LanguageSwitcher />
+
+              <div className="h-px w-full bg-white/5 mx-2"></div>
+
+              <ThemePicker current={theme} onSelect={(t) => { setTheme(t); }} />
+            </div>
           </Sheet>
 
           <Sheet
             isOpen={activeSheet === 'profile'}
             onClose={() => setActiveSheet(null)}
-            title="Personal Profile"
+            title={t('sheets.personal_profile')}
           >
             <ProfilePortal
               userId={userId || ''}
               profile={userProfile}
               onUpdate={handleUpdateProfile}
               onSignOut={handleSignOut}
+              onAlert={showAlert}
             />
           </Sheet>
 
           <Sheet
             isOpen={activeSheet === 'subscription'}
             onClose={() => setActiveSheet(null)}
-            title="Hive Membership"
+            title={t('sheets.hive_membership')}
           >
             <SubscriptionSheet
               onSubscribe={handleSubscribe}
@@ -820,7 +844,7 @@ export default function App() {
                   <img src={interactionUser.avatar} alt={interactionUser.name} className="w-full h-full object-cover" />
                 </div>
                 <h3 className="text-xl font-bold text-white mb-1">{interactionUser.name}</h3>
-                <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mb-8">{interactionUser.subject || 'Relaxing'}</p>
+                <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mb-8">{interactionUser.subject || t('common.relaxing')}</p>
 
                 <div className="flex w-full flex-col gap-3">
                   <button
@@ -831,7 +855,7 @@ export default function App() {
                     className="w-full py-4 rounded-2xl bg-[var(--accent)] text-black text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all shadow-lg"
                     style={{ boxShadow: '0 8px 20px rgba(var(--accent-rgb), 0.3)' }}
                   >
-                    申请好友
+                    {t('bonds.request_bond', '申请好友')}
                   </button>
                   <button
                     onClick={() => {
@@ -840,7 +864,7 @@ export default function App() {
                     }}
                     className="w-full py-4 rounded-2xl bg-white/5 border border-white/10 text-white text-[10px] font-black uppercase tracking-widest hover:bg-white/10 active:scale-95 transition-all"
                   >
-                    轻推
+                    {t('bonds.nudge', '轻推')}
                   </button>
                 </div>
 
@@ -848,7 +872,7 @@ export default function App() {
                   onClick={() => setInteractionUser(null)}
                   className="mt-4 text-[10px] font-bold text-zinc-600 uppercase tracking-widest hover:text-zinc-400 p-2"
                 >
-                  取消
+                  {t('common.cancel')}
                 </button>
               </div>
             </div>

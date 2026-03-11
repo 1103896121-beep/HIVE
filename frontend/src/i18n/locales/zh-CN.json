@@ -1,0 +1,127 @@
+{
+    "common": {
+        "app_name": "Hive",
+        "loading": "加载中...",
+        "save": "保存",
+        "cancel": "取消",
+        "confirm": "确认",
+        "delete": "删除",
+        "success": "成功",
+        "error": "错误",
+        "admin": "管理员",
+        "member": "成员",
+        "city": "城市",
+        "bio": "简介",
+        "digital_space": "数字空间",
+        "searching": "搜索中...",
+        "add": "添加",
+        "sign_out": "退出登录",
+        "relaxing": "休息中",
+        "nudge": "提醒",
+        "block": "拉黑",
+        "remove": "移除"
+    },
+    "nav": {
+        "squad": "小组",
+        "global": "全球",
+        "bonds": "数字羁绊",
+        "settings": "设置"
+    },
+    "squad": {
+        "title": "Hive HQ",
+        "active_hive": "当前活跃 Hive",
+        "create_new": "创建新 Hive",
+        "hive_name": "Hive 名称",
+        "invite": "邀请",
+        "disband": "解散",
+        "leave": "退出",
+        "no_hive": "创建一个 Hive 开始共同专注。",
+        "leave_confirm": "您确定要退出此 Hive 吗？",
+        "disband_confirm": "您确定要永久解散此 Hive 吗？",
+        "invite_friends": "邀请好友",
+        "invite_friends_subtitle": "建立您的数字小组",
+        "no_bonds_title": "暂无已建立的羁绊",
+        "no_bonds_desc": "在邀请加入 Hive 之前，请先在“数字羁绊”标签页中建立羁绊。"
+    },
+    "bonds": {
+        "title": "数字羁绊",
+        "search_placeholder": "寻找志同道合的人...",
+        "active_bonds": "活跃羁绊",
+        "no_bonds": "建立羁绊以查看对方状态。",
+        "removed_success": "羁绊连接已移除。",
+        "pacts": "羁绊契约",
+        "accountability": "共同监督",
+        "active_count": "{{count}} 个活跃羁绊",
+        "connected_desc": "专注于连接",
+        "your_bonds": "您的羁绊",
+        "link_new": "建立新链接",
+        "filter_placeholder": "筛选您的羁绊...",
+        "form_new_title": "建立新羁绊",
+        "type_2_chars": "请输入至少 2 个字符",
+        "no_users_found": "未找到用户",
+        "active_bond_tag": "活跃羁绊"
+    },
+    "profile": {
+        "title": "个人资料",
+        "focus_mins": "专注分钟",
+        "sparks": "星火",
+        "daily_goal": "每日目标",
+        "language": "语言",
+        "select_language": "选择语言",
+        "english": "英文",
+        "simplified_chinese": "简体中文",
+        "traditional_chinese": "繁体中文",
+        "manifesto": "宣言",
+        "sparks_earned": "已获得星火",
+        "focus_hours": "专注时长",
+        "no_bio": "这位流浪者还没有写简介。纯粹专注，拒绝干扰。",
+        "your_name": "您的姓名",
+        "your_city": "您的城市",
+        "bio_placeholder": "告诉我们您的动力所在...",
+        "save_profile": "保存个人资料",
+        "edit_profile": "编辑个人资料",
+        "total_sparks_label": "累计星火",
+        "global_ranking": "全球排名：前 5%",
+        "deep_focus_label": "深度专注",
+        "hives_count": "分布在 {{count}} 个 Hive 中",
+        "completed": "已完成：{{count}}m",
+        "target": "目标：{{count}}m",
+        "visible_info": "您的个人资料对您的羁绊好友和 Hive 成员可见。让数据证明您的自律。",
+        "plus_sparks": "+{{count}} 星火"
+    },
+    "legal": {
+        "privacy_policy": "隐私政策",
+        "eula": "用户许可协议",
+        "privacy_content": "您的隐私是我们的首要任务。我们仅收集位置数据以帮助您查找当地用户，且绝不会与第三方共享。",
+        "eula_content": "使用 Hive 即表示您同意深度专注、尊重其他用户并避免滥用提醒功能。严禁未经授权使用“蜂后”权限。"
+    },
+    "subscription": {
+        "success_msg": "您现在已成功订阅 Hive {{plan}}。"
+    },
+    "timer": {
+        "deep_work": "深度工作中",
+        "ready_to_focus": "准备专注"
+    },
+    "trial": {
+        "expired": "试用已过期",
+        "left": "试用剩余 {{count}} 天",
+        "subscribe": "订阅"
+    },
+    "sheets": {
+        "select_subject": "选择专注科目",
+        "choose_location": "选择数字坐标",
+        "focus_duration": "设置专注时长",
+        "hive_hq": "Hive 指挥部",
+        "digital_bonds": "数字羁绊",
+        "personalize_hive": "个性化设置",
+        "personal_profile": "个人数据卡",
+        "hive_membership": "Hive 会员特权"
+    },
+    "validation": {
+        "empty_required_field": "此项不能为空。",
+        "too_long": "内容超过最大字符限制。",
+        "inappropriate_content": "内容包含不合规或敏感词汇，请修改。",
+        "file_too_large": "图片大小超过 5MB 限制。",
+        "invalid_file_type": "无效的图片格式。请上传 JPEG, PNG 或 WEBP。"
+    }
+}

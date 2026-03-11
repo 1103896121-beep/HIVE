@@ -33,7 +33,15 @@ class APIClient {
     }
 
     get<T>(url: string, options: RequestInit = {}): Promise<T> {
-        return this.request<T>(url, { ...options, method: 'GET' });
+        return this.request<T>(url, {
+            ...options,
+            method: 'GET',
+            headers: {
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache',
+                ...options.headers
+            }
+        });
     }
 
     post<T, B = unknown>(url: string, body: B, options: RequestInit = {}): Promise<T> {

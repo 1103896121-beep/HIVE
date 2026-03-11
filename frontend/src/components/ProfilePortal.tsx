@@ -1,5 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Camera, Edit2, Check, Award, Flame, Target, Info, ExternalLink, ShieldCheck } from 'lucide-react';
+import { validateContent, validateImage } from '../utils/validation';
 
 
 export interface UserProfile {
@@ -19,12 +21,22 @@ interface ProfilePortalProps {
     profile: UserProfile;
     onUpdate: (updates: Partial<UserProfile>) => Promise<void>;
     onSignOut: () => void;
+    onAlert: (title: string, message: string) => void;
 }
 
-export function ProfilePortal({ profile, onUpdate, onSignOut }: ProfilePortalProps) {
+export function ProfilePortal({ profile, onUpdate, onSignOut, onAlert }: ProfilePortalProps) {
+    const { t, i18n } = useTranslation();
     const [isEditing, setIsEditing] = useState(false);
     const [editForm, setEditForm] = useState(profile);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Sync form with profile when not editing
+    // This prevents stale initialization state from wiping data
+    useEffect(() => {
+        if (!isEditing) {
+            setEditForm(profile);
+        }
+    }, [profile, isEditing]);
 
     const handleAvatarClick = () => {
         fileInputRef.current?.click();
@@ -33,6 +45,12 @@ export function ProfilePortal({ profile, onUpdate, onSignOut }: ProfilePortalPro
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
+            const validation = validateImage(file);
+            if (!validation.isValid) {
+                onAlert(t('common.error'), t(validation.errorKey as any));
+                return;
+            }
+
             // 真实场景下应上传到服务器并返回 URL
             const url = URL.createObjectURL(file);
             await onUpdate({ avatar: url });
@@ -40,6 +58,15 @@ export function ProfilePortal({ profile, onUpdate, onSignOut }: ProfilePortalPro
     };
 
     const handleSave = async () => {
+        const nameCheck = validateContent(editForm.name, 'name');
+        if (!nameCheck.isValid) return onAlert(t('common.error'), t(nameCheck.errorKey as any));
+
+        const cityCheck = validateContent(editForm.city, 'city');
+        if (!cityCheck.isValid) return onAlert(t('common.error'), t(cityCheck.errorKey as any));
+
+        const bioCheck = validateContent(editForm.bio, 'bio');
+        if (!bioCheck.isValid) return onAlert(t('common.error'), t(bioCheck.errorKey as any));
+
         await onUpdate(editForm);
         setIsEditing(false);
     };
@@ -82,27 +109,27 @@ export function ProfilePortal({ profile, onUpdate, onSignOut }: ProfilePortalPro
                             className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-center text-lg font-bold text-white focus:outline-none focus:border-[var(--accent)]"
                             value={editForm.name}
                             onChange={e => setEditForm({ ...editForm, name: e.target.value })}
-                            placeholder="Your Name"
+                            placeholder={t('profile.your_name')}
                         />
                         <input
                             className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-center text-xs font-bold text-[var(--accent)] focus:outline-none focus:border-[var(--accent)] uppercase tracking-widest"
                             value={editForm.city}
                             onChange={e => setEditForm({ ...editForm, city: e.target.value })}
-                            placeholder="Your City"
+                            placeholder={t('profile.your_city')}
                         />
                         <textarea
                             className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-center text-xs text-zinc-400 focus:outline-none focus:border-[var(--accent)] resize-none"
                             rows={2}
                             value={editForm.bio}
                             onChange={e => setEditForm({ ...editForm, bio: e.target.value })}
-                            placeholder="Tell us about your drive..."
+                            placeholder={t('profile.bio_placeholder')}
                         />
                     </div>
                 ) : (
                     <div className="mt-5 text-center">
                         <h2 className="text-2xl font-black text-white tracking-tight">{profile.name}</h2>
-                        <p className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-[0.2em] mt-1">{profile.city || 'Digital Space'}</p>
-                        <p className="mt-3 text-xs text-zinc-500 italic max-w-[200px] leading-relaxed mx-auto">"{profile.bio}"</p>
+                        <p className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-[0.2em] mt-1">{profile.city || t('common.digital_space')}</p>
+                        <p className="mt-3 text-xs text-zinc-500 italic max-w-[200px] leading-relaxed mx-auto">"{profile.bio || t('profile.no_bio')}"</p>
                     </div>
                 )}
 
@@ -116,7 +143,7 @@ export function ProfilePortal({ profile, onUpdate, onSignOut }: ProfilePortalPro
                         border: isEditing ? 'none' : '1px solid rgba(var(--accent-rgb), 0.2)'
                     }}
                 >
-                    {isEditing ? <><Check size={12} strokeWidth={3} /> Save Profile</> : <><Edit2 size={12} /> Edit Profile</>}
+                    {isEditing ? <><Check size={12} strokeWidth={3} /> {t('profile.save_profile')}</> : <><Edit2 size={12} /> {t('profile.edit_profile')}</>}
                 </button>
             </div>
 
@@ -126,20 +153,20 @@ export function ProfilePortal({ profile, onUpdate, onSignOut }: ProfilePortalPro
                     style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}>
                     <div className="flex items-center gap-2 mb-3 opacity-60">
                         <Flame size={14} style={{ color: 'var(--accent)' }} />
-                        <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Total Sparks</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">{t('profile.total_sparks_label')}</span>
                     </div>
                     <div className="text-2xl font-black text-white">{profile.sparks}</div>
-                    <div className="text-[9px] text-zinc-600 font-bold uppercase mt-1">Global Ranking: Top 5%</div>
+                    <div className="text-[9px] text-zinc-600 font-bold uppercase mt-1">{t('profile.global_ranking')}</div>
                 </div>
 
                 <div className="p-5 rounded-3xl border transition-colors duration-500"
                     style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}>
                     <div className="flex items-center gap-2 mb-3 opacity-60">
                         <Award size={14} style={{ color: 'var(--accent)' }} />
-                        <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Deep Focus</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">{t('profile.deep_focus_label')}</span>
                     </div>
                     <div className="text-2xl font-black text-white">{Math.floor(profile.totalFocus / 60)}h <span className="text-sm">{profile.totalFocus % 60}m</span></div>
-                    <div className="text-[9px] text-zinc-600 font-bold uppercase mt-1">Across 12 Hives</div>
+                    <div className="text-[9px] text-zinc-600 font-bold uppercase mt-1">{t('profile.hives_count', { count: 12 })}</div>
                 </div>
             </div>
 
@@ -149,7 +176,7 @@ export function ProfilePortal({ profile, onUpdate, onSignOut }: ProfilePortalPro
                 <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-2">
                         <Target size={18} style={{ color: 'var(--accent)' }} />
-                        <span className="text-xs font-black uppercase tracking-widest text-white">Daily Focus Goal</span>
+                        <span className="text-xs font-black uppercase tracking-widest text-white">{t('profile.daily_goal')}</span>
                     </div>
                     {isEditing && (
                         <div className="text-[var(--accent)] font-bold text-sm tracking-tighter">{editForm.goal}m</div>
@@ -179,8 +206,8 @@ export function ProfilePortal({ profile, onUpdate, onSignOut }: ProfilePortalPro
                             ></div>
                         </div>
                         <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-zinc-500">
-                            <span>Completed: {profile.totalFocus}m</span>
-                            <span>Target: {profile.goal}m</span>
+                            <span>{t('profile.completed', { count: profile.totalFocus })}</span>
+                            <span>{t('profile.target', { count: profile.goal })}</span>
                         </div>
                     </div>
                 )}
@@ -189,23 +216,33 @@ export function ProfilePortal({ profile, onUpdate, onSignOut }: ProfilePortalPro
             <div className="flex items-start gap-3 p-4 rounded-2xl bg-white/[0.02] border border-white/[0.05]">
                 <Info size={14} className="text-zinc-600 mt-0.5" />
                 <p className="text-[10px] text-zinc-600 leading-relaxed italic">
-                    Your profile is visible to your Bonds and fellow Hive members. Let your statistics demonstrate your discipline.
+                    {t('profile.visible_info')}
                 </p>
             </div>
 
             {/* Legal Links for App Store */}
             <div className="mt-4 pt-6 border-t border-white/[0.05] flex flex-col gap-3">
-                <a href="/eula.html" target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-4 rounded-[24px] bg-white/[0.03] hover:bg-white/[0.05] transition-colors border border-white/[0.03]">
+                <a
+                    href={i18n.language === 'zh-CN' ? '/eula.html' : i18n.language === 'zh-TW' ? '/eula_tw.html' : '/eula_en.html'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between p-4 rounded-[24px] bg-white/[0.03] hover:bg-white/[0.05] transition-colors border border-white/[0.03]"
+                >
                     <div className="flex items-center gap-2">
                         <ShieldCheck size={14} className="text-zinc-500" />
-                        <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">User Agreement (EULA)</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">{t('legal.eula')}</span>
                     </div>
                     <ExternalLink size={12} className="text-zinc-600" />
                 </a>
-                <a href="/privacy.html" target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-4 rounded-[24px] bg-white/[0.03] hover:bg-white/[0.05] transition-colors border border-white/[0.03]">
+                <a
+                    href={i18n.language === 'zh-CN' ? '/privacy.html' : i18n.language === 'zh-TW' ? '/privacy_tw.html' : '/privacy_en.html'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between p-4 rounded-[24px] bg-white/[0.03] hover:bg-white/[0.05] transition-colors border border-white/[0.03]"
+                >
                     <div className="flex items-center gap-2">
                         <Info size={14} className="text-zinc-500" />
-                        <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Privacy Policy</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">{t('legal.privacy_policy')}</span>
                     </div>
                     <ExternalLink size={12} className="text-zinc-600" />
                 </a>
@@ -216,7 +253,7 @@ export function ProfilePortal({ profile, onUpdate, onSignOut }: ProfilePortalPro
                 onClick={onSignOut}
                 className="mt-6 w-full flex items-center justify-center gap-2 p-4 rounded-[24px] bg-red-500/10 hover:bg-red-500/20 transition-all border border-red-500/20 text-red-500 text-[10px] font-black uppercase tracking-widest"
             >
-                Sign Out
+                {t('common.sign_out')}
             </button>
         </div>
     );

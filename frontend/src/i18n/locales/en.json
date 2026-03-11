@@ -1,0 +1,128 @@
+{
+    "common": {
+        "app_name": "Hive",
+        "loading": "Loading...",
+        "save": "Save",
+        "cancel": "Cancel",
+        "confirm": "Confirm",
+        "delete": "Delete",
+        "success": "Success",
+        "error": "Error",
+        "admin": "Admin",
+        "member": "Member",
+        "city": "City",
+        "bio": "Bio",
+        "digital_space": "Digital Space",
+        "searching": "Searching...",
+        "add": "Add",
+        "sign_out": "Sign Out",
+        "relaxing": "Relaxing",
+        "nudge": "Nudge",
+        "block": "Block",
+        "remove": "Remove"
+    },
+    "nav": {
+        "squad": "Squad",
+        "global": "Global",
+        "bonds": "Digital Bonds",
+        "settings": "Settings"
+    },
+    "squad": {
+        "title": "Hive HQ",
+        "active_hive": "Your Active Hive",
+        "create_new": "Create New Hive",
+        "hive_name": "Hive Name",
+        "invite": "Invite",
+        "disband": "Disband",
+        "leave": "Leave",
+        "no_hive": "Form a Hive to start focusing together.",
+        "leave_confirm": "Are you sure you want to leave this Hive?",
+        "disband_confirm": "Are you sure you want to DISBAND this Hive forever?",
+        "invite_friends": "Invite Friends",
+        "invite_friends_subtitle": "Build your digital squad",
+        "no_bonds_title": "No established bonds",
+        "no_bonds_desc": "Form bonds in the Digital Bonds tab first before inviting to your Hive."
+    },
+    "bonds": {
+        "title": "Digital Bonds",
+        "search_placeholder": "Find fellow dwellers...",
+        "active_bonds": "Active Bonds",
+        "no_bonds": "Form bonds to see each other's status.",
+        "request_sent": "Bond request sent successfully!",
+        "removed_success": "Bond connection has been removed.",
+        "pacts": "Bond Pacts",
+        "accountability": "Shared Accountability",
+        "active_count": "{{count}} Active Bonds",
+        "connected_desc": "Connected for focus",
+        "your_bonds": "Your Bonds",
+        "link_new": "Link New",
+        "filter_placeholder": "Filter your bonds...",
+        "form_new_title": "Form New Bond",
+        "type_2_chars": "Type at least 2 characters",
+        "no_users_found": "No users found",
+        "active_bond_tag": "Active Bond"
+    },
+    "profile": {
+        "title": "Profile",
+        "focus_mins": "Focus Mins",
+        "sparks": "Sparks",
+        "daily_goal": "Daily Goal",
+        "language": "Language",
+        "select_language": "Select Language",
+        "english": "English",
+        "simplified_chinese": "Simplified Chinese",
+        "traditional_chinese": "Traditional Chinese",
+        "manifesto": "Manifesto",
+        "sparks_earned": "Sparks Earned",
+        "focus_hours": "Focus Hours",
+        "no_bio": "This wanderer has not written a bio yet. Pure focus, no distractions.",
+        "your_name": "Your Name",
+        "your_city": "Your City",
+        "bio_placeholder": "Tell us about your drive...",
+        "save_profile": "Save Profile",
+        "edit_profile": "Edit Profile",
+        "total_sparks_label": "Total Sparks",
+        "global_ranking": "Global Ranking: Top 5%",
+        "deep_focus_label": "Deep Focus",
+        "hives_count": "Across {{count}} Hives",
+        "completed": "Completed: {{count}}m",
+        "target": "Target: {{count}}m",
+        "visible_info": "Your profile is visible to your Bonds and fellow Hive members. Let your statistics demonstrate your discipline.",
+        "plus_sparks": "+{{count}} Sparks"
+    },
+    "legal": {
+        "privacy_policy": "Privacy Policy",
+        "eula": "End User License Agreement",
+        "privacy_content": "Your privacy is our priority. We only collect location data to help you find local dwellers, and it is never shared with third parties.",
+        "eula_content": "By using Hive, you agree to focus deeply, respect other dwellers, and avoid spamming nudges. Unauthorized use of 'Queen Bee' privileges is prohibited."
+    },
+    "subscription": {
+        "success_msg": "You are now subscribed to Hive {{plan}}."
+    },
+    "timer": {
+        "deep_work": "Deep Work",
+        "ready_to_focus": "Ready to focus"
+    },
+    "trial": {
+        "expired": "Trial Expired",
+        "left": "{{count}} Days Trial Left",
+        "subscribe": "Subscribe"
+    },
+    "sheets": {
+        "select_subject": "Select Subject",
+        "choose_location": "Choose Location",
+        "focus_duration": "Focus Duration",
+        "hive_hq": "Hive HQ",
+        "digital_bonds": "Digital Bonds",
+        "personalize_hive": "Personalize Hive",
+        "personal_profile": "Personal Profile",
+        "hive_membership": "Hive Membership"
+    },
+    "validation": {
+        "empty_required_field": "This field cannot be empty.",
+        "too_long": "Content exceeds the maximum character limit.",
+        "inappropriate_content": "Content contains inappropriate or reserved words. Please revise.",
+        "file_too_large": "Image size exceeds the 5MB limit.",
+        "invalid_file_type": "Invalid image format. Please upload JPEG, PNG, or WEBP."
+    }
+}
