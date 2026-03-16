@@ -1,27 +1,24 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
 from app.models.user import User, Profile
-from app.models.social import Block
-from app.schemas.user import UserCreate, ProfileUpdate
+from app.schemas.user import ProfileUpdate
+from app.repository.user_repository import UserRepository
 from uuid import UUID
 import math
-from sqlalchemy import or_, and_
 from app.core.security import verify_password, get_password_hash
+from typing import Optional, List
 
 class UserService:
     @staticmethod
-    async def get_user(db: AsyncSession, user_id: UUID):
-        result = await db.execute(select(User).where(User.id == user_id))
-        return result.scalars().first()
+    async def get_user(db: AsyncSession, user_id: UUID) -> Optional[User]:
+        return await UserRepository.get_user_by_id(db, user_id)
 
     @staticmethod
-    async def get_profile(db: AsyncSession, user_id: UUID):
-        result = await db.execute(
-            select(Profile, User.trial_start_at, User.subscription_end_at)
-            .join(User, Profile.user_id == User.id)
-            .where(Profile.user_id == user_id)
-        )
-        row = result.first()
+    async def get_profile(db: AsyncSession, user_id: UUID) -> Optional[dict]:
+        """
+        获取用户详细档案，包含试用期和订阅状态。
+        通过关联 User 表获取时间戳，以确保前端能正确展示剩余天数。
+        """
+        row = await UserRepository.get_profile_with_trial(db, user_id)
         if not row:
             return None
         
@@ -32,27 +29,38 @@ class UserService:
         return profile
 
     @staticmethod
-    async def update_profile(db: AsyncSession, user_id: UUID, profile_data: ProfileUpdate):
-        result = await db.execute(select(Profile).where(Profile.user_id == user_id))
-        db_profile = result.scalars().first()
+    async def update_profile(db: AsyncSession, user_id: UUID, profile_in: ProfileUpdate) -> Optional[dict]:
+        """
+        更新用户个人资料。仅允许修改展示性字段，
+        确保地理坐标等敏感逻辑通过 Pydantic 校验后写入。
+        """
+        db_profile = await UserRepository.get_profile(db, user_id)
         if not db_profile:
             return None
         
-        update_data = profile_data.dict(exclude_unset=True)
+        update_data = profile_in.dict(exclude_unset=True)
         for key, value in update_data.items():
             setattr(db_profile, key, value)
         
-        await db.commit()
-        await db.refresh(db_profile)
+        await UserRepository.commit(db)
+        await UserRepository.refresh(db, db_profile)
+        
+        # Attach attributes for the schema to pick up (consistent with get_profile)
+        # Re-fetch with join to get user trial data
+        row = await UserRepository.get_profile_with_trial(db, user_id)
+        if row:
+            _, trial_start, sub_end = row
+            db_profile.trial_start_at = trial_start
+            db_profile.subscription_end_at = sub_end
+            
         return db_profile
 
     @staticmethod
-    async def update_password(db: AsyncSession, user_id: UUID, current_password: str, new_password: str, confirm_password: str):
+    async def update_password(db: AsyncSession, user_id: UUID, current_password: str, new_password: str, confirm_password: str) -> tuple[bool, str]:
         if new_password != confirm_password:
             return False, "Passwords do not match"
         
-        result = await db.execute(select(User).where(User.id == user_id))
-        user = result.scalars().first()
+        user = await UserRepository.get_user_by_id(db, user_id)
         if not user:
             return False, "User not found"
         
@@ -60,83 +68,44 @@ class UserService:
             return False, "Incorrect current password"
         
         user.hashed_password = get_password_hash(new_password)
-        await db.commit()
+        await UserRepository.commit(db)
         return True, "Password updated successfully"
 
     @staticmethod
-    async def delete_account(db: AsyncSession, user_id: UUID):
-        # 1. 删除关联的 Profile (Cascade 应该处理，但手动确保安全)
-        result = await db.execute(select(Profile).where(Profile.user_id == user_id))
-        profile = result.scalars().first()
+    async def delete_account(db: AsyncSession, user_id: UUID) -> bool:
+        # 1. 删除关联的 Profile
+        profile = await UserRepository.get_profile(db, user_id)
         if profile:
-            await db.delete(profile)
+            await UserRepository.delete_item(db, profile)
         
         # 2. 删除 User
-        result = await db.execute(select(User).where(User.id == user_id))
-        user = result.scalars().first()
+        user = await UserRepository.get_user_by_id(db, user_id)
         if user:
-            await db.delete(user)
+            await UserRepository.delete_item(db, user)
         
-        await db.commit()
+        await UserRepository.commit(db)
         return True
 
     @staticmethod
-    async def increment_sparks(db: AsyncSession, user_id: UUID, sparks: int, mins: int):
-        result = await db.execute(select(Profile).where(Profile.user_id == user_id))
-        db_profile = result.scalars().first()
+    async def increment_sparks(db: AsyncSession, user_id: UUID, sparks: int, mins: int) -> Optional[Profile]:
+        db_profile = await UserRepository.get_profile(db, user_id)
         if db_profile:
             db_profile.total_sparks += sparks
             db_profile.total_focus_mins += mins
-            await db.commit()
-            await db.refresh(db_profile)
+            await UserRepository.commit(db)
+            await UserRepository.refresh(db, db_profile)
         return db_profile
 
     @staticmethod
-    async def search_users(db: AsyncSession, query: str, current_user_id: UUID, lat: float = None, lon: float = None):
+    async def search_users(db: AsyncSession, query: str, current_user_id: UUID, lat: float = None, lon: float = None) -> List[dict]:
         search_pattern = f"%{query}%"
         
-        # 1. 查找黑名单记录 (双向)
-        block_query = await db.execute(
-            select(Block.blocked_id).where(Block.user_id == current_user_id)
-        )
-        blocked_by_me = [r[0] for r in block_query.all()]
-        
-        blocker_query = await db.execute(
-            select(Block.user_id).where(Block.blocked_id == current_user_id)
-        )
-        blocked_me = [r[0] for r in blocker_query.all()]
-        
-        exclude_ids = set(blocked_by_me + blocked_me + [current_user_id])
+        # 1. 查找黑名单记录 (使用 Repository)
+        blocked_by_me, blocked_me = await UserRepository.get_block_ids(db, current_user_id)
+        exclude_ids = set(list(blocked_by_me) + list(blocked_me) + [current_user_id])
 
-        # 2. 执行搜索
-        stmt = (
-            select(
-                User.id, 
-                User.email, 
-                Profile.name, 
-                Profile.avatar_url, 
-                Profile.city, 
-                Profile.bio,
-                Profile.total_focus_mins,
-                Profile.total_sparks,
-                Profile.latitude,
-                Profile.longitude
-            )
-            .join(Profile, User.id == Profile.user_id)
-            .where(
-                and_(
-                    or_(
-                        Profile.name.ilike(search_pattern),
-                        User.email.ilike(search_pattern)
-                    ),
-                    User.id.not_in(exclude_ids)
-                )
-            )
-            .limit(50)
-        )
-        
-        result = await db.execute(stmt)
-        users = result.all()
+        # 2. 执行搜索 (使用 Repository)
+        users = await UserRepository.search_profiles(db, search_pattern, exclude_ids)
         
         # 3. 如果提供了经纬度，进行排序
         user_list = []
@@ -155,19 +124,15 @@ class UserService:
             # 计算距离 (Haversine 公式)
             dist = float('inf')
             if lat is not None and lon is not None and u.latitude is not None and u.longitude is not None:
-                # 将经纬度转换为弧度
                 phi1, phi2 = math.radians(lat), math.radians(u.latitude)
                 dphi = math.radians(u.latitude - lat)
                 dlambda = math.radians(u.longitude - lon)
                 
-                # Haversine 公式计算
                 a = math.sin(dphi / 2)**2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2)**2
                 c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
                 dist = 6371 * c # 地球平均半径 (km)
             
             user_list.append((user_data, dist))
         
-        # 按距离排序
         user_list.sort(key=lambda x: x[1])
-        
         return [x[0] for x in user_list[:20]]

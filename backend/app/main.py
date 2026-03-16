@@ -10,10 +10,20 @@ from fastapi.responses import JSONResponse
 from app.models.user import User
 from app.models.social import Squad, SquadMember, Bond, Nudge
 from app.models.focus import Subject, FocusSession
+import logging
+from logging.handlers import RotatingFileHandler
 import traceback
 import asyncio
 from datetime import datetime
 from app.core.websocket import manager
+
+# 配置标准日志系统
+logger = logging.getLogger("hive")
+logger.setLevel(logging.INFO)
+file_handler = RotatingFileHandler("hive.log", maxBytes=10*1024*1024, backupCount=5, encoding="utf-8")
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+file_handler.setFormatter(formatter)
+logger.addHandler(file_handler)
 
 # 配置限流器 (Rate Limiting)
 limiter = Limiter(key_func=get_remote_address)
@@ -32,17 +42,14 @@ async def hive_exception_handler(request: Request, exc: HiveException):
         content={"detail": exc.message, "error_code": exc.__class__.__name__},
     )
 
-# 异常记录中间件
+# 异常记录中间件 (重构为使用标准 logging)
 @app.middleware("http")
 async def log_exceptions_middleware(request: Request, call_next):
     try:
         return await call_next(request)
     except Exception as e:
-        with open("error.log", "a", encoding="utf-8") as f:
-            f.write(f"\n--- Exception at {datetime.now()} ---\n")
-            f.write(f"Path: {request.url.path}\n")
-            f.write(traceback.format_exc())
-            f.write("-" * 30 + "\n")
+        logger.error(f"Unhandled exception at {request.url.path}: {str(e)}")
+        logger.error(traceback.format_exc())
         raise e
 
 # CORS 配置

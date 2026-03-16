@@ -1,23 +1,30 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
 from app.models.focus import FocusSession, Subject
 from app.schemas.focus import FocusSessionCreate
+from app.repository.focus_repository import FocusRepository
+from app.repository.user_repository import UserRepository
 from uuid import UUID
 from datetime import datetime, timedelta
 from fastapi import HTTPException, status
-from app.models.user import User, Profile
+from typing import List, Optional
 
 class FocusService:
     @staticmethod
-    async def get_subjects(db: AsyncSession):
-        result = await db.execute(select(Subject))
-        return result.scalars().all()
+    async def get_subjects(db: AsyncSession) -> List[Subject]:
+        """
+        获取预定义的专注科目列表。
+        通过 Repository 抽象数据库查询，确保 Service 只关注科目列表的获取逻辑。
+        """
+        return await FocusRepository.get_all_subjects(db)
 
     @staticmethod
-    async def start_session(db: AsyncSession, user_id: UUID, session_in: FocusSessionCreate):
-        # 订阅校验逻辑
-        result = await db.execute(select(User).where(User.id == user_id))
-        user = result.scalars().first()
+    async def start_session(db: AsyncSession, user_id: UUID, session_in: FocusSessionCreate) -> FocusSession:
+        """
+        开启专注会话。
+        包含核心的权限校验：必须在 7 天试用期内，或拥有有效订阅。
+        这种硬性校验确保了应用的商业化闭环。
+        """
+        user = await UserRepository.get_user_by_id(db, user_id)
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
 
@@ -40,15 +47,16 @@ class FocusService:
             start_time=datetime.utcnow(),
             status="IN_PROGRESS"
         )
-        db.add(db_session)
-        await db.commit()
-        await db.refresh(db_session)
-        return db_session
+        return await FocusRepository.create_session(db, db_session)
 
     @staticmethod
-    async def end_session(db: AsyncSession, session_id: UUID, duration_mins: int):
-        result = await db.execute(select(FocusSession).where(FocusSession.id == session_id))
-        db_session = result.scalars().first()
+    async def end_session(db: AsyncSession, session_id: UUID, duration_mins: int) -> Optional[FocusSession]:
+        """
+        结束专注会话并同步进度。
+        设计上采用原子操作同步更新 Session 状态与 User Profile 中的积分(Sparks)及总时长，
+        确保存档数据的一致性。
+        """
+        db_session = await FocusRepository.get_session_by_id(db, session_id)
         if not db_session:
             return None
         
@@ -56,23 +64,16 @@ class FocusService:
         db_session.duration_mins = duration_mins
         db_session.status = "COMPLETED"
 
-        # 核心：同步更新用户的总专注时长和星火 (1分钟 = 1星火)
-        prof_result = await db.execute(select(Profile).where(Profile.user_id == db_session.user_id))
-        db_profile = prof_result.scalars().first()
+        # 核心：同步更新用户的总专注时长和星火
+        db_profile = await UserRepository.get_profile(db, db_session.user_id)
         if db_profile:
             db_profile.total_focus_mins += duration_mins
             db_profile.total_sparks += duration_mins
         
-        await db.commit()
-        await db.refresh(db_session)
+        await FocusRepository.commit(db)
+        await FocusRepository.refresh(db, db_session)
         return db_session
 
     @staticmethod
-    async def get_user_sessions(db: AsyncSession, user_id: UUID, limit: int = 10):
-        result = await db.execute(
-            select(FocusSession)
-            .where(FocusSession.user_id == user_id)
-            .order_by(FocusSession.start_time.desc())
-            .limit(limit)
-        )
-        return result.scalars().all()
+    async def get_user_sessions(db: AsyncSession, user_id: UUID, limit: int = 10) -> List[FocusSession]:
+        return await FocusRepository.get_user_sessions(db, user_id, limit)

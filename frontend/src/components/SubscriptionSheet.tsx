@@ -23,16 +23,17 @@ interface CdvReceipt {
 }
 
 interface CdvPurchaseStore {
-    register: (products: unknown[]) => void;
+    register: (products: { id: string; type: string; platform: string }[]) => void;
     when: () => {
         approved: (cb: (transaction: CdvTransaction) => void) => ReturnType<CdvPurchaseStore['when']>;
         verified: (cb: (receipt: CdvReceipt) => void) => ReturnType<CdvPurchaseStore['when']>;
         updated: (cb: () => void) => ReturnType<CdvPurchaseStore['when']>;
     };
-    initialize: (platforms: unknown[]) => void;
+    initialize: (platforms: string[]) => void;
+    restore: () => void;
     products: CdvProduct[];
-    get: (sku: string) => unknown;
-    order: (product: unknown) => void;
+    get: (sku: string) => CdvProduct | undefined;
+    order: (product: CdvProduct) => void;
 }
 
 declare global {
@@ -67,8 +68,10 @@ export function SubscriptionSheet({ userId, onSuccess, onClose, onAlert }: Subsc
     useEffect(() => {
         if (!Capacitor.isNativePlatform() || !window.CdvPurchase) {
             // Web Mock fallback
-            setTimeout(() => setProducts(productSkus), 800);
-            return;
+            const timer = setTimeout(() => {
+                setProducts(productSkus);
+            }, 800);
+            return () => clearTimeout(timer);
         }
 
         const { store, ProductType, Platform } = window.CdvPurchase;
@@ -147,7 +150,7 @@ export function SubscriptionSheet({ userId, onSuccess, onClose, onAlert }: Subsc
                             onAlert(t('common.success'), t('subscription.success_msg', { plan: mapPlan() }));
                             onClose();
                         }
-                    } catch(e) {
+                    } catch {
                         onAlert(t('common.error'), 'Failed via mock backend.');
                     } finally {
                        setIsLoading(false);
@@ -161,6 +164,24 @@ export function SubscriptionSheet({ userId, onSuccess, onClose, onAlert }: Subsc
             }
             setIsLoading(false);
         }
+    };
+
+    const handleRestore = () => {
+        if (!Capacitor.isNativePlatform() || !window.CdvPurchase) {
+            onAlert(t('common.info', 'Info'), 'Restore is only available on iOS/Android.');
+            return;
+        }
+        
+        setIsLoading(true);
+        const { store } = window.CdvPurchase;
+        store.restore();
+        
+        // CdvPurchase.store.restore() handles the UI/Logic internally or through 'verified' events
+        // we added a timeout to reset loading in case of no response
+        setTimeout(() => {
+            setIsLoading(false);
+            onAlert(t('common.info'), t('subscription.restore_success'));
+        }, 2000);
     };
 
     return (
@@ -226,11 +247,31 @@ export function SubscriptionSheet({ userId, onSuccess, onClose, onAlert }: Subsc
                 )}
             </div>
 
-            <div className="mt-4 p-4 rounded-2xl bg-[#F5A623]/5 border border-[#F5A623]/10 flex items-start gap-3">
-                <Shield size={16} className="text-[#F5A623] mt-0.5" />
-                <p className="text-[10px] text-zinc-500 leading-relaxed font-bold uppercase tracking-tight">
-                    {t('subscription.secure_note')}
-                </p>
+            <div className="mt-4 flex flex-col items-center gap-4">
+                <button
+                    onClick={handleRestore}
+                    disabled={isLoading}
+                    className="text-[10px] text-zinc-500 font-black uppercase tracking-widest hover:text-[#F5A623] transition-colors"
+                >
+                    {t('subscription.restore_purchases')}
+                </button>
+
+                <div className="p-4 rounded-2xl bg-[#F5A623]/5 border border-[#F5A623]/10 flex items-start gap-3 w-full">
+                    <Shield size={16} className="text-[#F5A623] mt-0.5" />
+                    <p className="text-[10px] text-zinc-500 leading-relaxed font-bold uppercase tracking-tight">
+                        {t('subscription.secure_note')}
+                    </p>
+                </div>
+
+                <div className="flex items-center gap-4 mt-2">
+                    <a href="/eula.html" className="text-[9px] text-zinc-600 uppercase font-black tracking-tighter hover:text-zinc-400">
+                        {t('legal.eula')}
+                    </a>
+                    <div className="w-1 h-1 bg-zinc-800 rounded-full" />
+                    <a href="/privacy.html" className="text-[9px] text-zinc-600 uppercase font-black tracking-tighter hover:text-zinc-400">
+                        {t('legal.privacy_policy')}
+                    </a>
+                </div>
             </div>
 
             {isLoading && (

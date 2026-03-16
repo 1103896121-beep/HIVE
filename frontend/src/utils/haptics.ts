@@ -31,7 +31,7 @@ export const triggerHaptic = (type: 'impact' | 'notification' | 'selection' = 'i
         win.Capacitor.Plugins.Haptics.selectionStart();
       }
       return;
-    } catch (e) {
+    } catch {
       console.warn('Native Haptics failed, falling back to Web API');
     }
   }

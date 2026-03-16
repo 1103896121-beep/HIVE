@@ -10,6 +10,7 @@ class Squad(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(50), nullable=False)
+    invite_code = Column(String(10), unique=True, index=True, nullable=True) # Added for squad invites
     created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"))
     is_private = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)

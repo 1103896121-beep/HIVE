@@ -1,26 +1,24 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
-from sqlalchemy import or_, and_
-from app.models.social import Squad, SquadMember, Bond, Nudge, Report, Block
-from app.models.user import Profile, User
-from app.models.focus import FocusSession, Subject
+from app.models.social import Squad, SquadMember, Bond, Report, Block
 from app.schemas.social import SquadCreate, ReportCreate, BlockCreate, HiveMatchTile, HiveMatchingResponse
 from datetime import datetime, timedelta
 from app.core.exceptions import LogicConflictException, PermissionDeniedException, ResourceNotFoundException
-import uuid
-import random
-import string
+from app.repository.social_repository import SocialRepository
+from app.repository.focus_repository import FocusRepository
 from uuid import UUID
+import random
+from typing import Optional, List
 
 class SocialService:
     @staticmethod
     async def _check_user_in_squad(db: AsyncSession, user_id: UUID) -> bool:
-        # Check if user is already an ACTIVE member of any squad
-        result = await db.execute(select(SquadMember).where(SquadMember.user_id == user_id, SquadMember.status == "ACTIVE"))
-        return result.scalars().first() is not None
+        return await SocialRepository.get_user_active_squad_member(db, user_id) is not None
 
     @staticmethod
-    async def create_squad(db: AsyncSession, user_id: UUID, squad_in: SquadCreate):
+    async def create_squad(db: AsyncSession, user_id: UUID, squad_in: SquadCreate) -> Squad:
+        """
+        创建战队并自动将创建者设为管理员。
+        """
         if await SocialService._check_user_in_squad(db, user_id):
             raise LogicConflictException("User is already in an active squad.")
 
@@ -29,41 +27,38 @@ class SocialService:
             is_private=squad_in.is_private,
             created_by=user_id
         )
-        db.add(db_squad)
-        await db.flush() # 获取 ID
+        await SocialRepository.create_squad(db, db_squad)
+        await db.flush()
         
-        # 自动加入创建者
         member = SquadMember(squad_id=db_squad.id, user_id=user_id, role="ADMIN", status="ACTIVE")
-        db.add(member)
+        await SocialRepository.create_squad_member(db, member)
         
-        await db.commit()
-        await db.refresh(db_squad)
+        await SocialRepository.commit(db)
+        await SocialRepository.refresh(db, db_squad)
         return db_squad
 
-
     @staticmethod
-    async def invite_to_squad(db: AsyncSession, admin_id: UUID, user_id: UUID, squad_id: UUID):
-        # Verify admin
-        admin_check = await db.execute(select(SquadMember).where(SquadMember.squad_id == squad_id, SquadMember.user_id == admin_id, SquadMember.role == "ADMIN", SquadMember.status == "ACTIVE"))
-        if not admin_check.scalars().first():
+    async def invite_to_squad(db: AsyncSession, admin_id: UUID, user_id: UUID, squad_id: UUID) -> SquadMember:
+        """
+        由战队管理员发起用户邀请。
+        """
+        admin_check = await SocialRepository.get_squad_admin(db, squad_id, admin_id)
+        if not admin_check:
             raise PermissionDeniedException("Only an active admin can invite.")
 
-        # Check existing membership
-        member_check = await db.execute(select(SquadMember).where(SquadMember.squad_id == squad_id, SquadMember.user_id == user_id))
-        existing = member_check.scalars().first()
+        existing = await SocialRepository.get_squad_member(db, squad_id, user_id)
         if existing:
             return existing
 
         member = SquadMember(squad_id=squad_id, user_id=user_id, status="PENDING_INVITE")
-        db.add(member)
-        await db.commit()
-        return member
-
+        return await SocialRepository.create_squad_member(db, member)
 
     @staticmethod
-    async def review_invitation(db: AsyncSession, user_id: UUID, squad_id: UUID, accept: bool):
-        member_check = await db.execute(select(SquadMember).where(SquadMember.squad_id == squad_id, SquadMember.user_id == user_id, SquadMember.status == "PENDING_INVITE"))
-        member = member_check.scalars().first()
+    async def review_invitation(db: AsyncSession, user_id: UUID, squad_id: UUID, accept: bool) -> Optional[SquadMember]:
+        """
+        用户处理战队邀请（接受/拒绝）。
+        """
+        member = await SocialRepository.get_pending_invitation(db, user_id, squad_id)
         if not member:
             raise ResourceNotFoundException("Invitation not found.")
 
@@ -72,218 +67,142 @@ class SocialService:
                 raise LogicConflictException("You are already in an active squad.")
             member.status = "ACTIVE"
         else:
-            db.delete(member)
+            await SocialRepository.delete_item(db, member)
         
-        await db.commit()
+        await SocialRepository.commit(db)
         return member if accept else None
 
     @staticmethod
-    async def leave_squad(db: AsyncSession, user_id: UUID, squad_id: UUID):
-        member_check = await db.execute(select(SquadMember).where(SquadMember.squad_id == squad_id, SquadMember.user_id == user_id))
-        member = member_check.scalars().first()
+    async def leave_squad(db: AsyncSession, user_id: UUID, squad_id: UUID) -> bool:
+        """
+        成员退出战队。管理员需先解散战队或移交权限。
+        """
+        member = await SocialRepository.get_squad_member(db, squad_id, user_id)
         if not member:
             raise ResourceNotFoundException("Member not found in squad.")
         
         if member.role == "ADMIN":
             raise LogicConflictException("Creator cannot leave the squad. Disband it instead.")
 
-        db.delete(member)
-        await db.commit()
+        await SocialRepository.delete_item(db, member)
+        await SocialRepository.commit(db)
         return True
 
     @staticmethod
-    async def disband_squad(db: AsyncSession, admin_id: UUID, squad_id: UUID):
-        admin_check = await db.execute(select(SquadMember).where(SquadMember.squad_id == squad_id, SquadMember.user_id == admin_id, SquadMember.role == "ADMIN", SquadMember.status == "ACTIVE"))
-        if not admin_check.scalars().first():
+    async def disband_squad(db: AsyncSession, admin_id: UUID, squad_id: UUID) -> bool:
+        """
+        解散战队，所有成员将自动移除。
+        """
+        admin_check = await SocialRepository.get_squad_admin(db, squad_id, admin_id)
+        if not admin_check:
             raise PermissionDeniedException("Only an active admin can disband the squad.")
 
-        await db.execute(SquadMember.__table__.delete().where(SquadMember.squad_id == squad_id))
-        result = await db.execute(select(Squad).where(Squad.id == squad_id))
-        squad = result.scalars().first()
+        await SocialRepository.delete_squad_members(db, squad_id)
+        squad = await SocialRepository.get_squad_by_id(db, squad_id)
         if squad:
-            db.delete(squad)
-            await db.commit()
+            await SocialRepository.delete_item(db, squad)
+            await SocialRepository.commit(db)
         return True
 
     @staticmethod
-    async def create_bond(db: AsyncSession, user_id_1: UUID, user_id_2: UUID):
-        # 1. 检查是否被拉黑 (双向)
-        block_check = await db.execute(
-            select(Block).where(
-                or_(
-                    and_(Block.user_id == user_id_1, Block.blocked_id == user_id_2),
-                    and_(Block.user_id == user_id_2, Block.blocked_id == user_id_1)
-                )
-            )
-        )
-        if block_check.scalars().first():
+    async def create_bond(db: AsyncSession, user_id_1: UUID, user_id_2: UUID) -> Bond:
+        """
+        在两名用户之间建立社交联结 (Bond)。屏蔽名单中的用户无法建立联结。
+        """
+        if await SocialRepository.get_block_bi_directional(db, user_id_1, user_id_2):
             raise ValueError("Cannot form bond due to privacy blocks.")
 
-        # 2. 排序 ID 以确保唯一性
         u1, u2 = sorted([user_id_1, user_id_2])
-        
-        # 3. 检查是否已存在
-        existing = await db.execute(select(Bond).where(Bond.user_id_1 == u1, Bond.user_id_2 == u2))
-        if existing.scalars().first():
-            return existing.scalars().first()
+        existing = await SocialRepository.get_bond(db, u1, u2)
+        if existing:
+            return existing
 
         db_bond = Bond(user_id_1=u1, user_id_2=u2, status="PENDING")
-        db.add(db_bond)
-        await db.commit()
-        await db.refresh(db_bond)
+        await SocialRepository.create_bond(db, db_bond)
+        await SocialRepository.commit(db)
+        await SocialRepository.refresh(db, db_bond)
         return db_bond
 
     @staticmethod
-    async def remove_bond(db: AsyncSession, user_id_1: UUID, user_id_2: UUID):
+    async def remove_bond(db: AsyncSession, user_id_1: UUID, user_id_2: UUID) -> bool:
+        """
+        解除现有的社交联结。
+        """
         u1, u2 = sorted([user_id_1, user_id_2])
-        result = await db.execute(select(Bond).where(Bond.user_id_1 == u1, Bond.user_id_2 == u2))
-        db_bond = result.scalars().first()
+        db_bond = await SocialRepository.get_bond(db, u1, u2)
         if db_bond:
-            await db.delete(db_bond)
-            await db.commit()
+            await SocialRepository.delete_item(db, db_bond)
+            await SocialRepository.commit(db)
             return True
         return False
 
     @staticmethod
-    async def update_bond_status(db: AsyncSession, user_id_1: UUID, user_id_2: UUID, status: str):
+    async def update_bond_status(db: AsyncSession, user_id_1: UUID, user_id_2: UUID, status: str) -> Optional[Bond]:
+        """
+        更新联结状态（如接受/拒绝）。
+        """
         u1, u2 = sorted([user_id_1, user_id_2])
-        result = await db.execute(select(Bond).where(Bond.user_id_1 == u1, Bond.user_id_2 == u2))
-        db_bond = result.scalars().first()
+        db_bond = await SocialRepository.get_bond(db, u1, u2)
         if db_bond:
             db_bond.status = status
-            await db.commit()
-            await db.refresh(db_bond)
+            await SocialRepository.commit(db)
+            await SocialRepository.refresh(db, db_bond)
         return db_bond
 
     @staticmethod
-    async def get_user_squads(db: AsyncSession, user_id: UUID):
-        # 查找用户加入的所有小队
-        result = await db.execute(
-            select(Squad)
-            .join(SquadMember)
-            .where(SquadMember.user_id == user_id)
-        )
-        return result.scalars().all()
+    async def get_user_squads(db: AsyncSession, user_id: UUID) -> List[Squad]:
+        return await SocialRepository.get_user_squads(db, user_id)
 
     @staticmethod
-    async def get_user_bonds(db: AsyncSession, user_id: UUID):
-        # 查找与该用户相关的所有羁绊，并关联对方用户的 Profile
-        # 我们需要分别处理 user_id 在 user_id_1 和 user_id_2 的情况
-        
-        from app.models.user import Profile
+    async def get_user_bonds(db: AsyncSession, user_id: UUID) -> List[dict]:
+        res1 = await SocialRepository.get_bonds_as_user1(db, user_id)
+        bonds1 = [{
+            "user_id_1": b.user_id_1, "user_id_2": b.user_id_2,
+            "status": b.status, "created_at": b.created_at, "other_user": p
+        } for b, p in res1]
 
-        # 1. 作为 user_id_1 时，关联 user_id_2 的 Profile
-        stmt1 = (
-            select(Bond, Profile)
-            .join(Profile, Bond.user_id_2 == Profile.user_id)
-            .where(Bond.user_id_1 == user_id)
-        )
-        result1 = await db.execute(stmt1)
-        bonds1 = []
-        for bond, profile in result1.all():
-            bond_data = {
-                "user_id_1": bond.user_id_1,
-                "user_id_2": bond.user_id_2,
-                "status": bond.status,
-                "created_at": bond.created_at,
-                "other_user": profile
-            }
-            bonds1.append(bond_data)
-
-        # 2. 作为 user_id_2 时，关联 user_id_1 的 Profile
-        stmt2 = (
-            select(Bond, Profile)
-            .join(Profile, Bond.user_id_1 == Profile.user_id)
-            .where(Bond.user_id_2 == user_id)
-        )
-        result2 = await db.execute(stmt2)
-        bonds2 = []
-        for bond, profile in result2.all():
-            bond_data = {
-                "user_id_1": bond.user_id_1,
-                "user_id_2": bond.user_id_2,
-                "status": bond.status,
-                "created_at": bond.created_at,
-                "other_user": profile
-            }
-            bonds2.append(bond_data)
+        res2 = await SocialRepository.get_bonds_as_user2(db, user_id)
+        bonds2 = [{
+            "user_id_1": b.user_id_1, "user_id_2": b.user_id_2,
+            "status": b.status, "created_at": b.created_at, "other_user": p
+        } for b, p in res2]
 
         return bonds1 + bonds2
 
     @staticmethod
-    async def create_report(db: AsyncSession, user_id: UUID, report_in: ReportCreate):
-        db_report = Report(
-            reporter_id=user_id,
-            target_id=report_in.target_id,
-            target_type=report_in.target_type,
-            reason=report_in.reason
-        )
-        db.add(db_report)
-        await db.commit()
-        await db.refresh(db_report)
+    async def create_report(db: AsyncSession, user_id: UUID, report_in: ReportCreate) -> Report:
+        """
+        创建用户举报。
+        """
+        db_report = Report(reporter_id=user_id, target_id=report_in.target_id, target_type=report_in.target_type, reason=report_in.reason)
+        await SocialRepository.create_report(db, db_report)
+        await SocialRepository.commit(db)
+        await SocialRepository.refresh(db, db_report)
         return db_report
 
     @staticmethod
-    async def block_user(db: AsyncSession, user_id: UUID, block_in: BlockCreate):
-        db_block = Block(
-            user_id=user_id,
-            blocked_id=block_in.blocked_id
-        )
-        db.add(db_block)
-        
-        # 联动：拉黑时自动断开羁绊关系
+    async def block_user(db: AsyncSession, user_id: UUID, block_in: BlockCreate) -> Block:
+        """
+        拉黑用户并自动接触已存在的 Bond。
+        """
+        db_block = Block(user_id=user_id, blocked_id=block_in.blocked_id)
+        await SocialRepository.create_block(db, db_block)
         await SocialService.remove_bond(db, user_id, block_in.blocked_id)
-        
-        await db.commit()
-        await db.refresh(db_block)
+        await SocialRepository.commit(db)
+        await SocialRepository.refresh(db, db_block)
         return db_block
 
     @staticmethod
     async def get_hive_matching(db: AsyncSession, user_id: UUID) -> HiveMatchingResponse:
-        # 1. 获取用户所在的小队 ID
-        squad_result = await db.execute(
-            select(SquadMember.squad_id).where(SquadMember.user_id == user_id, SquadMember.status == "ACTIVE")
-        )
-        squad_id = squad_result.scalars().first()
-
-        # 2. 确定席位逻辑 (搭子 + 队友 + 同城/同路人)
-        # 获取队友
-        squad_members = []
-        if squad_id:
-            squad_stmt = (
-                select(Profile, User.id)
-                .join(User, Profile.user_id == User.id)
-                .join(SquadMember, User.id == SquadMember.user_id)
-                .where(SquadMember.squad_id == squad_id, User.id != user_id, SquadMember.status == "ACTIVE")
-            )
-            # 在生产环境下，由于是队友，通常可以看到，除非用户极度隐私
-            s_res = await db.execute(squad_stmt)
-            squad_members = s_res.all()
-
-        # 获取已接受的羁绊
-        bonds_stmt = (
-            select(Profile, User.id)
-            .join(User, Profile.user_id == User.id)
-            .join(Bond, or_(
-                and_(Bond.user_id_1 == user_id, Bond.user_id_2 == User.id),
-                and_(Bond.user_id_2 == user_id, Bond.user_id_1 == User.id)
-            ))
-            .where(Bond.status == "ACCEPTED")
-        )
-        b_res = await db.execute(bonds_stmt)
-        bonds_members = b_res.all()
-
-        # 排除已拉黑或被拉黑的用户
-        block_query = await db.execute(select(Block.blocked_id).where(Block.user_id == user_id))
-        blocked_by_me = [r[0] for r in block_query.all()]
-        blocker_query = await db.execute(select(Block.user_id).where(Block.blocked_id == user_id))
-        blocked_me = [r[0] for r in blocker_query.all()]
-        exclude_ids = set(blocked_by_me + blocked_me + [user_id])
-
-        # 获取活跃用户 (最近 30 分钟)
+        """
+        核心 Hive 匹配算法。优先级：战队 -> 好友 -> 活跃用户。
+        """
+        squad_id = await SocialRepository.get_squad_id_for_user(db, user_id)
+        squad_members = await SocialRepository.get_squad_members_profiles(db, squad_id, user_id) if squad_id else []
+        bonds_members = await SocialRepository.get_accepted_bonds_profiles(db, user_id)
+        blocked_by_me, blocked_me = await SocialRepository.get_block_relations(db, user_id)
+        exclude_ids = set(list(blocked_by_me) + list(blocked_me) + [user_id])
         active_cutoff = datetime.utcnow() - timedelta(minutes=30)
-        
-        # 结果集字典，用于去重
         tiles_dict = {}
 
         async def add_to_tiles(profiles_with_ids, is_squad=False, is_bond=False):
@@ -291,60 +210,29 @@ class SocialService:
                 if uid in exclude_ids or uid in tiles_dict:
                     continue
                 
-                # 获取该用户的最新专注状态
-                session_stmt = (
-                    select(FocusSession, Subject.name)
-                    .join(Subject, FocusSession.subject_id == Subject.id)
-                    .where(FocusSession.user_id == uid)
-                    .order_by(FocusSession.start_time.desc())
-                    .limit(1)
-                )
-                session_res = await db.execute(session_stmt)
-                session_data = session_res.first()
-                
-                status = "offline"
-                subject_name = None
-                if session_data:
-                    session, sub_name = session_data
+                sessions = await FocusRepository.get_user_sessions(db, uid, limit=1)
+                status, subject_name = "offline", None
+                if sessions:
+                    session = sessions[0]
                     if session.end_time is None:
                         status = "focus"
-                        subject_name = sub_name
+                        subjects = await FocusRepository.get_all_subjects(db)
+                        subject = next((s for s in subjects if s.id == session.subject_id), None)
+                        subject_name = subject.name if subject else None
                     elif session.end_time > active_cutoff:
                         status = "break"
                 
                 tiles_dict[uid] = HiveMatchTile(
-                    user_id=uid,
-                    name=profile.name,
-                    avatar_url=profile.avatar_url,
-                    status=status,
-                    subject=subject_name,
-                    is_bond=is_bond,
-                    is_squad=is_squad,
+                    user_id=uid, name=profile.name, avatar_url=profile.avatar_url,
+                    status=status, subject=subject_name, is_bond=is_bond, is_squad=is_squad,
                     last_active=profile.updated_at or datetime.utcnow()
                 )
 
-        # 按优先级添加
         await add_to_tiles(squad_members, is_squad=True)
         await add_to_tiles(bonds_members, is_bond=True)
 
-        # 补齐 ambient 用户 (模拟同数展示库，实际可以随机拉取一些最近活跃的其他用户)
         if len(tiles_dict) < 9:
-            ambient_stmt = (
-                select(Profile, User.id)
-                .join(User, Profile.user_id == User.id)
-                .where(
-                    and_(
-                        User.id.not_in(exclude_ids | set(tiles_dict.keys())),
-                        Profile.show_location == True # 仅展示愿意公开位置/状态的用户作为 Ambient
-                    )
-                )
-                .order_by(Profile.updated_at.desc())
-                .limit(9 - len(tiles_dict))
-            )
-            a_res = await db.execute(ambient_stmt)
-            await add_to_tiles(a_res.all())
+            a_res_all = await SocialRepository.get_nearby_profiles(db, exclude_ids | set(tiles_dict.keys()), 9 - len(tiles_dict))
+            await add_to_tiles(a_res_all)
 
-        return HiveMatchingResponse(
-            tiles=list(tiles_dict.values()),
-            ambient_count=random.randint(50, 500) # Mock 附近总人数
-        )
+        return HiveMatchingResponse(tiles=list(tiles_dict.values()), ambient_count=random.randint(50, 500))

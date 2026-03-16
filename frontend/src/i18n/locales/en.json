@@ -125,7 +125,9 @@
         "annual_desc": "Save 40% annually",
         "lifetime_desc": "One-time. Pure peace.",
         "badge_popular": "Popular",
-        "secure_note": "Safe & Secure: Managed by App Store. Data remains perfectly synced. Cancel anytime."
+        "secure_note": "Safe & Secure: Managed by App Store. Data remains perfectly synced. Cancel anytime.",
+        "restore_purchases": "Restore Purchases",
+        "restore_success": "Purchases restored successfully!"
     },
     "timer": {
         "deep_work": "Deep Work",
@@ -152,7 +154,11 @@
         "digital_bonds": "Digital Bonds",
         "personalize_hive": "Personalize Hive",
         "personal_profile": "Personal Profile",
-        "hive_membership": "Hive Membership"
+        "hive_membership": "Hive Membership",
+        "restore_purchases": "Restore Purchases",
+        "restoring": "Restoring Purchases...",
+        "restore_success": "Purchases restored successfully!",
+        "restore_failed": "Failed to restore purchases."
     },
     "validation": {
         "empty_required_field": "This field cannot be empty.",

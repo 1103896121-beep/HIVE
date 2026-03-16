@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Play, Square, X, Settings, Flame, ChevronLeft, MapPin, BookOpen, Clock, Zap, Maximize2 } from 'lucide-react';
 import clsx from 'clsx';
@@ -14,14 +14,22 @@ import { ProfilePortal } from './components/ProfilePortal';
 import type { UserProfile } from './components/ProfilePortal';
 import { GlobalMap } from './components/GlobalMap';
 import { HiveGrid } from './components/HiveGrid';
-import { userService, focusService, socialService } from './api';
-import type { Subject, Squad, BondEnriched, HiveMatchTile } from './api/types';
+import { userService, socialService } from './api';
+import type { HiveMatchTile } from './api/types';
 import { useHiveSocket } from './hooks/useHiveSocket';
 import { SubscriptionSheet } from './components/SubscriptionSheet';
-
 import { AuthPage } from './components/AuthPage';
 import { CustomModal } from './components/CustomModal';
 import { LanguageSwitcher } from './components/LanguageSwitcher';
+import { useAppInit } from './hooks/useAppInit';
+import { useTimer } from './hooks/useTimer';
+
+interface InteractionUser {
+  user_id: string;
+  name: string;
+  avatar_url?: string;
+  subject?: string;
+}
 
 
 
@@ -31,231 +39,48 @@ type SheetType = 'subject' | 'location' | 'timer' | 'squad' | 'bonds' | 'theme' 
 
 export default function App() {
   const { t } = useTranslation();
-  const [isFocusing, setIsFocusing] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(25 * 60);
-  const [maxTime, setMaxTime] = useState(25 * 60);
+  const isScreenshotMode = useMemo(() => new URLSearchParams(window.location.search).get('screenshot') === 'true', []);
 
-  // 状态控制
-  const [viewMode, setViewMode] = useState<'squad' | 'global'>('squad');
+  const {
+    userId, isAuthenticated, subjects, squads, bonds, hiveTiles, ambientCount, userProfile, theme, currentSquad,
+    setTheme, setCurrentSquad, setUserProfile, setSquads, setBonds, setHiveTiles, setAmbientCount, handleSignOut, handleAuthSuccess
+  } = useAppInit();
+
   const [currentSubject, setCurrentSubject] = useState('Coding');
   const [currentLocation, setCurrentLocation] = useState('Global');
-  const [currentSquad, setCurrentSquad] = useState('Global Hive');
-
-  // UI 控制
   const [activeSheet, setActiveSheet] = useState<SheetType>(null);
-  const [theme, setTheme] = useState<Theme>('classic');
+  const [viewMode, setViewMode] = useState<'squad' | 'global'>('squad');
   const [lastNudge, setLastNudge] = useState<string | null>(null);
-
-  // 用户与会话状态
-  const [userId, setUserId] = useState<string | null>(localStorage.getItem('hive_user_id'));
-  const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('hive_token'));
-
-  // TEMPORARY: Expose userId for backend syncing
-  useEffect(() => {
-    if (userId) {
-      console.log(`ACTIVE_HIVE_USER_ID: ${userId}`);
-    }
-  }, [userId]);
-  const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [squads, setSquads] = useState<Squad[]>([]);
-  const [bonds, setBonds] = useState<BondEnriched[]>([]);
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
-  interface InteractionUser {
-    user_id: string;
-    name: string;
-    avatar_url?: string;
-    subject?: string;
-  }
-
   const [interactionUser, setInteractionUser] = useState<InteractionUser | null>(null);
-  const [hiveTiles, setHiveTiles] = useState<HiveMatchTile[]>([]);
-  const [ambientCount, setAmbientCount] = useState(24302);
 
-  // 用户个人资料 - 初始状态调整为更中性的空状态，等待 API 加载
-  const [userProfile, setUserProfile] = useState<UserProfile>({
-    name: '...',
-    avatar: 'https://i.pravatar.cc/150?u=my-unique-id',
-    bio: 'Focusing on the moment... 🐝',
-    city: '...',
-    totalFocus: 0,
-    sparks: 0,
-    trialStartAt: new Date().toISOString(),
-    showLocation: true,
-  });
-
-  // 商业化逻辑：判定试用与订阅状态
-  const trialStatus = useMemo(() => {
-    if (!userProfile.trialStartAt) return { isExpired: false, daysLeft: 7, isPremium: false };
-    
-    // 检查订阅是否有效（若已过期则回退到试用判定）
-    const now = new Date();
-    if (userProfile.subscriptionEndAt && new Date(userProfile.subscriptionEndAt) > now) {
-      return { isExpired: false, isPremium: true, daysLeft: 0 };
-    }
-
-    const start = new Date(userProfile.trialStartAt).getTime();
-    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
-    const elapsed = Date.now() - start;
-    const daysLeft = Math.max(0, Math.ceil((sevenDaysMs - elapsed) / (1000 * 60 * 60 * 24)));
-    
-    return {
-      isExpired: elapsed > sevenDaysMs,
-      daysLeft,
-      isPremium: false
-    };
-  }, [userProfile.trialStartAt, userProfile.subscriptionEndAt]);
-
-  // Modal State
   const [modalConfig, setModalConfig] = useState<{
-    isOpen: boolean;
-    title: string;
-    message: string;
-    type: 'alert' | 'confirm';
-    onConfirm: () => void;
-  }>({
-    isOpen: false,
-    title: '',
-    message: '',
-    type: 'alert',
-    onConfirm: () => { },
-  });
+    isOpen: boolean; title: string; message: string; type: 'alert' | 'confirm'; onConfirm: () => void;
+  }>({ isOpen: false, title: '', message: '', type: 'alert', onConfirm: () => { } });
 
-  const showAlert = (title: string, message: string) => {
+  const showAlert = useCallback((title: string, message: string) => {
     setModalConfig({
-      isOpen: true,
-      title,
-      message,
-      type: 'alert',
+      isOpen: true, title, message, type: 'alert',
       onConfirm: () => setModalConfig(prev => ({ ...prev, isOpen: false })),
     });
-  };
+  }, []);
 
-  const showConfirm = (title: string, message: string, onConfirm: () => void) => {
+  const showConfirm = useCallback((title: string, message: string, onConfirm: () => void) => {
     setModalConfig({
-      isOpen: true,
-      title,
-      message,
-      type: 'confirm',
-      onConfirm: () => {
-        onConfirm();
-        setModalConfig(prev => ({ ...prev, isOpen: false }));
-      },
+      isOpen: true, title, message, type: 'confirm',
+      onConfirm: () => { onConfirm(); setModalConfig(prev => ({ ...prev, isOpen: false })); },
     });
-  };
+  }, []);
 
-  // Calculate a dynamic count of ambient users - In real app, this should fetch from backend geo-stats
-  const dynamicAmbientCount = useMemo(() => {
-    // NOTE: For demo, we keep the consistent hash, but in production this should be a real-time API value
-    if (currentLocation === 'Global') return ambientCount || 24302; 
-
-    let hash = 0;
-    for (let i = 0; i < currentLocation.length; i++) {
-      hash = ((hash << 5) - hash) + currentLocation.charCodeAt(i);
-      hash |= 0;
-    }
-    // Base count on the hash but fallback to ambientCount if available
-    return (Math.floor(Math.abs(hash) % 150)) + (ambientCount % 100);
-  }, [currentLocation, ambientCount]);
-
-  // 初始化加载
-  useEffect(() => {
-    if (!isAuthenticated || !userId) return;
-
-    const initData = async () => {
-      try {
-        // 加载科目
-        const fetchedSubjects = await focusService.getSubjects();
-        setSubjects(fetchedSubjects);
-
-        // 加载个人资料
-        const profile = await userService.getProfile(userId);
-        if (profile) {
-          setUserProfile({
-            name: profile.name,
-            avatar: profile.avatar_url || 'https://i.pravatar.cc/150?u=my-unique-id',
-            bio: profile.bio || '',
-            city: profile.city || '',
-            totalFocus: profile.total_focus_mins,
-            sparks: profile.total_sparks,
-            trialStartAt: profile.trial_start_at,
-            subscriptionEndAt: profile.subscription_end_at,
-            latitude: profile.latitude,
-            longitude: profile.longitude,
-            showLocation: profile.show_location,
-          });
-          setTheme(profile.theme_preference as Theme);
-        }
-
-        // 加载社交数据
-        const [fetchedSquads, fetchedBonds] = await Promise.all([
-          socialService.getSquads(userId),
-          socialService.getBonds(userId)
-        ]);
-        setSquads(fetchedSquads);
-        setBonds(fetchedBonds);
-
-        if (fetchedSquads.length > 0) {
-          setCurrentSquad(fetchedSquads[0].name);
-        } else {
-          setCurrentSquad('Global Hive');
-        }
-
-        // 加载动态网格
-        const matchData = await socialService.getHiveMatching(userId);
-        setHiveTiles(matchData.tiles);
-        setAmbientCount(matchData.ambient_count);
-      } catch (err: unknown) {
-        console.error('Failed to init data:', err);
-        if ((err as Error).message.includes('401')) {
-          handleSignOut();
-        }
-      }
-    };
-    initData();
-  }, [userId, isAuthenticated]);
-
-
-  // 同步主题与语言到 DOM
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-  }, [theme]);
-
-  const { i18n } = useTranslation();
-  useEffect(() => {
-    document.documentElement.lang = i18n.language || 'en';
-  }, [i18n.language]);
-
-
-  // 格式化时间
-  const formatTime = (seconds: number) => {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-  };
-
-  // 模拟倒计时 - 改为基于目标结束时间戳的精确计算，防止 iOS 后台进程挂起导致的偏差
-  const [targetEndTime, setTargetEndTime] = useState<number | null>(null);
-
-  useEffect(() => {
-    let timer: ReturnType<typeof setInterval>;
-    if (isFocusing && targetEndTime) {
-      timer = setInterval(() => {
-        const now = Date.now();
-        const diff = Math.max(0, Math.floor((targetEndTime - now) / 1000));
-        setTimeLeft(diff);
-        
-        if (diff === 0) {
-          setIsFocusing(false);
-          setTargetEndTime(null);
-        }
-      }, 1000);
-    }
-    return () => clearInterval(timer);
-  }, [isFocusing, targetEndTime]);
+  const {
+    isFocusing, timeLeft, maxTime, activeSessionId, toggleFocus, handleEndFocus, handleTimeSelect
+  } = useTimer({
+    userId, subjects, currentSubject, userProfile, setUserProfile, setHiveTiles,
+    onOpenSubscription: () => setActiveSheet('subscription'),
+    showAlert
+  });
 
   const { messages, sendNudge } = useHiveSocket(userId || '');
 
-  // 监听 WebSocket 消息处理“轻推”视觉反馈
   useEffect(() => {
     if (!userId) return;
     const latest = messages[messages.length - 1];
@@ -266,68 +91,93 @@ export default function App() {
     }
   }, [messages, userId]);
 
-  // 处理资料更新
+  useEffect(() => {
+    const handleOpenSub = () => setActiveSheet('subscription');
+    window.addEventListener('open-subscription', handleOpenSub);
+    return () => window.removeEventListener('open-subscription', handleOpenSub);
+  }, []);
+
+  const trialStatus = useMemo(() => {
+    if (!userProfile.trialStartAt) return { isExpired: false, daysLeft: 7, isPremium: false };
+    const now = new Date();
+    if (userProfile.subscriptionEndAt && new Date(userProfile.subscriptionEndAt) > now) {
+      return { isExpired: false, isPremium: true, daysLeft: 0 };
+    }
+    const start = new Date(userProfile.trialStartAt).getTime();
+    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+    const elapsed = Date.now() - start;
+    return { isExpired: elapsed > sevenDaysMs, daysLeft: Math.max(0, Math.ceil((sevenDaysMs - elapsed) / (1000 * 60 * 60 * 24))), isPremium: false };
+  }, [userProfile.trialStartAt, userProfile.subscriptionEndAt]);
+
+  const dynamicAmbientCount = useMemo(() => {
+    if (currentLocation === 'Global') return ambientCount || 24302; 
+    let hash = 0;
+    for (let i = 0; i < currentLocation.length; i++) {
+        hash = ((hash << 5) - hash) + currentLocation.charCodeAt(i);
+        hash |= 0;
+    }
+    return (Math.floor(Math.abs(hash) % 150)) + (ambientCount % 100);
+  }, [currentLocation, ambientCount]);
+
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
   const handleUpdateProfile = async (updates: Partial<UserProfile>) => {
     if (!userId) return;
     try {
-      const resp = await userService.updateProfile(userId, {
-        name: updates.name ?? userProfile.name,
-        bio: updates.bio ?? userProfile.bio,
-        city: updates.city ?? userProfile.city,
-        avatar_url: updates.avatar ?? userProfile.avatar,
+      await userService.updateProfile(userId, {
+        ...updates,
+        avatar_url: updates.avatar,
         theme_preference: theme,
-        latitude: updates.latitude ?? userProfile.latitude,
-        longitude: updates.longitude ?? userProfile.longitude,
-        show_location: updates.showLocation !== undefined ? updates.showLocation : userProfile.showLocation,
-      });
-      if (resp) {
-        // Fetch explicitly to guarantee identical DB mapping
-        const freshProfile = await userService.getProfile(userId);
-        if (freshProfile) {
-          setUserProfile({
-            name: freshProfile.name,
-            avatar: freshProfile.avatar_url || 'https://i.pravatar.cc/150?u=my-unique-id',
-            bio: freshProfile.bio || '',
-            city: freshProfile.city || '',
-            totalFocus: freshProfile.total_focus_mins,
-            sparks: freshProfile.total_sparks,
-            trialStartAt: freshProfile.trial_start_at,
-            subscriptionEndAt: freshProfile.subscription_end_at,
-            latitude: freshProfile.latitude,
-            longitude: freshProfile.longitude,
-            showLocation: freshProfile.show_location,
-          });
-        }
+      } as any);
+      const freshProfile = await userService.getProfile(userId);
+      if (freshProfile) {
+        setUserProfile({
+          name: freshProfile.name,
+          avatar: freshProfile.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + userId,
+          bio: freshProfile.bio || '',
+          city: freshProfile.city || '',
+          totalFocus: freshProfile.total_focus_mins,
+          sparks: freshProfile.total_sparks,
+          trialStartAt: freshProfile.trial_start_at,
+          subscriptionEndAt: freshProfile.subscription_end_at,
+          latitude: freshProfile.latitude,
+          longitude: freshProfile.longitude,
+          showLocation: freshProfile.show_location,
+        });
       }
-    } catch (err) {
-      console.error('Update profile failed:', err);
-    }
+    } catch (err) { console.error('Update profile failed:', err); }
   };
 
   const handleLeaveSquad = async (squadId: string) => {
     if (!userId) return;
-    showConfirm(t('squad.leave'), t('squad.leave_confirm', 'Are you sure you want to leave this Hive?'), async () => {
+    showConfirm(t('squad.leave'), t('squad.leave_confirm'), async () => {
       try {
         await socialService.leaveSquad(userId, squadId);
         setSquads([]);
         setCurrentSquad('Global Hive');
         setActiveSheet(null);
-      } catch (err: unknown) {
-        showAlert('Error', (err as Error).message || 'Failed to leave squad.');
+      } catch (err: unknown) { 
+        const msg = err instanceof Error ? err.message : 'Failed to leave squad.';
+        showAlert('Error', msg); 
       }
     });
   };
 
   const handleDisbandSquad = async (squadId: string) => {
     if (!userId) return;
-    showConfirm(t('squad.disband'), t('squad.disband_confirm', 'Are you sure you want to DISBAND this Hive forever?'), async () => {
+    showConfirm(t('squad.disband'), t('squad.disband_confirm'), async () => {
       try {
         await socialService.disbandSquad(userId, squadId);
         setSquads([]);
         setCurrentSquad('Global Hive');
         setActiveSheet(null);
-      } catch (err: unknown) {
-        showAlert('Error', (err as Error).message || 'Failed to disband squad.');
+      } catch (err: unknown) { 
+        const msg = err instanceof Error ? err.message : 'Failed to disband squad.';
+        showAlert('Error', msg); 
       }
     });
   };
@@ -339,36 +189,21 @@ export default function App() {
       setSquads([squad]);
       setCurrentSquad(squad.name);
       setActiveSheet(null);
-    } catch (err: unknown) {
-      showAlert('Error', (err as Error).message || 'Create squad failed.');
+    } catch (err: unknown) { 
+      const msg = err instanceof Error ? err.message : 'Create squad failed.';
+      showAlert('Error', msg); 
     }
   };
-
-  const getTrialDaysRemaining = () => {
-    if (userProfile.subscriptionEndAt && new Date(userProfile.subscriptionEndAt) > new Date()) {
-      return Infinity;
-    }
-    const start = new Date(userProfile.trialStartAt);
-    const end = new Date(start.getTime() + 7 * 24 * 60 * 60 * 1000);
-    const diff = end.getTime() - new Date().getTime();
-    return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
-  };
-
-
-
 
   const handleBlock = async (blockedId: string) => {
     if (!userId) return;
-    showConfirm(t('bonds.block'), t('bonds.block_confirm', 'Are you sure you want to block this user? They will no longer be able to interact with you.'), async () => {
+    showConfirm(t('bonds.block'), t('bonds.block_confirm'), async () => {
       try {
         await socialService.block(userId, blockedId);
         const fetchedBonds = await socialService.getBonds(userId);
         setBonds(fetchedBonds);
-        showAlert(t('bonds.block'), t('bonds.block_success', 'User blocked successfully.'));
-      } catch (err) {
-        console.error('Block failed:', err);
-        showAlert('Error', 'Failed to block user.');
-      }
+        showAlert(t('bonds.block'), t('bonds.block_success'));
+      } catch (err) { showAlert('Error', 'Failed to block user.'); }
     });
   };
 
@@ -377,14 +212,11 @@ export default function App() {
     try {
       await socialService.createBond(userId, targetId);
       showAlert(t('common.success'), t('bonds.request_sent'));
-      // Refresh bonds
       const fetchedBonds = await socialService.getBonds(userId);
       setBonds(fetchedBonds);
-    } catch (err: unknown) {
-      console.error('Add bond failed:', err);
-      // Ensure we display a string and try to get the most human-readable message
-      const errorMsg = (err as Error).message || (typeof err === 'string' ? err : 'Failed to send bond request.');
-      showAlert('Error', errorMsg);
+    } catch (err: unknown) { 
+      const msg = err instanceof Error ? err.message : 'Failed to send bond request.';
+      showAlert('Error', msg); 
     }
   };
 
@@ -398,132 +230,35 @@ export default function App() {
     });
   };
 
-  const handleSignOut = () => {
-    localStorage.removeItem('hive_token');
-    localStorage.removeItem('hive_user_id');
-    setIsAuthenticated(false);
-    setUserId(null);
+  const getTrialDaysRemaining = () => {
+    if (userProfile.subscriptionEndAt && new Date(userProfile.subscriptionEndAt) > new Date()) return Infinity;
+    const start = new Date(userProfile.trialStartAt);
+    const end = new Date(start.getTime() + 7 * 24 * 60 * 60 * 1000);
+    return Math.max(0, Math.ceil((end.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)));
   };
 
-  const handleAuthSuccess = (uId: string, token: string) => {
-    localStorage.setItem('hive_token', token);
-    localStorage.setItem('hive_user_id', uId);
-    setUserId(uId);
-    setIsAuthenticated(true);
-  };
-
-  const handleEndFocus = async (shouldResetTime = false) => {
-    if (!userId || !activeSessionId) return;
-    try {
-      // 基于时间戳差值计算真实的专注时长
-      const actualDurationMins = targetEndTime 
-        ? Math.floor((maxTime - Math.max(0, Math.floor((targetEndTime - Date.now()) / 1000))) / 1000 / 60)
-        : Math.floor((maxTime - timeLeft) / 60);
-        
-      await focusService.endSession(activeSessionId, actualDurationMins);
-
-      // 更新本地资料统计
-      const updatedProfile = await userService.getProfile(userId);
-      setUserProfile({
-        name: updatedProfile.name,
-        avatar: updatedProfile.avatar_url || userProfile.avatar,
-        bio: updatedProfile.bio || '',
-        city: updatedProfile.city || '',
-        totalFocus: updatedProfile.total_focus_mins,
-        sparks: updatedProfile.total_sparks,
-        trialStartAt: updatedProfile.trial_start_at,
-        subscriptionEndAt: updatedProfile.subscription_end_at,
-        latitude: updatedProfile.latitude,
-        longitude: updatedProfile.longitude,
-        showLocation: updatedProfile.show_location,
-      });
-
-      setIsFocusing(false);
-      setActiveSessionId(null);
-      setTargetEndTime(null);
-      if (shouldResetTime) {
-        setTimeLeft(maxTime);
-      }
-
-      // 刷新网格
-      const matchData = await socialService.getHiveMatching(userId);
-      setHiveTiles(matchData.tiles);
-    } catch (err) {
-      console.error('End focus failed:', err);
-      showAlert('Error', 'Failed to end focus session.');
-    }
-  };
-
-  const toggleFocus = async () => {
-    if (!userId) return;
-    try {
-      if (!isFocusing) {
-        // 开始或恢复专注
-        if (!activeSessionId) {
-          const subject = subjects.find(s => s.name === currentSubject);
-          const session = await focusService.startSession(userId, subject?.id || 1);
-          setActiveSessionId(session.id);
-        }
-        
-        // 重新计算目标结束时间 (当前剩余时间)
-        setTargetEndTime(Date.now() + timeLeft * 1000);
-        setIsFocusing(true);
-      } else {
-        // 暂停专注 (保留 session，仅停止计时)
-        setIsFocusing(false);
-        setTargetEndTime(null);
-      }
-
-      // 状态切换后刷新网格
-      if (userId) {
-        const matchData = await socialService.getHiveMatching(userId);
-        setHiveTiles(matchData.tiles);
-      }
-    } catch (err: unknown) {
-      if ((err as {response?: {status?: number}}).response?.status === 402) {
-        setActiveSheet('subscription');
-      } else {
-        console.error('Focus toggle failed:', err);
-        showAlert('Error', (err as Error).message || 'Failed to toggle focus session.');
-      }
-    }
-  };
-
-  const handleTimeSelect = (mins: number) => {
-    const secs = mins * 60;
-    setTimeLeft(secs);
-    setMaxTime(secs);
-    // 重置目标时间
-    if (isFocusing) {
-      setTargetEndTime(Date.now() + secs * 1000);
-    }
-    setActiveSheet(null);
-  };
-
-  // Generate particles only when the dynamicAmbientCount changes
   const ambientParticles = useMemo(() => {
-    const count = Math.min(dynamicAmbientCount, 150); // limit to 150
+    const count = Math.min(dynamicAmbientCount, 150);
     return Array.from({ length: count }).map((_, i) => {
       const angle = (i / count) * Math.PI * 2;
       const radiusBase = 130 + Math.random() * 40;
-      const x = Math.cos(angle) * radiusBase + 170;
-      const y = Math.sin(angle) * radiusBase + 170;
-      const size = 2 + Math.random() * 3;
-      const opacity = 0.15 + Math.random() * 0.25;
-      const delay = Math.random() * 3;
-      const duration = 2 + Math.random() * 2;
-      return { id: `amb-${i}`, x, y, size, opacity, delay, duration };
+      return { id: `amb-${i}`, x: Math.cos(angle) * radiusBase + 170, y: Math.sin(angle) * radiusBase + 170, size: 2 + Math.random() * 3, opacity: 0.15 + Math.random() * 0.25, delay: Math.random() * 3, duration: 2 + Math.random() * 2 };
     });
   }, [dynamicAmbientCount]);
 
   return (
-    <div className="flex h-screen items-center justify-center bg-black/95">
+    <div className={clsx("flex h-screen items-center justify-center", isScreenshotMode ? "bg-black" : "bg-black/95")}>
       {!isAuthenticated ? (
         <AuthPage onSuccess={handleAuthSuccess} />
       ) : (
-        /* 模拟 iOS 设备屏幕框 */
+        /* 模拟 iOS 设备屏幕框 - 截图模式下充满全屏 */
         <div
-          className="relative w-full max-w-[400px] h-full sm:h-[850px] sm:border-[8px] border-zinc-900 sm:rounded-[48px] overflow-hidden shadow-2xl flex flex-col font-sans transition-colors duration-500"
+          className={clsx(
+            "relative flex flex-col font-sans transition-colors duration-500",
+            isScreenshotMode 
+              ? "w-full h-full" 
+              : "w-full max-w-[400px] h-full sm:h-[850px] sm:border-[8px] border-zinc-900 sm:rounded-[48px] overflow-hidden shadow-2xl"
+          )}
           style={{ backgroundColor: 'var(--bg-primary)' }}
         >
 

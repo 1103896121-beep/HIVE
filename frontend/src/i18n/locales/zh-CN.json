@@ -125,7 +125,9 @@
         "annual_desc": "每年节省 40%",
         "lifetime_desc": "一次性支付。永享宁静。",
         "badge_popular": "最受欢迎",
-        "secure_note": "安全保障：由 App Store 管理。数据完美同步，随时取消。"
+        "secure_note": "安全保障：由 App Store 管理。数据完美同步，随时取消。",
+        "restore_purchases": "恢复购买",
+        "restore_success": "购买项已成功恢复！"
     },
     "timer": {
         "deep_work": "深度工作中",
@@ -152,7 +154,11 @@
         "digital_bonds": "数字羁绊",
         "personalize_hive": "个性化设置",
         "personal_profile": "个人数据卡",
-        "hive_membership": "Hive 会员特权"
+        "hive_membership": "Hive 会员",
+        "restore_purchases": "恢复购买",
+        "restoring": "正在尝试恢复...",
+        "restore_success": "购买项已成功恢复！",
+        "restore_failed": "恢复购买失败。"
     },
     "validation": {
         "empty_required_field": "此项不能为空。",

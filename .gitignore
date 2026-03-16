@@ -33,3 +33,10 @@ Thumbs.db
 .gemini/
 brain/
 *.log
+final_65*/
+raw_65*/
+project_files.txt
+
+# Environment
+frontend/.env
+backend/.env

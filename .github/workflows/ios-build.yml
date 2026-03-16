@@ -1,0 +1,41 @@
+name: Build iOS
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: macos-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+        
+    - name: Install Dependencies
+      run: |
+        cd frontend
+        npm install
+        
+    - name: Build Web
+      run: |
+        cd frontend
+        npm run build
+        
+    - name: Capacitor Sync
+      run: |
+        cd frontend
+        npx cap sync ios
+        
+    - name: Build App (Simulator)
+      run: |
+        cd frontend/ios/App
+        xcodebuild -scheme App -destination 'generic/platform=iOS Simulator' build

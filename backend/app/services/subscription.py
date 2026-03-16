@@ -1,15 +1,19 @@
 import os
 import requests
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
-from app.models.user import User
+from app.repository.user_repository import UserRepository
 from uuid import UUID
 from datetime import datetime, timedelta
-import time
+from typing import Dict, Any
 
 class SubscriptionService:
     @staticmethod
-    async def verify_apple_receipt(db: AsyncSession, user_id: UUID, receipt_data: str):
+    async def verify_apple_receipt(db: AsyncSession, user_id: UUID, receipt_data: str) -> Dict[str, Any]:
+        """
+        校验 Apple 支付凭据并更新用户订阅。
+        实现上自动处理了沙箱(Sandbox)与生产环境的自动切换 (Status 21007/21008)，
+        确保护审人员在沙箱环境下也能正常测试付费流程。
+        """
         # In production this should be an env var
         APPLE_SHARED_SECRET = os.getenv("APPLE_SHARED_SECRET") 
         
@@ -62,21 +66,24 @@ class SubscriptionService:
 
         days_to_add = PRODUCT_DURATION[product_id]
 
-        # Update DB
-        result = await db.execute(select(User).where(User.id == user_id))
-        user = result.scalars().first()
+        # Update DB using Repository
+        user = await UserRepository.get_user_by_id(db, user_id)
         if not user:
              raise ValueError("User not found")
 
         current_expiry = user.subscription_end_at if user.subscription_end_at and user.subscription_end_at > datetime.utcnow() else datetime.utcnow()
         user.subscription_end_at = current_expiry + timedelta(days=days_to_add)
         
-        await db.commit()
+        await UserRepository.commit(db)
         return {"status": "success", "expires_at": user.subscription_end_at}
+
     @staticmethod
-    async def subscribe(db: AsyncSession, user_id: UUID, plan: str):
-        result = await db.execute(select(User).where(User.id == user_id))
-        user = result.scalars().first()
+    async def subscribe(db: AsyncSession, user_id: UUID, plan: str) -> Dict[str, Any]:
+        """
+        手动更新订阅（通常用于测试或通过管理员渠道）。
+        通过映射预定义时长，简化了有效期计算逻辑。
+        """
+        user = await UserRepository.get_user_by_id(db, user_id)
         if not user:
             raise ValueError("User not found")
             
@@ -94,5 +101,5 @@ class SubscriptionService:
         current_expiry = user.subscription_end_at if user.subscription_end_at and user.subscription_end_at > datetime.utcnow() else datetime.utcnow()
         user.subscription_end_at = current_expiry + timedelta(days=days)
         
-        await db.commit()
+        await UserRepository.commit(db)
         return {"status": "success", "expires_at": user.subscription_end_at}

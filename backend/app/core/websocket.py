@@ -4,7 +4,7 @@ from uuid import UUID
 import json
 
 class ConnectionManager:
-    def __init__(self):
+    def __init__(self) -> None:
         # 存储在线用户的 WebSocket 连接: {user_id: WebSocket}
         self.active_connections: Dict[UUID, WebSocket] = {}
         # 存储小队的在线用户: {squad_id: {user_id1, user_id2}}
