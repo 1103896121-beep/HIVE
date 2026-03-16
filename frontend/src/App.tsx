@@ -18,7 +18,7 @@ import { userService, focusService, socialService } from './api';
 import type { Subject, Squad, BondEnriched, HiveMatchTile } from './api/types';
 import { useHiveSocket } from './hooks/useHiveSocket';
 import { SubscriptionSheet } from './components/SubscriptionSheet';
-import { subscriptionService } from './api';
+
 import { AuthPage } from './components/AuthPage';
 import { CustomModal } from './components/CustomModal';
 import { LanguageSwitcher } from './components/LanguageSwitcher';
@@ -28,8 +28,6 @@ import { LanguageSwitcher } from './components/LanguageSwitcher';
 // Initial state for dynamic matching
 
 type SheetType = 'subject' | 'location' | 'timer' | 'squad' | 'bonds' | 'theme' | 'profile' | 'subscription' | null;
-
-
 
 export default function App() {
   const { t } = useTranslation();
@@ -62,7 +60,14 @@ export default function App() {
   const [squads, setSquads] = useState<Squad[]>([]);
   const [bonds, setBonds] = useState<BondEnriched[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
-  const [interactionUser, setInteractionUser] = useState<any | null>(null);
+  interface InteractionUser {
+    user_id: string;
+    name: string;
+    avatar_url?: string;
+    subject?: string;
+  }
+
+  const [interactionUser, setInteractionUser] = useState<InteractionUser | null>(null);
   const [hiveTiles, setHiveTiles] = useState<HiveMatchTile[]>([]);
   const [ambientCount, setAmbientCount] = useState(24302);
 
@@ -99,7 +104,6 @@ export default function App() {
       isPremium: false
     };
   }, [userProfile.trialStartAt, userProfile.subscriptionEndAt]);
-  const [isSubscribing, setIsSubscribing] = useState(false);
 
   // Modal State
   const [modalConfig, setModalConfig] = useState<{
@@ -179,7 +183,7 @@ export default function App() {
             longitude: profile.longitude,
             showLocation: profile.show_location,
           });
-          setTheme(profile.theme_preference as any);
+          setTheme(profile.theme_preference as Theme);
         }
 
         // 加载社交数据
@@ -200,9 +204,9 @@ export default function App() {
         const matchData = await socialService.getHiveMatching(userId);
         setHiveTiles(matchData.tiles);
         setAmbientCount(matchData.ambient_count);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Failed to init data:', err);
-        if (err.message.includes('401')) {
+        if ((err as Error).message.includes('401')) {
           handleSignOut();
         }
       }
@@ -308,8 +312,8 @@ export default function App() {
         setSquads([]);
         setCurrentSquad('Global Hive');
         setActiveSheet(null);
-      } catch (err: any) {
-        showAlert('Error', err.message || 'Failed to leave squad.');
+      } catch (err: unknown) {
+        showAlert('Error', (err as Error).message || 'Failed to leave squad.');
       }
     });
   };
@@ -322,8 +326,8 @@ export default function App() {
         setSquads([]);
         setCurrentSquad('Global Hive');
         setActiveSheet(null);
-      } catch (err: any) {
-        showAlert('Error', err.message || 'Failed to disband squad.');
+      } catch (err: unknown) {
+        showAlert('Error', (err as Error).message || 'Failed to disband squad.');
       }
     });
   };
@@ -335,36 +339,8 @@ export default function App() {
       setSquads([squad]);
       setCurrentSquad(squad.name);
       setActiveSheet(null);
-    } catch (err: any) {
-      showAlert('Error', err.message || 'Create squad failed.');
-    }
-  };
-
-  const handleSubscribe = async (plan: 'monthly' | 'quarterly' | 'yearly' | 'lifetime') => {
-    if (!userId) return;
-    setIsSubscribing(true);
-    try {
-      const resp = await subscriptionService.subscribe(userId, plan);
-      if (resp.status === 'success') {
-        const profile = await userService.getProfile(userId);
-        setUserProfile(prev => ({
-          ...prev,
-          subscriptionEndAt: profile.subscription_end_at
-        }));
-        setActiveSheet(null);
-        const planName = {
-          monthly: 'Monthly',
-          quarterly: 'Quarterly',
-          yearly: 'Annual',
-          lifetime: 'Lifetime'
-        }[plan];
-        showAlert(t('common.success'), t('subscription.success_msg', { plan: planName }));
-      }
-    } catch (err) {
-      console.error('Subscription failed:', err);
-      showAlert('Error', 'Subscription failed. Please try again.');
-    } finally {
-      setIsSubscribing(false);
+    } catch (err: unknown) {
+      showAlert('Error', (err as Error).message || 'Create squad failed.');
     }
   };
 
@@ -404,17 +380,22 @@ export default function App() {
       // Refresh bonds
       const fetchedBonds = await socialService.getBonds(userId);
       setBonds(fetchedBonds);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Add bond failed:', err);
       // Ensure we display a string and try to get the most human-readable message
-      const errorMsg = err.message || (typeof err === 'string' ? err : 'Failed to send bond request.');
+      const errorMsg = (err as Error).message || (typeof err === 'string' ? err : 'Failed to send bond request.');
       showAlert('Error', errorMsg);
     }
   };
 
-  const handleGridUserClick = (member: any) => {
+  const handleGridUserClick = (member: HiveMatchTile) => {
     if (member.status === 'offline') return;
-    setInteractionUser(member);
+    setInteractionUser({
+      user_id: member.user_id,
+      name: member.name || 'Anonymous',
+      avatar_url: member.avatar_url,
+      subject: member.subject
+    });
   };
 
   const handleSignOut = () => {
@@ -498,12 +479,12 @@ export default function App() {
         const matchData = await socialService.getHiveMatching(userId);
         setHiveTiles(matchData.tiles);
       }
-    } catch (err: any) {
-      if (err.response?.status === 402) {
+    } catch (err: unknown) {
+      if ((err as {response?: {status?: number}}).response?.status === 402) {
         setActiveSheet('subscription');
       } else {
         console.error('Focus toggle failed:', err);
-        showAlert('Error', 'Failed to toggle focus session.');
+        showAlert('Error', (err as Error).message || 'Failed to toggle focus session.');
       }
     }
   };
@@ -607,34 +588,33 @@ export default function App() {
             </div>
           </div>
 
-          {/* 1.5 试用期提醒条 */}
-          {getTrialDaysRemaining() !== Infinity && getTrialDaysRemaining() <= 3 && (
-            <div
-              className="absolute top-28 left-6 right-6 z-20 px-4 py-2 rounded-2xl border flex items-center justify-between backdrop-blur-md animate-in slide-in-from-top-4"
-              style={{
-                backgroundColor: 'rgba(var(--accent-rgb), 0.1)',
-                borderColor: 'rgba(var(--accent-rgb), 0.2)'
-              }}
-            >
-              <div className="flex items-center gap-2">
-                <Zap size={14} style={{ color: 'var(--accent)' }} />
-                <span className="text-[10px] font-black uppercase tracking-widest text-zinc-300">
-                  {getTrialDaysRemaining() === 0 ? t('trial.expired') : t('trial.left', { count: getTrialDaysRemaining() })}
-                </span>
-              </div>
-              <button
-                onClick={() => setActiveSheet('subscription')}
-                className="text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
-                style={{ color: 'var(--accent)' }}
-              >
-                {t('trial.subscribe')}
-              </button>
-            </div>
-          )}
-
-
           {/* 核心滚动视窗 */}
           <div className="flex-1 overflow-y-auto overflow-x-hidden pt-32 pb-40 px-6 hide-scrollbar flex flex-col items-center">
+
+            {/* 1.5 试用期提醒条 (Moved into scroll flow to prevent overlap) */}
+            {getTrialDaysRemaining() !== Infinity && getTrialDaysRemaining() <= 3 && (
+              <div
+                className="w-full mb-6 z-20 px-4 py-3 rounded-2xl border flex items-center justify-between backdrop-blur-md animate-in fade-in"
+                style={{
+                  backgroundColor: 'rgba(var(--accent-rgb), 0.1)',
+                  borderColor: 'rgba(var(--accent-rgb), 0.2)'
+                }}
+              >
+                <div className="flex items-center gap-2">
+                  <Zap size={14} style={{ color: 'var(--accent)' }} />
+                  <span className="text-[10px] font-black uppercase tracking-widest text-zinc-300">
+                    {getTrialDaysRemaining() === 0 ? t('trial.expired') : t('trial.left', { count: getTrialDaysRemaining() })}
+                  </span>
+                </div>
+                <button
+                  onClick={() => setActiveSheet('subscription')}
+                  className="text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+                  style={{ color: 'var(--accent)' }}
+                >
+                  {t('trial.subscribe', 'Subscribe')}
+                </button>
+              </div>
+            )}
 
             {/* 选择器药丸组 (Subject & Location) */}
             <div className="w-full flex gap-2 mb-8 mt-2">
@@ -869,7 +849,6 @@ export default function App() {
             />
           </Sheet>
 
-          {/* Subscription Sheet - App Store Compliance & Trial Enforcement */}
           <Sheet
             isOpen={activeSheet === 'subscription' || (isAuthenticated && trialStatus.isExpired && !trialStatus.isPremium)}
             onClose={() => {
@@ -880,8 +859,12 @@ export default function App() {
             title={t('sheets.hive_membership')}
           >
             <SubscriptionSheet
-              onSubscribe={handleSubscribe}
-              isLoading={isSubscribing}
+              userId={userId || ''}
+              onSuccess={(expiresAt: string) => {
+                setUserProfile(prev => ({ ...prev, subscriptionEndAt: expiresAt }));
+              }}
+              onClose={() => setActiveSheet(null)}
+              onAlert={showAlert}
             />
           </Sheet>
 

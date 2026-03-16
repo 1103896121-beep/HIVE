@@ -34,6 +34,8 @@ export interface Profile {
 export interface Subject {
     id: number;
     name: string;
+    key?: string;
+    description?: string;
     icon?: string;
     color_hex?: string;
 }

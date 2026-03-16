@@ -50,7 +50,7 @@ async def search_users(
     from uuid import UUID
     try:
         curr_id = UUID(user_id) if "-" in user_id else UUID("00000000-0000-0000-0000-000000000000")
-    except:
+    except ValueError:
         curr_id = UUID("00000000-0000-0000-0000-000000000000")
         
     return await UserService.search_users(db, q, curr_id, lat, lon)

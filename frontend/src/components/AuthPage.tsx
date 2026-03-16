@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Mail, Lock, User, ArrowRight, Zap, Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { authService } from '../api';
+import { SignInWithApple } from '@capacitor-community/apple-sign-in';
+import { Capacitor } from '@capacitor/core';
 
 interface AuthPageProps {
     onSuccess: (userId: string, token: string) => void;
@@ -42,10 +44,49 @@ export function AuthPage({ onSuccess }: AuthPageProps) {
                 const resp = await authService.register({ email, password, name });
                 onSuccess(resp.user_id, resp.access_token);
             }
-        } catch (err: any) {
-            setError(err.message || t('auth.failed'));
+        } catch (err: unknown) {
+            setError((err as Error).message || t('auth.failed'));
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleAppleSignIn = async () => {
+        try {
+            setLoading(true);
+            setError('');
+            
+            if (Capacitor.isNativePlatform()) {
+                const result = await SignInWithApple.authorize({
+                    clientId: 'com.hive.app', 
+                    redirectURI: '',
+                    scopes: 'email name',
+                    state: '12345',
+                    nonce: 'nonce',
+                });
+                
+                if (result.response && result.response.identityToken) {
+                    const fullName = result.response.givenName ? `${result.response.givenName} ${result.response.familyName}`.trim() : 'Apple User';
+                    const resp = await authService.appleLogin(result.response.identityToken, fullName);
+                    onSuccess(resp.user_id, resp.access_token);
+                } else {
+                    throw new Error('No identity token returned');
+                }
+            } else {
+                // MOCK APPLE SIGN IN FOR WEB PREVIEW
+                setTimeout(async () => {
+                    try {
+                        const resp = await authService.appleLogin('mock-web-token', 'Web User');
+                        onSuccess(resp.user_id, resp.access_token);
+                    } catch(e) {
+                         setError('Mock Apple login failed');
+                         setLoading(false);
+                    }
+                }, 1000);
+            }
+        } catch (e: unknown) {
+             setError((e as Error).message || 'Apple Sign in error');
+             setLoading(false);
         }
     };
 
@@ -140,10 +181,26 @@ export function AuthPage({ onSuccess }: AuthPageProps) {
                     >
                         {mode === 'login' ? t('auth.no_account') : t('auth.already_member')}
                     </button>
+
+                    <div className="flex items-center gap-3 mt-6 mb-6">
+                        <div className="flex-1 h-px bg-white/10"></div>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-zinc-600">{t('auth.or', 'OR')}</span>
+                        <div className="flex-1 h-px bg-white/10"></div>
+                    </div>
+
+                    {/* Apple Sign In Button Mock */}
+                    <button
+                        type="button"
+                        onClick={handleAppleSignIn}
+                        className="w-full bg-white text-black font-bold uppercase tracking-widest py-4 rounded-xl flex items-center justify-center gap-2 transform active:scale-[0.98] transition-all"
+                    >
+                         {t('auth.continue_with_apple', 'Continue with Apple')}
+                    </button>
+
                 </div>
 
                 <p className="text-center mt-12 text-[9px] text-zinc-700 font-bold uppercase tracking-[0.1em] leading-relaxed max-w-[280px] mx-auto">
-                    By continuing, you agree to our <a href="/eula.html" className="text-zinc-500 hover:underline">EULA</a> and <a href="/privacy.html" className="text-zinc-500 hover:underline">Privacy Policy</a>.
+                    {t('auth.agree_terms')} <a href="/eula.html" className="text-zinc-500 hover:underline">{t('legal.eula')}</a> {t('auth.and', 'and')} <a href="/privacy.html" className="text-zinc-500 hover:underline">{t('legal.privacy_policy')}</a>.
                 </p>
             </div>
         </div>

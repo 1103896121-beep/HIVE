@@ -72,7 +72,6 @@
         "select_language": "Select Language",
         "english": "English",
         "simplified_chinese": "Simplified Chinese",
-        "traditional_chinese": "Traditional Chinese",
         "manifesto": "Manifesto",
         "sparks_earned": "Sparks Earned",
         "focus_hours": "Focus Hours",
@@ -100,7 +99,12 @@
         "location_synced": "Location Synced",
         "location_failed": "Location Failed",
         "delete_account": "Delete Account",
-        "delete_account_confirm": "This will permanently delete all your focus data. Are you sure?"
+        "delete_account_confirm": "This will permanently delete all your focus data. Are you sure?",
+        "subscription_status": "Hive Membership",
+        "active_days_left": "{{count}} Days Remaining",
+        "trial_days_left": "Trial: {{count}} Days Left",
+        "expired": "Expired",
+        "renew": "Renew"
     },
     "legal": {
         "privacy_policy": "Privacy Policy",
@@ -169,7 +173,6 @@
     },
     "themes": {
         "classic": "Classic Hive",
-        "morandi_sage": "Morandi Sage",
         "morandi_rose": "Morandi Rose",
         "ocean_night": "Ocean Night",
         "nordic_cold": "Nordic Cold",
@@ -194,7 +197,10 @@
         "failed": "Authentication failed",
         "name_placeholder": "Enter your name",
         "email_placeholder": "name@example.com",
-        "deep_work_community": "Deep Work Community"
+        "deep_work_community": "Deep Work Community",
+        "continue_with_apple": "Continue with Apple",
+        "or": "OR",
+        "agree_terms": "By continuing, you agree to our"
     },
     "global_map": {
         "status_title": "Planet Hive Global Status",

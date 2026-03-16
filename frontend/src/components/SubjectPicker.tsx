@@ -23,20 +23,20 @@ export const SubjectPicker: React.FC<{
     const { t } = useTranslation();
     
     // 如果没有传入则使用默认（或者等加载完毕）
-    const items = subjects && subjects.length > 0 ? subjects : [
-        { id: 1, name: 'Mathematics', key: 'mathematics', icon: 'Calculator' },
-        { id: 2, name: 'Coding', key: 'coding', icon: 'Code' },
-        { id: 3, name: 'Languages', key: 'languages', icon: 'Languages' },
-        { id: 4, name: 'Art', key: 'art', icon: 'Palette' },
-        { id: 5, name: 'Science', key: 'science', icon: 'Microchip' },
-        { id: 6, name: 'Music', key: 'music', icon: 'Music' },
-        { id: 7, name: 'Literature', key: 'literature', icon: 'Book' },
-        { id: 8, name: 'Others', key: 'others', icon: 'Hash' },
-    ];
+    const items = (subjects && subjects.length > 0 ? subjects : [
+        { id: 1, name: 'Mathematics', key: 'mathematics', icon: 'Calculator', color_hex: '' },
+        { id: 2, name: 'Coding', key: 'coding', icon: 'Code', color_hex: '' },
+        { id: 3, name: 'Languages', key: 'languages', icon: 'Languages', color_hex: '' },
+        { id: 4, name: 'Art', key: 'art', icon: 'Palette', color_hex: '' },
+        { id: 5, name: 'Science', key: 'science', icon: 'Microchip', color_hex: '' },
+        { id: 6, name: 'Music', key: 'music', icon: 'Music', color_hex: '' },
+        { id: 7, name: 'Literature', key: 'literature', icon: 'Book', color_hex: '' },
+        { id: 8, name: 'Others', key: 'others', icon: 'Hash', color_hex: '' },
+    ]) as Subject[];
 
     return (
         <div className="grid grid-cols-2 gap-4">
-            {items.map((cat: any) => {
+            {items.map((cat: Subject | typeof items[0]) => {
                 const Icon = ICON_MAP[cat.icon || 'Hash'] || Hash;
                 return (
                     <button

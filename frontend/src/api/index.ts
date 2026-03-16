@@ -2,10 +2,12 @@ import { apiClient } from './client';
 import * as T from './types';
 
 export const authService = {
-    register: (data: any) =>
-        apiClient.post<T.Token, any>('/auth/register', data),
-    login: (data: any) =>
-        apiClient.post<T.Token, any>('/auth/login', data),
+    register: (data: unknown) =>
+        apiClient.post<T.Token, unknown>('/auth/register', data),
+    login: (data: unknown) =>
+        apiClient.post<T.Token, unknown>('/auth/login', data),
+    appleLogin: (identityToken: string, fullName?: string) =>
+        apiClient.post<T.Token, unknown>('/auth/apple', { identity_token: identityToken, full_name: fullName }),
 };
 
 export const userService = {
@@ -70,4 +72,6 @@ export const socialService = {
 export const subscriptionService = {
     subscribe: (userId: string, plan: 'monthly' | 'quarterly' | 'yearly' | 'lifetime') =>
         apiClient.post<{ status: string; expires_at: string }>('/subscription/subscribe', { user_id: userId, plan }),
+    verifyReceipt: (userId: string, receiptData: string) =>
+        apiClient.post<{ status: string; expires_at: string }>('/subscription/verify-receipt', { user_id: userId, receipt_data: receiptData }),
 };

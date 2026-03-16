@@ -14,16 +14,7 @@
     --border-color: rgba(255, 255, 255, 0.05);
   }
 
-  [data-theme='morandi-sage'] {
-    --bg-primary: #2C2E2B;
-    --bg-secondary: #353834;
-    --bg-hex: #3E413D;
-    --accent: #A3B5A1;
-    --accent-rgb: 163, 181, 161;
-    --text-primary: #E8E6E1;
-    --text-secondary: #8E918B;
-    --border-color: rgba(163, 181, 161, 0.1);
-  }
+
 
   [data-theme='morandi-rose'] {
     --bg-primary: #3D3535;
@@ -71,15 +62,15 @@
   }
 
   /* Optimize readability for Chinese characters at small sizes */
-  :lang(zh-CN), :lang(zh-TW) {
+  :lang(zh-CN) {
     font-weight: 400; /* Chinese characters can look "cluttered" with heavy weights */
     letter-spacing: 0.01em;
   }
 
   /* Global bump for small text in Chinese */
-  :lang(zh-CN) .text-\[9px\], :lang(zh-TW) .text-\[9px\],
-  :lang(zh-CN) .text-\[10px\], :lang(zh-TW) .text-\[10px\],
-  :lang(zh-CN) .text-xs, :lang(zh-TW) .text-xs {
+  :lang(zh-CN) .text-\[9px\],
+  :lang(zh-CN) .text-\[10px\],
+  :lang(zh-CN) .text-xs {
     font-size: clamp(11px, 1.1em, 13px);
     line-height: 1.4;
   }

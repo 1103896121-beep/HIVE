@@ -8,8 +8,7 @@ export function LanguageSwitcher() {
 
     const LANGUAGES = [
         { code: 'en', label: t('profile.english') },
-        { code: 'zh-CN', label: t('profile.simplified_chinese') },
-        { code: 'zh-TW', label: t('profile.traditional_chinese') }
+        { code: 'zh-CN', label: t('profile.simplified_chinese') }
     ];
 
     return (

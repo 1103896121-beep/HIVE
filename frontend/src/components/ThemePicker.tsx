@@ -2,7 +2,7 @@ import clsx from 'clsx';
 import { useTranslation } from 'react-i18next';
 import { Check } from 'lucide-react';
 
-export type Theme = 'classic' | 'morandi-sage' | 'morandi-rose' | 'ocean-night' | 'nordic-cold';
+export type Theme = 'classic' | 'morandi-rose' | 'ocean-night' | 'nordic-cold';
 
 interface ThemePickerProps {
     current: Theme;
@@ -11,7 +11,6 @@ interface ThemePickerProps {
 
 const THEMES: { id: Theme; nameKey: string; colors: string[]; descKey: string }[] = [
     { id: 'classic', nameKey: 'themes.classic', colors: ['#F5A623', '#050505', '#111111'], descKey: 'themes.high_contrast' },
-    { id: 'morandi-sage', nameKey: 'themes.morandi_sage', colors: ['#A3B5A1', '#2C2E2B', '#3E413D'], descKey: 'themes.muted_soft' },
     { id: 'morandi-rose', nameKey: 'themes.morandi_rose', colors: ['#D6A6A6', '#3D3535', '#524747'], descKey: 'themes.muted_soft' },
     { id: 'ocean-night', nameKey: 'themes.ocean_night', colors: ['#00D1FF', '#0A1120', '#1A253A'], descKey: 'themes.deep_calm' },
     { id: 'nordic-cold', nameKey: 'themes.nordic_cold', colors: ['#D1D5DB', '#1A1C1E', '#2D3035'], descKey: 'themes.clean_ice' },

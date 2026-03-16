@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Camera, Edit2, Check, Award, Flame, Info, ExternalLink, ShieldCheck, KeyRound, MapPin, Navigation, Loader2, Eye, EyeOff } from 'lucide-react';
+import { Camera, Edit2, Check, Award, Flame, Info, ExternalLink, ShieldCheck, KeyRound, MapPin, Navigation, Loader2, Eye, EyeOff, Zap } from 'lucide-react';
 import { validateContent, validateImage } from '../utils/validation';
 import { userService } from '../api';
 import clsx from 'clsx';
@@ -57,7 +57,7 @@ export function ProfilePortal({ userId, profile, onUpdate, onSignOut, onAlert }:
         if (file) {
             const validation = validateImage(file);
             if (!validation.isValid) {
-                onAlert(t('common.error'), t(validation.errorKey as any));
+                onAlert(t('common.error'), t(validation.errorKey as Parameters<typeof t>[0]));
                 return;
             }
 
@@ -69,13 +69,13 @@ export function ProfilePortal({ userId, profile, onUpdate, onSignOut, onAlert }:
 
     const handleSave = async () => {
         const nameCheck = validateContent(editForm.name, 'name');
-        if (!nameCheck.isValid) return onAlert(t('common.error'), t(nameCheck.errorKey as any));
+        if (!nameCheck.isValid) return onAlert(t('common.error'), t(nameCheck.errorKey as Parameters<typeof t>[0]));
 
         const cityCheck = validateContent(editForm.city || '', 'city');
-        if (!cityCheck.isValid && editForm.city) return onAlert(t('common.error'), t(cityCheck.errorKey as any));
+        if (!cityCheck.isValid && editForm.city) return onAlert(t('common.error'), t(cityCheck.errorKey as Parameters<typeof t>[0]));
 
         const bioCheck = validateContent(editForm.bio, 'bio');
-        if (!bioCheck.isValid) return onAlert(t('common.error'), t(bioCheck.errorKey as any));
+        if (!bioCheck.isValid) return onAlert(t('common.error'), t(bioCheck.errorKey as Parameters<typeof t>[0]));
 
         await onUpdate(editForm);
         setIsEditing(false);
@@ -135,8 +135,8 @@ export function ProfilePortal({ userId, profile, onUpdate, onSignOut, onAlert }:
             onAlert(t('common.success'), t('common.success'));
             setShowPasswordForm(false);
             setPasswordData({ current: '', new: '', confirm: '' });
-        } catch (err: any) {
-            onAlert(t('common.error'), err.response?.data?.detail || t('common.error'));
+        } catch (err: unknown) {
+            onAlert(t('common.error'), (err as {response?: {data?: {detail?: string}}}).response?.data?.detail || t('common.error'));
         } finally {
             setIsUpdatingPassword(false);
         }
@@ -265,6 +265,46 @@ export function ProfilePortal({ userId, profile, onUpdate, onSignOut, onAlert }:
                     </div>
                     <div className="text-2xl font-black text-white">{Math.floor(profile.totalFocus / 60)}h <span className="text-sm">{profile.totalFocus % 60}m</span></div>
                     <div className="text-[9px] text-zinc-600 font-bold uppercase mt-1">{t('profile.completed', { count: profile.totalFocus })}</div>
+                </div>
+            </div>
+
+            {/* Subscription Status Block */}
+            <div className="p-5 rounded-3xl border transition-colors duration-500 flex flex-col gap-3"
+                style={{ backgroundColor: 'rgba(var(--accent-rgb), 0.05)', borderColor: 'rgba(var(--accent-rgb), 0.1)' }}>
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-[var(--accent)]/20 flex items-center justify-center">
+                            <Zap size={14} className="text-[var(--accent)] fill-current" />
+                        </div>
+                        <div>
+                            <div className="text-sm font-black text-white tracking-tight">{t('profile.subscription_status')}</div>
+                            <div className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">
+                                {(() => {
+                                    const now = new Date();
+                                    const subEnd = profile.subscriptionEndAt ? new Date(profile.subscriptionEndAt) : null;
+                                    const trialStart = new Date(profile.trialStartAt);
+                                    const trialEnd = new Date(trialStart.getTime() + 3 * 24 * 60 * 60 * 1000); // 3 Days
+
+                                    if (subEnd && subEnd > now) {
+                                        const days = Math.ceil((subEnd.getTime() - now.getTime()) / (1000 * 3600 * 24));
+                                        return t('profile.active_days_left', { count: days, defaultValue: '{{count}} Days Remaining' });
+                                    } else if (trialEnd > now) {
+                                        const days = Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 3600 * 24));
+                                        return t('profile.trial_days_left', { count: days, defaultValue: 'Trial: {{count}} Days Left' });
+                                    } else {
+                                        return t('profile.expired', 'Expired');
+                                    }
+                                })()}
+                            </div>
+                        </div>
+                    </div>
+                    {/* Renewal Button */}
+                    <button 
+                        onClick={() => window.dispatchEvent(new CustomEvent('open-subscription'))}
+                        className="px-4 py-2 bg-[var(--accent)] text-black rounded-xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-transform"
+                    >
+                        {t('profile.renew', 'Renew')}
+                    </button>
                 </div>
             </div>
 

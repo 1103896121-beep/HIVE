@@ -66,8 +66,8 @@ export const SquadPortal: React.FC<SquadPortalProps> = ({ squads, bonds, userId,
         try {
             await socialService.inviteToSquad(userId, friendId, currentSquad.id);
             onAlert(t('common.success'), t('squad.invite_success', "Invitation sent successfully!"));
-        } catch (error: any) {
-            onAlert(t('common.error'), error.message || t('error.invite_failed', "Failed to invite friend."));
+        } catch (error: unknown) {
+            onAlert(t('common.error'), (error as Error).message || t('error.invite_failed', "Failed to invite friend."));
         }
     };
 
@@ -89,7 +89,7 @@ export const SquadPortal: React.FC<SquadPortalProps> = ({ squads, bonds, userId,
                                     onClick={() => {
                                         const validation = validateContent(newSquadName, 'squadName');
                                         if (!validation.isValid) {
-                                            onAlert(t('common.error'), t(validation.errorKey as any));
+                                            onAlert(t('common.error'), t(validation.errorKey as Parameters<typeof t>[0]));
                                             return;
                                         }
                                         onCreate(newSquadName);

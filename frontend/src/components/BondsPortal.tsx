@@ -75,7 +75,7 @@ export const BondsPortal: React.FC<BondsPortalProps> = ({ bonds, userId, onNudge
                 bio: profile.bio,
                 total_focus_mins: profile.total_focus_mins,
                 total_sparks: profile.total_sparks
-            } as any);
+            } as UserSearchResult);
         } catch (error) {
             console.error("Failed to fetch profile:", error);
             onAlert(t('common.error'), t('error.profile_load_failed', 'Could not load user profile.'));
@@ -90,9 +90,9 @@ export const BondsPortal: React.FC<BondsPortalProps> = ({ bonds, userId, onNudge
             setIsSearchOpen(false);
             setSearchQuery('');
             onAlert(t('common.success'), t('bonds.request_sent'));
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error("Add bond failed:", error);
-            onAlert(t('common.error'), error.message || t('error.request_bond_failed', "Failed to send bond request."));
+            onAlert(t('common.error'), (error as Error).message || t('error.request_bond_failed', "Failed to send bond request."));
         }
     };
 
@@ -101,7 +101,7 @@ export const BondsPortal: React.FC<BondsPortalProps> = ({ bonds, userId, onNudge
             await socialService.removeBond(userId, targetId);
             onAlert(t('common.remove'), t('bonds.removed_success'));
             // Ideally trigger a refresh of bonds here
-        } catch (error: any) {
+        } catch (error: unknown) {
             onAlert(t('common.error'), t('error.remove_bond_failed', "Failed to remove bond."));
         }
     };

@@ -3,9 +3,24 @@
  * Provides a unified interface for haptic feedback across different platforms.
  */
 
+interface HapticWindow {
+  Capacitor?: {
+    Plugins?: {
+      Haptics?: {
+        impact: (options: { style: string }) => Promise<void>;
+        notification: (options: { type: string }) => Promise<void>;
+        selectionStart: () => Promise<void>;
+      }
+    }
+  };
+  TapticEngine?: {
+    impact: (options: { style: string }) => void;
+  };
+}
+
 export const triggerHaptic = (type: 'impact' | 'notification' | 'selection' = 'impact') => {
   // 1. Check for Capacitor Haptics (Primary for Native iOS/Android apps)
-  const win = window as any;
+  const win = window as unknown as HapticWindow;
   if (win.Capacitor?.Plugins?.Haptics) {
     try {
       if (type === 'impact') {
