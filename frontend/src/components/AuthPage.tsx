@@ -70,7 +70,7 @@ export function AuthPage({ onSuccess }: AuthPageProps) {
                     const resp = await authService.appleLogin(result.response.identityToken, fullName);
                     onSuccess(resp.user_id, resp.access_token);
                 } else {
-                    throw new Error('No identity token returned');
+                    throw new Error(t('auth.token_missing'));
                 }
             } else {
                 // MOCK APPLE SIGN IN FOR WEB PREVIEW
@@ -79,13 +79,13 @@ export function AuthPage({ onSuccess }: AuthPageProps) {
                         const resp = await authService.appleLogin('mock-web-token', 'Web User');
                         onSuccess(resp.user_id, resp.access_token);
                     } catch(e) {
-                         setError('Mock Apple login failed');
+                         setError(t('auth.apple_failed'));
                          setLoading(false);
                     }
                 }, 1000);
             }
         } catch (e: unknown) {
-             setError((e as Error).message || 'Apple Sign in error');
+             setError((e as Error).message || t('auth.apple_failed'));
              setLoading(false);
         }
     };

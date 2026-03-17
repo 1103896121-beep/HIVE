@@ -14,10 +14,10 @@ class SubscriptionService:
         实现上自动处理了沙箱(Sandbox)与生产环境的自动切换 (Status 21007/21008)，
         确保护审人员在沙箱环境下也能正常测试付费流程。
         """
-        # In production this should be an env var
+        # 生产环境下应从环境变量中读取
         APPLE_SHARED_SECRET = os.getenv("APPLE_SHARED_SECRET") 
         
-        # Determine duration by matching apple's product IDs
+        # 根据 Apple 产品 ID 匹配订阅时长
         PRODUCT_DURATION = {
             "com.hive.monthly": 31,
             "com.hive.quarterly": 92,
@@ -37,12 +37,12 @@ class SubscriptionService:
         data = response.json()
 
         if data.get("status") == 21007:
-            # Sandbox receipt sent to production in a release build, route to sandbox
+            # 沙箱收据发送到生产环境（通常在 TestFlight 或审核时发生），重定向到沙箱
              validation_url = "https://sandbox.itunes.apple.com/verifyReceipt"
              response = requests.post(validation_url, json=payload)
              data = response.json()
         elif data.get("status") == 21008:
-            # Prod receipt sent to sandbox, route to prod
+            # 生产收据发送到沙箱，重定向到生产环境
              validation_url = "https://buy.itunes.apple.com/verifyReceipt"
              response = requests.post(validation_url, json=payload)
              data = response.json()
@@ -50,8 +50,8 @@ class SubscriptionService:
         if data.get("status") != 0:
             raise ValueError(f"Invalid receipt. Apple status: {data.get('status')}")
 
-        # The receipt contains an array of in-app purchases.
-        # Find the latest one.
+        # 收据包含一个应用内购数组。
+        # 查找最新的一笔交易。
         receipt = data.get("receipt", {})
         in_app_purchases = receipt.get("in_app", [])
         
@@ -66,7 +66,7 @@ class SubscriptionService:
 
         days_to_add = PRODUCT_DURATION[product_id]
 
-        # Update DB using Repository
+        # 使用 Repository 更新数据库
         user = await UserRepository.get_user_by_id(db, user_id)
         if not user:
              raise ValueError("User not found")

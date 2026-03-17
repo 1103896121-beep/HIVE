@@ -35,7 +35,14 @@ jobs:
         cd frontend
         npx cap sync ios
         
-    - name: Build App (Simulator)
+    - name: Build App (iOS)
       run: |
         cd frontend/ios/App
-        xcodebuild -scheme App -destination 'generic/platform=iOS Simulator' build
+        # 注意：此处仅为编译检查。如需导出 IPA，需配置证书与 Provisioning Profile
+        xcodebuild -scheme App -destination 'generic/platform=iOS' build CODE_SIGNING_ALLOWED=NO
+        
+    - name: Archive Production
+      uses: actions/upload-artifact@v4
+      with:
+        name: hive-ios-build
+        path: frontend/ios/App/build/Release-iphoneos/*.app

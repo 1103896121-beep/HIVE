@@ -37,6 +37,17 @@ interface InteractionUser {
 
 type SheetType = 'subject' | 'location' | 'timer' | 'squad' | 'bonds' | 'theme' | 'profile' | 'subscription' | null;
 
+interface ProfileUpdate {
+    name?: string;
+    bio?: string;
+    city?: string;
+    avatar_url?: string;
+    theme_preference?: string;
+    latitude?: number;
+    longitude?: number;
+    show_location?: boolean;
+}
+
 export default function App() {
   const { t } = useTranslation();
   const isScreenshotMode = useMemo(() => new URLSearchParams(window.location.search).get('screenshot') === 'true', []);
@@ -128,11 +139,14 @@ export default function App() {
   const handleUpdateProfile = async (updates: Partial<UserProfile>) => {
     if (!userId) return;
     try {
-      await userService.updateProfile(userId, {
-        ...updates,
-        avatar_url: updates.avatar,
+      const { avatar, ...rest } = updates;
+      const updateData: ProfileUpdate = {
+        ...rest,
+        avatar_url: avatar,
         theme_preference: theme,
-      } as any);
+      };
+      
+      await userService.updateProfile(userId, updateData);
       const freshProfile = await userService.getProfile(userId);
       if (freshProfile) {
         setUserProfile({

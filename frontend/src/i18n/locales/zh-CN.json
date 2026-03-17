@@ -8,6 +8,7 @@
         "delete": "删除",
         "success": "成功",
         "error": "错误",
+        "info": "提示",
         "admin": "管理员",
         "member": "成员",
         "city": "城市",
@@ -127,7 +128,12 @@
         "badge_popular": "最受欢迎",
         "secure_note": "安全保障：由 App Store 管理。数据完美同步，随时取消。",
         "restore_purchases": "恢复购买",
-        "restore_success": "购买项已成功恢复！"
+        "restore_success": "购买项已成功恢复！",
+        "verify_failed": "凭据验证失败。",
+        "native_only": "恢复购买仅能在 iOS/Android 原生环境下使用。",
+        "product_not_found": "商店中未找到该产品。",
+        "loading_products": "正在加载商店数据...",
+        "mock_failed": "模拟环境订阅失败。"
     },
     "timer": {
         "deep_work": "深度工作中",
@@ -206,7 +212,10 @@
         "deep_work_community": "深度工作社区",
         "continue_with_apple": "通过 Apple 登录",
         "or": "或",
-        "agree_terms": "继续即表示您同意我们的"
+        "agree_terms": "继续即表示您同意我们的",
+        "and": "和",
+        "apple_failed": "Apple 登录失败",
+        "token_missing": "未获取到身份令牌"
     },
     "global_map": {
         "status_title": "全球 Hive 活跃状态",

@@ -8,6 +8,7 @@
         "delete": "Delete",
         "success": "Success",
         "error": "Error",
+        "info": "Info",
         "admin": "Admin",
         "member": "Member",
         "city": "City",
@@ -127,7 +128,12 @@
         "badge_popular": "Popular",
         "secure_note": "Safe & Secure: Managed by App Store. Data remains perfectly synced. Cancel anytime.",
         "restore_purchases": "Restore Purchases",
-        "restore_success": "Purchases restored successfully!"
+        "restore_success": "Purchases restored successfully!",
+        "verify_failed": "Receipt verification failed.",
+        "native_only": "Restore is only available on iOS/Android native platform.",
+        "product_not_found": "Product not found on store.",
+        "loading_products": "Loading products from store...",
+        "mock_failed": "Mock purchase failed."
     },
     "timer": {
         "deep_work": "Deep Work",
@@ -206,7 +212,10 @@
         "deep_work_community": "Deep Work Community",
         "continue_with_apple": "Continue with Apple",
         "or": "OR",
-        "agree_terms": "By continuing, you agree to our"
+        "agree_terms": "By continuing, you agree to our",
+        "and": "and",
+        "apple_failed": "Apple Sign in failed",
+        "token_missing": "No identity token returned"
     },
     "global_map": {
         "status_title": "Planet Hive Global Status",

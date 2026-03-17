@@ -96,7 +96,7 @@ export function SubscriptionSheet({ userId, onSuccess, onClose, onAlert }: Subsc
                     receipt.finish();
                 }
             }).catch(() => {
-                onAlert(t('common.error'), 'Receipt verification failed.');
+                onAlert(t('common.error'), t('subscription.verify_failed'));
             }).finally(() => {
                 setIsLoading(false);
             });
@@ -129,7 +129,7 @@ export function SubscriptionSheet({ userId, onSuccess, onClose, onAlert }: Subsc
                 if (product) {
                     store.order(product);
                 } else {
-                    onAlert(t('common.error'), 'Product not found on store');
+                    onAlert(t('common.error'), t('subscription.product_not_found'));
                     setIsLoading(false);
                 }
             } else {
@@ -151,7 +151,7 @@ export function SubscriptionSheet({ userId, onSuccess, onClose, onAlert }: Subsc
                             onClose();
                         }
                     } catch {
-                        onAlert(t('common.error'), 'Failed via mock backend.');
+                        onAlert(t('common.error'), t('subscription.mock_failed'));
                     } finally {
                        setIsLoading(false);
                     }
@@ -168,7 +168,7 @@ export function SubscriptionSheet({ userId, onSuccess, onClose, onAlert }: Subsc
 
     const handleRestore = () => {
         if (!Capacitor.isNativePlatform() || !window.CdvPurchase) {
-            onAlert(t('common.info', 'Info'), 'Restore is only available on iOS/Android.');
+            onAlert(t('common.info', 'Info'), t('subscription.native_only'));
             return;
         }
         
@@ -203,7 +203,7 @@ export function SubscriptionSheet({ userId, onSuccess, onClose, onAlert }: Subsc
                     <div className="col-span-full py-10 flex flex-col items-center justify-center">
                         <Loader2 className="animate-spin text-zinc-500 mb-2" size={24} />
                         <p className="text-[10px] text-zinc-500 uppercase font-black tracking-widest">
-                            {t('subscription.loading_products', 'Loading Extracted Store Data...')}
+                            {t('subscription.loading_products')}
                         </p>
                     </div>
                 ) : (
