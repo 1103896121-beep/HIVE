@@ -20,7 +20,12 @@ class Settings(BaseSettings):
     ]
     
     # 数据库
-    DATABASE_URL: str = "sqlite+aiosqlite:///./hive.db"
+    # 优先使用环境变量 DATABASE_URL (例如: postgresql+asyncpg://user:password@localhost/dbname)
+    # 本地开发默认退化为 SQLite
+    DATABASE_URL: str = os.getenv(
+        "DATABASE_URL", 
+        "sqlite+aiosqlite:///./hive_v2.db"
+    )
     
     # 邮件配置 (SMTP)
     SMTP_TLS: bool = True
