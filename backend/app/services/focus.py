@@ -29,7 +29,8 @@ class FocusService:
             raise HTTPException(status_code=404, detail="User not found")
 
         # 检查是否在7天试用期内
-        trial_expired = datetime.utcnow() > (user.trial_start_at + timedelta(days=7))
+        trial_start = user.trial_start_at or user.created_at or datetime.utcnow()
+        trial_expired = datetime.utcnow() > (trial_start + timedelta(days=7))
         
         # 检查是否有有效订阅
         has_active_subscription = user.subscription_end_at and user.subscription_end_at > datetime.utcnow()
@@ -50,25 +51,31 @@ class FocusService:
         return await FocusRepository.create_session(db, db_session)
 
     @staticmethod
-    async def end_session(db: AsyncSession, session_id: UUID, duration_mins: int) -> Optional[FocusSession]:
+    async def end_session(db: AsyncSession, session_id: UUID, duration_mins: int = 0) -> Optional[FocusSession]:
         """
         结束专注会话并同步进度。
-        设计上采用原子操作同步更新 Session 状态与 User Profile 中的积分(Sparks)及总时长，
-        确保存档数据的一致性。
+        由后端根据真实的 start_time 和当前时间核算时长，确保公平性。
         """
         db_session = await FocusRepository.get_session_by_id(db, session_id)
-        if not db_session:
-            return None
+        if not db_session or db_session.status != "IN_PROGRESS":
+            return db_session
         
-        db_session.end_time = datetime.utcnow()
-        db_session.duration_mins = duration_mins
+        end_time = datetime.utcnow()
+        db_session.end_time = end_time
+        
+        # 计算实际经过的分钟数 (向下取整，不满1分钟不计入)
+        delta = end_time - db_session.start_time
+        actual_mins = int(delta.total_seconds() // 60)
+        
+        db_session.duration_mins = actual_mins
         db_session.status = "COMPLETED"
 
-        # 核心：同步更新用户的总专注时长和星火
-        db_profile = await UserRepository.get_profile(db, db_session.user_id)
-        if db_profile:
-            db_profile.total_focus_mins += duration_mins
-            db_profile.total_sparks += duration_mins
+        # 补丁：如果专注不满一分钟，duration_mins 为 0，不增加星火
+        if actual_mins > 0:
+            db_profile = await UserRepository.get_profile(db, db_session.user_id)
+            if db_profile:
+                db_profile.total_focus_mins += actual_mins
+                db_profile.total_sparks += actual_mins
         
         await FocusRepository.commit(db)
         await FocusRepository.refresh(db, db_session)

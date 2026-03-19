@@ -5,11 +5,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.user import User, Profile
 from app.core.security import get_password_hash, verify_password, create_access_token
 from app.repository.user_repository import UserRepository
+from app.core.email import send_reset_password_email
 import logging
+from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
 class AuthService:
+    # 模拟内存存储验证码: {email: {"code": "123456", "expires": datetime}}
+    _reset_codes = {}
+
     @staticmethod
     def get_apple_public_key(kid: str) -> RSAAlgorithm:
         url = "https://appleid.apple.com/auth/keys"
@@ -129,3 +134,52 @@ class AuthService:
         except Exception as e:
             logger.exception(f"Login error: {e}")
             raise
+
+    @staticmethod
+    async def forgot_password(db: AsyncSession, email: str) -> bool:
+        """
+        处理忘记密码请求：生成验证码并“发送”邮件。
+        """
+        email = email.strip().lower()
+        user = await UserRepository.get_user_by_email(db, email)
+        if not user:
+            logger.warning(f"Forgot password requested for non-existent email: {email}")
+            return True
+            
+        code = "123456" # MVP 固定验证码
+        AuthService._reset_codes[email] = {
+            "code": code,
+            "expires": datetime.now() + timedelta(minutes=10)
+        }
+        
+        logger.info(f"Reset code {code} stored for {email}. Current keys: {list(AuthService._reset_codes.keys())}")
+        await send_reset_password_email(email, code)
+        return True
+
+    @staticmethod
+    async def reset_password(db: AsyncSession, email: str, code: str, new_password: str) -> bool:
+        """
+        验证码校验并更新密码。
+        """
+        email = email.strip().lower()
+        record = AuthService._reset_codes.get(email)
+        
+        if not record:
+            logger.error(f"No reset record found for {email}. Available: {list(AuthService._reset_codes.keys())}")
+            raise ValueError("Invalid or expired reset code")
+            
+        if record["code"] != code or datetime.now() > record["expires"]:
+            logger.error(f"Code mismatch or expired for {email}. Expected: {record['code']}, Got: {code}")
+            raise ValueError("Invalid or expired reset code")
+            
+        user = await UserRepository.get_user_by_email(db, email)
+        if not user:
+            raise ValueError("User not found")
+            
+        user.hashed_password = get_password_hash(new_password)
+        await UserRepository.commit(db)
+        
+        # 清除验证码
+        del AuthService._reset_codes[email]
+        logger.info(f"Password reset successful for {email}")
+        return True

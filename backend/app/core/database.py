@@ -3,7 +3,7 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 import os
 
 # 数据库连接配置 (默认使用 SQLite 进行原型开发，生产环境可切换为 PostgreSQL)
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./hive.db")
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./hive_v2.db")
 
 engine = create_async_engine(DATABASE_URL, echo=True)
 

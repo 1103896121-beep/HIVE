@@ -14,6 +14,8 @@ class FocusRepository:
     @staticmethod
     async def create_session(db: AsyncSession, session: FocusSession) -> FocusSession:
         db.add(session)
+        await db.commit()
+        await db.refresh(session)
         return session
 
     @staticmethod

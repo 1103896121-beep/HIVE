@@ -77,6 +77,19 @@ async def startup():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     
+    # 确保基础数据 (Subjects) 存在
+    from app.core.database import AsyncSessionLocal
+    from app.models.focus import Subject
+    from sqlalchemy.future import select
+    
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(select(Subject))
+        if not result.scalars().first():
+            default_subjects = ["Coding", "Reading", "Design", "Math", "English"]
+            for name in default_subjects:
+                db.add(Subject(name=name))
+            await db.commit()
+    
     # 启动 WebSocket 心跳检测任务 (每 30 秒一次)
     async def heartbeat_loop():
         while True:

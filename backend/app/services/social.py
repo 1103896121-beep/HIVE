@@ -117,7 +117,8 @@ class SocialService:
         if existing:
             return existing
 
-        db_bond = Bond(user_id_1=u1, user_id_2=u2, status="PENDING")
+        # user_id_1 视为发起者
+        db_bond = Bond(user_id_1=u1, user_id_2=u2, status="PENDING", requester_id=user_id_1)
         await SocialRepository.create_bond(db, db_bond)
         await SocialRepository.commit(db)
         await SocialRepository.refresh(db, db_bond)
@@ -158,13 +159,15 @@ class SocialService:
         res1 = await SocialRepository.get_bonds_as_user1(db, user_id)
         bonds1 = [{
             "user_id_1": b.user_id_1, "user_id_2": b.user_id_2,
-            "status": b.status, "created_at": b.created_at, "other_user": p
+            "status": b.status, "requester_id": b.requester_id,
+            "created_at": b.created_at, "other_user": p
         } for b, p in res1]
 
         res2 = await SocialRepository.get_bonds_as_user2(db, user_id)
         bonds2 = [{
             "user_id_1": b.user_id_1, "user_id_2": b.user_id_2,
-            "status": b.status, "created_at": b.created_at, "other_user": p
+            "status": b.status, "requester_id": b.requester_id,
+            "created_at": b.created_at, "other_user": p
         } for b, p in res2]
 
         return bonds1 + bonds2

@@ -31,6 +31,7 @@ class BondResponse(BaseModel):
     user_id_1: UUID
     user_id_2: UUID
     status: str
+    requester_id: Optional[UUID] = None
     created_at: datetime
 
     class Config:
@@ -83,6 +84,7 @@ class BondEnrichedResponse(BaseModel):
     user_id_1: UUID
     user_id_2: UUID
     status: str
+    requester_id: Optional[UUID] = None
     created_at: datetime
     other_user: ProfileSimpleResponse
 

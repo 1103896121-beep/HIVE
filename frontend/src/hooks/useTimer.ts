@@ -49,13 +49,11 @@ export function useTimer({
     }, [isFocusing, targetEndTime]);
 
     const handleEndFocus = useCallback(async (shouldResetTime = false) => {
-        if (!userId || !activeSessionId) return;
+        if (!userId || !activeSessionId) return null;
         try {
-            const actualDurationMins = targetEndTime 
-                ? Math.floor((maxTime - Math.max(0, Math.floor((targetEndTime - Date.now()) / 1000))) / 1000 / 60)
-                : Math.floor((maxTime - timeLeft) / 60);
-                
-            await focusService.endSession(activeSessionId, actualDurationMins);
+            // 后端现在自主计算，我们传 0 即可
+            const response = await focusService.endSession(activeSessionId, 0);
+            const actualMins = response?.duration_mins || 0;
 
             const updatedProfile = await userService.getProfile(userId);
             if (updatedProfile) {
@@ -77,12 +75,15 @@ export function useTimer({
 
             const matchData = await socialService.getHiveMatching(userId);
             setHiveTiles(matchData.tiles);
+            
+            return { durationMins: actualMins };
         } catch (err: unknown) {
             const errorMessage = err instanceof Error ? err.message : 'Session end failed';
             console.error('End focus failed:', errorMessage);
             showAlert('Error', 'Failed to end focus session.');
+            return null;
         }
-    }, [userId, activeSessionId, targetEndTime, maxTime, timeLeft, userProfile, setUserProfile, setHiveTiles, showAlert]);
+    }, [userId, activeSessionId, maxTime, userProfile, setUserProfile, setHiveTiles, showAlert]);
 
     const toggleFocus = useCallback(async () => {
         if (!userId) return;

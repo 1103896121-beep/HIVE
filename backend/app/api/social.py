@@ -51,8 +51,8 @@ async def disband_squad(squad_id: UUID, admin_id: UUID, db: AsyncSession = Depen
 async def create_bond(user_id_2: UUID, user_id_1: UUID, db: AsyncSession = Depends(get_db)):
     try:
         return await SocialService.create_bond(db, user_id_1, user_id_2)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.delete("/bonds/{target_id}")
 async def remove_bond(target_id: UUID, user_id: UUID, db: AsyncSession = Depends(get_db)):

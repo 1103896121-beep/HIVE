@@ -24,6 +24,27 @@ class AppleLogin(BaseModel):
     identity_token: str
     full_name: str | None = None
 
+class ForgotPassword(BaseModel):
+    email: EmailStr
+
+class ResetPassword(BaseModel):
+    email: EmailStr
+    code: str
+    new_password: str
+
+@router.post("/forgot-password")
+async def forgot_password(data: ForgotPassword, db: AsyncSession = Depends(get_db)):
+    await AuthService.forgot_password(db, data.email)
+    return {"status": "ok", "message": "Reset code sent if email exists"}
+
+@router.post("/reset-password")
+async def reset_password(data: ResetPassword, db: AsyncSession = Depends(get_db)):
+    try:
+        await AuthService.reset_password(db, data.email, data.code, data.new_password)
+        return {"status": "ok", "message": "Password reset successfully"}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 @router.post("/apple", response_model=Token)
 async def apple_login(apple_in: AppleLogin, db: AsyncSession = Depends(get_db)):
     try:

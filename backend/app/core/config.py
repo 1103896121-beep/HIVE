@@ -14,8 +14,14 @@ class Settings(BaseSettings):
     # 数据库
     DATABASE_URL: str = "sqlite+aiosqlite:///./hive.db"
     
-    # Redis (用于实时 Presence)
-    REDIS_URL: Optional[str] = None
+    # 邮件配置 (SMTP)
+    SMTP_TLS: bool = True
+    SMTP_PORT: Optional[int] = 587
+    SMTP_HOST: Optional[str] = "smtp.gmail.com"
+    SMTP_USER: Optional[str] = None
+    SMTP_PASSWORD: Optional[str] = None
+    EMAILS_FROM_EMAIL: Optional[str] = "info@hiveapp.com"
+    EMAILS_FROM_NAME: Optional[str] = "Hive Support"
 
     class Config:
         env_file = ".env"

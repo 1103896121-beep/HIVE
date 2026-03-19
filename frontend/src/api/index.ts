@@ -8,6 +8,10 @@ export const authService = {
         apiClient.post<T.Token, unknown>('/auth/login', data),
     appleLogin: (identityToken: string, fullName?: string) =>
         apiClient.post<T.Token, unknown>('/auth/apple', { identity_token: identityToken, full_name: fullName }),
+    forgotPassword: (email: string) =>
+        apiClient.post<{ status: string }>('/auth/forgot-password', { email }),
+    resetPassword: (data: T.ResetPasswordData) =>
+        apiClient.post<{ status: string }>('/auth/reset-password', data),
 };
 
 export const userService = {
@@ -55,6 +59,8 @@ export const socialService = {
         apiClient.delete<{ status: string }>(`/social/squads/${squadId}?admin_id=${adminId}`, {}),
     createBond: (userId1: string, userId2: string) =>
         apiClient.post<T.Bond>(`/social/bonds?user_id_1=${userId1}&user_id_2=${userId2}`, {}),
+    updateBondStatus: (user1: string, user2: string, status: string) =>
+        apiClient.patch<T.Bond>(`/social/bonds/status?user_id_1=${user1}&user_id_2=${user2}&status=${status}`, {}),
     getSquads: (userId: string) =>
         apiClient.get<T.Squad[]>(`/social/squads/${userId}`),
     getBonds: (userId: string) =>

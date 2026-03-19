@@ -35,6 +35,7 @@ class Bond(Base):
     user_id_1 = Column(UUID(as_uuid=True), ForeignKey("users.id"), primary_key=True)
     user_id_2 = Column(UUID(as_uuid=True), ForeignKey("users.id"), primary_key=True)
     status = Column(String(20), default="PENDING")
+    requester_id = Column(UUID(as_uuid=True), nullable=True) # 仅记录 ID，不加硬性外键
     created_at = Column(DateTime, default=datetime.utcnow)
 
 class Nudge(Base):

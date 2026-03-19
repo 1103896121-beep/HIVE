@@ -1,4 +1,5 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+// NOTE: 默认使用相对路径，由 Vite 代理转发到后端，支持局域网跨设备访问
+const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
 class APIClient {
     private static instance: APIClient;
