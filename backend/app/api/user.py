@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
+from app.core.validator import validate_content
 from app.schemas.user import ProfileResponse, ProfileUpdate, UserSearchResponse, PasswordUpdate
 from app.services.user import UserService
 from uuid import UUID
@@ -17,6 +18,13 @@ async def get_profile(user_id: UUID, db: AsyncSession = Depends(get_db)):
 
 @router.patch("/profile/{user_id}", response_model=ProfileResponse)
 async def update_profile(user_id: UUID, profile_in: ProfileUpdate, db: AsyncSession = Depends(get_db)):
+    if profile_in.name is not None and not validate_content(profile_in.name):
+        raise HTTPException(status_code=400, detail="Name contains inappropriate content")
+    if profile_in.bio is not None and not validate_content(profile_in.bio):
+        raise HTTPException(status_code=400, detail="Bio contains inappropriate content")
+    if profile_in.city is not None and not validate_content(profile_in.city):
+        raise HTTPException(status_code=400, detail="City contains inappropriate content")
+        
     profile = await UserService.update_profile(db, user_id, profile_in)
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")

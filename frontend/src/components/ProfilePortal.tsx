@@ -61,9 +61,12 @@ export function ProfilePortal({ userId, profile, onUpdate, onSignOut, onAlert }:
                 return;
             }
 
-            // Realistically we'd upload this
-            const url = URL.createObjectURL(file);
-            await onUpdate({ avatar: url });
+            const reader = new FileReader();
+            reader.onloadend = async () => {
+                const base64String = reader.result as string;
+                await onUpdate({ avatar: base64String });
+            };
+            reader.readAsDataURL(file);
         }
     };
 

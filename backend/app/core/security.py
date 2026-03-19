@@ -3,11 +3,12 @@ from typing import Any, Union
 from jose import jwt
 import bcrypt
 import os
+from app.core.config import settings
 
 # JWT 配置
-SECRET_KEY = os.getenv("SECRET_KEY", "hive-super-secret-key-2026")
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 # 24 hours
+SECRET_KEY = settings.SECRET_KEY
+ALGORITHM = settings.ALGORITHM
+ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
 
 def create_access_token(subject: Union[str, Any], expires_delta: timedelta = None) -> str:
     if expires_delta:

@@ -18,5 +18,5 @@ async def send_reset_password_email(email_to: str, code: str) -> bool:
     #     await real_send_email_logic(email_to, subject, message)
     
     logger.info(f"EMAIL MOCK: To={email_to}, Subject={subject}, Message={message}")
-    print(f"\n--- [EMAIL SENT] ---\nTo: {email_to}\nCode: {code}\n---------------------\n")
+    logger.info(f"\n--- [EMAIL SENT] ---\nTo: {email_to}\nCode: {code}\n---------------------\n")
     return True

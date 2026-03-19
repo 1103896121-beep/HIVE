@@ -58,7 +58,7 @@ export const BondsPortal: React.FC<BondsPortalProps> = ({ bonds, userId, onNudge
     const handleNudge = (targetId: string) => {
         setNudged(targetId);
         onNudge(targetId);
-        setTimeout(() => setNudged(null), 2000);
+        setTimeout(() => setNudged(null), 300);
     };
 
     const handleSelectUser = async (userId: string) => {
@@ -139,6 +139,7 @@ export const BondsPortal: React.FC<BondsPortalProps> = ({ bonds, userId, onNudge
                             <div key={bond.other_user!.user_id} className="w-10 h-10 rounded-full border-2 border-[#111] bg-zinc-800 flex items-center justify-center overflow-hidden">
                                 <img
                                     src={bond.other_user!.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${bond.other_user!.user_id}`}
+                                    onError={(e) => { e.currentTarget.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${bond.other_user!.user_id}`; }}
                                     alt="avatar"
                                     className="w-full h-full object-cover"
                                 />
@@ -192,7 +193,11 @@ export const BondsPortal: React.FC<BondsPortalProps> = ({ bonds, userId, onNudge
                                 .map(bond => (
                                     <div key={bond.other_user!.user_id} className="flex items-center gap-4 p-4 rounded-3xl bg-[#F5A623]/5 border border-[#F5A623]/20">
                                         <div className="w-10 h-10 rounded-full overflow-hidden border border-white/10">
-                                            <img src={bond.other_user!.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${bond.other_user!.user_id}`} className="w-full h-full object-cover" />
+                                            <img 
+                                                src={bond.other_user!.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${bond.other_user!.user_id}`} 
+                                                onError={(e) => { e.currentTarget.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${bond.other_user!.user_id}`; }}
+                                                className="w-full h-full object-cover" 
+                                            />
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <div className="text-xs font-bold text-white truncate">{bond.other_user!.name}</div>
@@ -242,7 +247,11 @@ export const BondsPortal: React.FC<BondsPortalProps> = ({ bonds, userId, onNudge
                                         >
                                             <div className="relative">
                                                 <button onClick={() => handleSelectUser(otherUser.user_id)} className="w-14 h-14 rounded-[22px] overflow-hidden border-2 border-[var(--accent)] transition-all">
-                                                    <img src={otherUser.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${otherUser.user_id}`} className="w-full h-full object-cover" />
+                                                    <img 
+                                                        src={otherUser.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${otherUser.user_id}`} 
+                                                        onError={(e) => { e.currentTarget.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${otherUser.user_id}`; }}
+                                                        className="w-full h-full object-cover" 
+                                                    />
                                                 </button>
                                                 <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-[var(--accent)] rounded-full border-2 border-[#111] flex items-center justify-center">
                                                     <Zap size={10} fill="black" />
@@ -273,7 +282,11 @@ export const BondsPortal: React.FC<BondsPortalProps> = ({ bonds, userId, onNudge
                                 .map(bond => (
                                     <div key={bond.other_user!.user_id} className="flex items-center gap-4 p-4 rounded-3xl bg-white/5 border border-white/5">
                                         <div className="w-10 h-10 rounded-full overflow-hidden grayscale">
-                                            <img src={bond.other_user!.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${bond.other_user!.user_id}`} className="w-full h-full object-cover" />
+                                            <img 
+                                                src={bond.other_user!.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${bond.other_user!.user_id}`} 
+                                                onError={(e) => { e.currentTarget.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${bond.other_user!.user_id}`; }}
+                                                className="w-full h-full object-cover" 
+                                            />
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <div className="text-xs font-bold text-zinc-400 truncate">{bond.other_user!.name}</div>
@@ -390,7 +403,12 @@ export const BondsPortal: React.FC<BondsPortalProps> = ({ bonds, userId, onNudge
                                                 onClick={() => setSelectedUser(user)}
                                                 className="w-10 h-10 rounded-full overflow-hidden bg-zinc-800 hover:scale-105 active:scale-95 transition-transform"
                                             >
-                                                <img src={user.avatar_url || `https://i.pravatar.cc/150?u=${user.id}`} alt={user.name} className="w-full h-full object-cover" />
+                                                <img 
+                                                    src={user.avatar_url || `https://i.pravatar.cc/150?u=${user.id}`} 
+                                                    onError={(e) => { e.currentTarget.src = `https://i.pravatar.cc/150?u=${user.id}`; }}
+                                                    alt={user.name} 
+                                                    className="w-full h-full object-cover" 
+                                                />
                                             </button>
                                             <div>
                                                 <div className="text-sm font-bold text-white">{user.name}</div>
@@ -430,7 +448,12 @@ export const BondsPortal: React.FC<BondsPortalProps> = ({ bonds, userId, onNudge
                         <div className="px-8 pb-10 -mt-16 text-center relative z-10">
                             <div className="inline-block p-1.5 bg-zinc-900 rounded-[32px] mb-4 shadow-2xl">
                                 <div className="w-28 h-28 rounded-[28px] overflow-hidden border-4 border-zinc-800 bg-zinc-800">
-                                    <img src={selectedUser.avatar_url || `https://i.pravatar.cc/150?u=${selectedUser.id}`} alt={selectedUser.name} className="w-full h-full object-cover" />
+                                    <img 
+                                        src={selectedUser.avatar_url || `https://i.pravatar.cc/150?u=${selectedUser.id}`} 
+                                        onError={(e) => { e.currentTarget.src = `https://i.pravatar.cc/150?u=${selectedUser.id}`; }}
+                                        alt={selectedUser.name} 
+                                        className="w-full h-full object-cover" 
+                                    />
                                 </div>
                             </div>
 

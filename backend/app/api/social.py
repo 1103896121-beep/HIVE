@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
+from app.core.validator import validate_content
 from app.schemas.social import SquadResponse, SquadCreate, BondResponse, BondEnrichedResponse, ReportResponse, ReportCreate, BlockResponse, BlockCreate, HiveMatchingResponse
 from app.services.social import SocialService
 from uuid import UUID
@@ -10,6 +11,8 @@ router = APIRouter(prefix="/social", tags=["social"])
 
 @router.post("/squads", response_model=SquadResponse)
 async def create_squad(squad_in: SquadCreate, user_id: UUID, db: AsyncSession = Depends(get_db)):
+    if not validate_content(squad_in.name):
+        raise HTTPException(status_code=400, detail="Squad name contains inappropriate content")
     try:
         return await SocialService.create_squad(db, user_id, squad_in)
     except ValueError as e:

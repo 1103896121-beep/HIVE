@@ -16,11 +16,9 @@ class APIClient {
     async request<T>(url: string, options: RequestInit = {}): Promise<T> {
         const response = await fetch(`${API_BASE_URL}${url}`, {
             ...options,
+            credentials: 'include',
             headers: {
                 'Content-Type': 'application/json',
-                ...(localStorage.getItem('hive_token')
-                    ? { 'Authorization': `Bearer ${localStorage.getItem('hive_token')}` }
-                    : {}),
                 ...options.headers,
             },
         });
@@ -71,4 +69,6 @@ class APIClient {
 }
 
 export const apiClient = APIClient.getInstance();
-export const WS_BASE_URL = API_BASE_URL.replace(/^http/, 'ws');
+export const WS_BASE_URL = API_BASE_URL 
+    ? API_BASE_URL.replace(/^http/, 'ws')
+    : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`;

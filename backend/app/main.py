@@ -53,12 +53,11 @@ async def log_exceptions_middleware(request: Request, call_next):
         raise e
 
 # CORS 配置
-# ... rest of file
+from app.core.config import settings
 
-# CORS 配置
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

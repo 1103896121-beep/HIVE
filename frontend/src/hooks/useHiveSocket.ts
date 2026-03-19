@@ -37,7 +37,7 @@ export function useHiveSocket(userId: string, squadId?: string) {
         };
 
         ws.onclose = () => {
-            console.log('Hive Socket closed');
+            // WebSocket 连接断开
         };
 
         return () => {

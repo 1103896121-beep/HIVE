@@ -4,9 +4,10 @@ import { useTranslation } from 'react-i18next';
 import { authService } from '../api';
 import { SignInWithApple } from '@capacitor-community/apple-sign-in';
 import { Capacitor } from '@capacitor/core';
+import { validateContent } from '../utils/validation';
 
 interface AuthPageProps {
-    onSuccess: (userId: string, token: string) => void;
+    onSuccess: (userId: string) => void;
 }
 
 export function AuthPage({ onSuccess }: AuthPageProps) {
@@ -61,12 +62,22 @@ export function AuthPage({ onSuccess }: AuthPageProps) {
         setError('');
         setSuccessMessage('');
         try {
+            if (mode === 'register') {
+                const nameCheck = validateContent(name, 'name');
+                if (!nameCheck.isValid) {
+                    setError(t(nameCheck.errorKey as any));
+                    setLoading(false);
+                    triggerShake();
+                    return;
+                }
+            }
+
             if (mode === 'login') {
                 const resp = await authService.login({ email, password });
-                onSuccess(resp.user_id, resp.access_token);
+                onSuccess(resp.user_id);
             } else if (mode === 'register') {
                 const resp = await authService.register({ email, password, name });
-                onSuccess(resp.user_id, resp.access_token);
+                onSuccess(resp.user_id);
             } else if (mode === 'forgot') {
                 await authService.forgotPassword(email);
                 setSuccessMessage(t('auth.reset_code_sent', 'Check your email for reset code'));
@@ -100,7 +111,7 @@ export function AuthPage({ onSuccess }: AuthPageProps) {
                 if (result.response && result.response.identityToken) {
                     const fullName = result.response.givenName ? `${result.response.givenName} ${result.response.familyName}`.trim() : 'Apple User';
                     const resp = await authService.appleLogin(result.response.identityToken, fullName);
-                    onSuccess(resp.user_id, resp.access_token);
+                    onSuccess(resp.user_id);
                 } else {
                     throw new Error(t('auth.token_missing'));
                 }
@@ -109,7 +120,7 @@ export function AuthPage({ onSuccess }: AuthPageProps) {
                 setTimeout(async () => {
                     try {
                         const resp = await authService.appleLogin('mock-web-token', 'Web User');
-                        onSuccess(resp.user_id, resp.access_token);
+                        onSuccess(resp.user_id);
                     } catch(e) {
                          setError(t('auth.apple_failed'));
                          setLoading(false);

@@ -112,7 +112,7 @@ export interface HiveMatchTile {
     user_id: string;
     name: string;
     avatar_url?: string;
-    status: 'focus' | 'break' | 'offline';
+    status: 'focus' | 'break' | 'online' | 'offline';
     subject?: string;
     is_bond: boolean;
     is_squad: boolean;

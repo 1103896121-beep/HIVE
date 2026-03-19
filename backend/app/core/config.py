@@ -1,15 +1,23 @@
+import os
 from pydantic_settings import BaseSettings
-from typing import Optional
+from typing import Optional, List
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Hive API"
     VERSION: str = "1.0.0"
     API_V1_STR: str = "/api/v1"
     
-    # 安全配置
-    SECRET_KEY: str = "YOUR_SUPER_SECRET_KEY_FOR_JWT_CHANGE_IN_PROD"
+    # 安全配置 — 必须通过环境变量设置，否则启动时会抛出明确异常
+    SECRET_KEY: str = os.getenv("SECRET_KEY", "")
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7 # 7 days
+    
+    # CORS 配置 — 生产环境通过环境变量 CORS_ORIGINS 设置（逗号分隔）
+    CORS_ORIGINS: List[str] = [
+        origin.strip()
+        for origin in os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",")
+        if origin.strip()
+    ]
     
     # 数据库
     DATABASE_URL: str = "sqlite+aiosqlite:///./hive.db"
@@ -28,3 +36,13 @@ class Settings(BaseSettings):
         case_sensitive = True
 
 settings = Settings()
+
+# 启动时校验关键配置
+if not settings.SECRET_KEY:
+    import warnings
+    warnings.warn(
+        "SECRET_KEY is not set! JWT signing will fail. "
+        "Set it via environment variable or backend/.env file.",
+        RuntimeWarning,
+        stacklevel=2
+    )

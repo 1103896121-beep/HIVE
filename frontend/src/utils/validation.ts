@@ -7,6 +7,8 @@ const BANNED_WORDS = [
     'spam', 'scam', 'hack', 'cheat',        // malicious intent
     'nsfw', 'porn', 'sex', 'violence',      // inappropriate content
     'idiot', 'stupid', 'dumb',              // toxic language
+    'fuck', 'bitch', 'shit', 'asshole', 'cunt', 'dick', 'pussy', 'whore', // profanity
+    'sb', '傻逼', '尼玛', '操你'                // profanity zh
 ];
 
 const MAX_LENGTHS = {

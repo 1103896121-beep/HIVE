@@ -3,6 +3,7 @@ from app.models.social import Squad, SquadMember, Bond, Report, Block
 from app.schemas.social import SquadCreate, ReportCreate, BlockCreate, HiveMatchTile, HiveMatchingResponse
 from datetime import datetime, timedelta
 from app.core.exceptions import LogicConflictException, PermissionDeniedException, ResourceNotFoundException
+from app.core.websocket import manager
 from app.repository.social_repository import SocialRepository
 from app.repository.focus_repository import FocusRepository
 from uuid import UUID
@@ -225,6 +226,9 @@ class SocialService:
                     elif session.end_time > active_cutoff:
                         status = "break"
                 
+                if status == "offline" and uid in manager.active_connections:
+                    status = "online"
+                    
                 tiles_dict[uid] = HiveMatchTile(
                     user_id=uid, name=profile.name, avatar_url=profile.avatar_url,
                     status=status, subject=subject_name, is_bond=is_bond, is_squad=is_squad,
