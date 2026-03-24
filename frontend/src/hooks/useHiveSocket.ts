@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { WS_BASE_URL } from '../api/client';
+import { presenceService } from '../api/index';
 import { triggerHaptic } from '../utils/haptics';
 
 export type SocketMessage = {
@@ -10,47 +10,70 @@ export type SocketMessage = {
 };
 
 export function useHiveSocket(userId: string, squadId?: string) {
-    const socketRef = useRef<WebSocket | null>(null);
     const [messages, setMessages] = useState<SocketMessage[]>([]);
+    const onlineUsersRef = useRef<Set<string>>(new Set());
 
     useEffect(() => {
         if (!userId) return;
 
-        const url = `${WS_BASE_URL}/ws/${userId}${squadId ? `?squad_id=${squadId}` : ''}`;
-        const ws = new WebSocket(url);
-        socketRef.current = ws;
+        let isMounted = true;
 
-        ws.onmessage = (event) => {
-            const message: SocketMessage = JSON.parse(event.data);
-            setMessages((prev: SocketMessage[]) => [...prev, message]);
+        const poll = async () => {
+            try {
+                const data = await presenceService.heartbeat(squadId);
+                if (!isMounted) return;
 
-            // 处理特定逻辑，例如收到轻推
-            if (message.type === 'NUDGE_RECEIVED') {
-                // 触发物理震动 (使用兼容层)
-                triggerHaptic('notification');
-            } else if (message.type === 'PING') {
-                // 自动回复 PONG 以维持连接 (iOS 真实环境必需)
-                if (ws.readyState === WebSocket.OPEN) {
-                    ws.send(JSON.stringify({ type: 'PONG' }));
+                const newOnline = new Set<string>(data.online_users || []);
+                const oldOnline = onlineUsersRef.current;
+                const newMessages: SocketMessage[] = [];
+
+                // 探测新上线或进入小组的用户
+                newOnline.forEach((uid: string) => {
+                    if (!oldOnline.has(uid) && uid !== userId) {
+                        newMessages.push({ type: 'USER_JOINED', user_id: uid });
+                    }
+                });
+
+                // 探测离线或退出小组的用户
+                oldOnline.forEach((uid: string) => {
+                    if (!newOnline.has(uid) && uid !== userId) {
+                        newMessages.push({ type: 'USER_LEFT', user_id: uid });
+                    }
+                });
+
+                // 探测别人给我的轻推 (Nudge)
+                if (data.nudges && data.nudges.length > 0) {
+                    data.nudges.forEach((n: { sender_id: string }) => {
+                        newMessages.push({ type: 'NUDGE_RECEIVED', sender_id: n.sender_id });
+                        triggerHaptic('notification');
+                    });
                 }
+
+                if (newMessages.length > 0) {
+                    setMessages((prev: SocketMessage[]) => [...prev, ...newMessages]);
+                }
+
+                onlineUsersRef.current = newOnline;
+            } catch (err) {
+                console.error("Heartbeat error", err);
             }
         };
 
-        ws.onclose = () => {
-            // WebSocket 连接断开
-        };
+        // 立即发一次，然后每 10 秒轮询一次心跳
+        poll();
+        const timer = setInterval(poll, 10000);
 
         return () => {
-            ws.close();
+            isMounted = false;
+            clearInterval(timer);
         };
     }, [userId, squadId]);
 
-    const sendNudge = (receiverId: string) => {
-        if (socketRef.current?.readyState === WebSocket.OPEN) {
-            socketRef.current.send(JSON.stringify({
-                type: 'NUDGE',
-                receiver_id: receiverId
-            }));
+    const sendNudge = async (receiverId: string) => {
+        try {
+            await presenceService.nudge(receiverId);
+        } catch (err) {
+            console.error("Failed to send nudge", err);
         }
     };
 

@@ -75,6 +75,13 @@ export const socialService = {
         apiClient.get<T.HiveMatchingResponse>(`/social/hive/matching?user_id=${userId}`),
 };
 
+export const presenceService = {
+    heartbeat: (squadId?: string) =>
+        apiClient.post<{ status: string; online_users: string[]; nudges: { sender_id: string }[] }>('/presence/heartbeat', { squad_id: squadId }),
+    nudge: (receiverId: string) =>
+        apiClient.post<{ status: string }>('/presence/nudge', { receiver_id: receiverId }),
+};
+
 export const subscriptionService = {
     subscribe: (userId: string, plan: 'monthly' | 'quarterly' | 'yearly' | 'lifetime') =>
         apiClient.post<{ status: string; expires_at: string }>('/subscription/subscribe', { user_id: userId, plan }),
