@@ -12,3 +12,5 @@ python-dotenv
 gunicorn
 slowapi
 redis>=4.5.4
+
+aiosmtplib

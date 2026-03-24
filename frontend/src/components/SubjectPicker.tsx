@@ -1,20 +1,8 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Book, Code, Languages, Palette, Activity, Microchip, Calculator, Music, Hash } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { Subject } from '../api/types';
-
-const ICON_MAP: Record<string, React.ElementType> = {
-    'Calculator': Calculator,
-    'Code': Code,
-    'Languages': Languages,
-    'Palette': Palette,
-    'Activity': Activity,
-    'Microchip': Microchip,
-    'Music': Music,
-    'Book': Book,
-    'Hash': Hash
-};
+import { SubjectIcon } from './SubjectIcon';
 
 export const SubjectPicker: React.FC<{
     onSelect: (name: string) => void;
@@ -37,7 +25,6 @@ export const SubjectPicker: React.FC<{
     return (
         <div className="grid grid-cols-2 gap-4">
             {items.map((cat: Subject | typeof items[0]) => {
-                const Icon = ICON_MAP[cat.icon || 'Hash'] || Hash;
                 return (
                     <button
                         key={cat.id}
@@ -46,7 +33,7 @@ export const SubjectPicker: React.FC<{
                         style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}
                     >
                         <div className={clsx("p-3 rounded-full mb-3 bg-black/40", cat.color_hex ? `text-[${cat.color_hex}]` : "text-amber-400")}>
-                            <Icon size={24} />
+                            <SubjectIcon name={cat.name} size={24} />
                         </div>
                         <div className="text-sm font-bold text-zinc-100">
                             {t(`subjects.${(cat.key || cat.name).toLowerCase()}`, { defaultValue: cat.name })}

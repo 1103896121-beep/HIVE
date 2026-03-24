@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Play, Square, Settings, Flame, ChevronLeft, MapPin, BookOpen, Clock, Zap, Maximize2 } from 'lucide-react';
+import { Play, Square, Settings, Flame, ChevronLeft, MapPin, Clock, Zap, Maximize2 } from 'lucide-react';
 import clsx from 'clsx';
 import { AppSheets, type SheetType } from './components/AppSheets';
 import { InteractionModal, type InteractionUser } from './components/InteractionModal';
@@ -8,6 +8,7 @@ import { GlobalMap } from './components/GlobalMap';
 import { triggerHaptic } from './utils/haptics';
 import { HiveGrid } from './components/HiveGrid';
 import { useHiveSocket } from './hooks/useHiveSocket';
+import { SubjectIcon } from './components/SubjectIcon';
 import { AuthPage } from './components/AuthPage';
 import { CustomModal } from './components/CustomModal';
 import { useAppInit } from './hooks/useAppInit';
@@ -25,7 +26,7 @@ export default function App() {
     setTheme, setCurrentSquad, setUserProfile, setSquads, setBonds, setHiveTiles, handleSignOut, handleAuthSuccess
   } = useAppInit();
 
-  const [currentSubject, setCurrentSubject] = useState('Coding');
+  const [currentSubject, setCurrentSubject] = useState('Work');
   const [currentLocation, setCurrentLocation] = useState('Global');
   const [activeSheet, setActiveSheet] = useState<SheetType>(null);
   const [viewMode, setViewMode] = useState<'squad' | 'global'>('squad');
@@ -151,7 +152,9 @@ export default function App() {
               style={{ color: 'var(--text-secondary)' }}
             >
               <Zap size={22} style={{ color: 'var(--accent)' }} />
-              <span className="absolute top-1 right-1 w-2 h-2 rounded-full animate-ping" style={{ backgroundColor: 'var(--accent)' }}></span>
+              {bonds.some(b => b.status === "PENDING" && b.requester_id !== userId) && (
+                  <span className="absolute top-1 right-1 w-2 h-2 rounded-full animate-ping" style={{ backgroundColor: 'var(--accent)' }}></span>
+              )}
             </button>
 
             <div className="flex flex-col items-center">
@@ -232,7 +235,7 @@ export default function App() {
                 onClick={() => setActiveSheet('subject')}
                 className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-white/5 border border-white/5 text-zinc-300 hover:bg-white/10 active:scale-95 transition-all"
               >
-                <BookOpen size={14} className="text-[#F5A623]" />
+                <SubjectIcon name={currentSubject} size={14} className="text-[#F5A623]" />
                 <span className="text-xs font-bold uppercase tracking-wider">{t(`subjects.${currentSubject.toLowerCase()}`)}</span>
               </button>
               <button
@@ -247,7 +250,7 @@ export default function App() {
             </div>
 
             {/* 蜂窝网格 + 外围光点环 */}
-            <div className="w-full flex flex-col items-center mb-10 relative">
+            <div className="w-full flex flex-col items-center mb-6 relative min-h-[300px] justify-center">
               {/* L2 外围渐变粒子环 */}
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[340px] h-[340px] pointer-events-none z-0">
                 {ambientParticles.map((particle) => (
@@ -275,9 +278,13 @@ export default function App() {
                 onUserClick={handleGridUserClick}
               />
 
+            </div>
+
+            {/* 把人数和宏观按钮移出星环以防遮挡 */}
+            <div className="w-full flex flex-col items-center mb-8 z-20">
               {/* L2 人数统计 */}
               <div
-                className="mt-6 flex items-center gap-2 z-20 px-4 py-1.5 rounded-full border border-white/5 backdrop-blur-md transition-colors duration-500"
+                className="flex items-center gap-2 px-4 py-1.5 rounded-full border border-white/5 backdrop-blur-md transition-colors duration-500 shadow-md"
                 style={{ backgroundColor: 'var(--bg-secondary)' }}
               >
                 <div className="flex -space-x-1">
@@ -292,32 +299,31 @@ export default function App() {
                 <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-400">+{ambientCount} near {currentLocation}</span>
               </div>
 
-
               {/* 缩放进入宏观视角的按钮 */}
               <button
                 onClick={() => setViewMode('global')}
-                className="mt-4 flex items-center gap-2 px-4 py-2 rounded-full bg-white/[0.03] border border-white/5 text-zinc-500 hover:text-[#F5A623] hover:border-[#F5A623]/30 transition-all group active:scale-95"
+                className="mt-3 flex items-center gap-2 px-4 py-2 rounded-full bg-white/[0.03] border border-white/5 text-zinc-500 hover:text-[#F5A623] hover:border-[#F5A623]/30 transition-all group active:scale-95"
               >
                 <Maximize2 size={12} className="group-hover:scale-110 transition-transform" />
                 <span className="text-[10px] font-black uppercase tracking-widest">{t('nav.global')} Hive</span>
               </button>
             </div>
 
-            {/* 计时器环 */}
+            {/* 计时器环 - Shrinked */}
             <div 
-              className={clsx("relative flex flex-col items-center mt-2 group", !isFocusing && "cursor-pointer")} 
+              className={clsx("relative flex flex-col items-center mt-0 group", !isFocusing && "cursor-pointer")} 
               onClick={() => { if (!isFocusing) setActiveSheet('timer'); }}
             >
-              <div className={clsx("absolute inset-0 rounded-full blur-[40px] transition-all duration-1000", isFocusing ? "bg-[#F5A623]/20 scale-110" : "bg-zinc-900/50 scale-100")}></div>
-              <div className="relative w-[280px] h-[280px] rounded-full flex items-center justify-center">
-                <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 280 280">
-                  <circle cx="140" cy="140" r="136" className="stroke-zinc-900" strokeWidth="4" fill="none" />
+              <div className={clsx("absolute inset-0 rounded-full blur-[35px] transition-all duration-1000", isFocusing ? "bg-[#F5A623]/20 scale-110" : "bg-zinc-900/50 scale-100")}></div>
+              <div className="relative w-[230px] h-[230px] rounded-full flex items-center justify-center">
+                <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 230 230">
+                  <circle cx="115" cy="115" r="111" className="stroke-zinc-900" strokeWidth="4" fill="none" />
                   <circle
-                    cx="140" cy="140" r="136"
+                    cx="115" cy="115" r="111"
                     className="transition-all duration-1000"
                     style={{ stroke: isFocusing ? 'var(--accent)' : 'var(--text-secondary)' }}
-                    strokeWidth="4" fill="none" strokeLinecap="round" strokeDasharray="854"
-                    strokeDashoffset={854 - (timeLeft / maxTime) * 854}
+                    strokeWidth="4" fill="none" strokeLinecap="round" strokeDasharray="697"
+                    strokeDashoffset={697 - (timeLeft / maxTime) * 697}
                   />
                 </svg>
                 <div className="text-center z-10 flex flex-col items-center relative">
@@ -429,7 +435,7 @@ export default function App() {
             subjects={subjects} setCurrentSubject={setCurrentSubject}
             setCurrentLocation={setCurrentLocation}
             timeLeft={timeLeft} handleTimeSelect={handleTimeSelect}
-            squads={squads} bonds={bonds} userId={userId || ''}
+            squads={squads} bonds={bonds} userId={userId || ''} hiveTiles={hiveTiles}
             handleCreateSquad={handleCreateSquad} handleLeaveSquad={handleLeaveSquad}
             handleDisbandSquad={handleDisbandSquad} showAlert={showAlert}
             sendNudge={sendNudge} handleBlock={handleBlock}

@@ -83,7 +83,10 @@ async def startup():
     async with AsyncSessionLocal() as db:
         result = await db.execute(select(Subject))
         if not result.scalars().first():
-            default_subjects = ["Coding", "Reading", "Design", "Math", "English"]
+            default_subjects = [
+                "Work", "Study", "Writing", "Fitness", "Meditation", 
+                "Music", "Art", "Language", "Science", "Others"
+            ]
             for name in default_subjects:
                 db.add(Subject(name=name))
             await db.commit()

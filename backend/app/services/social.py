@@ -3,7 +3,6 @@ from app.models.social import Squad, SquadMember, Bond, Report, Block
 from app.schemas.social import SquadCreate, ReportCreate, BlockCreate, HiveMatchTile, HiveMatchingResponse
 from datetime import datetime, timedelta
 from app.core.exceptions import LogicConflictException, PermissionDeniedException, ResourceNotFoundException
-from app.core.websocket import manager
 from app.repository.social_repository import SocialRepository
 from app.repository.focus_repository import FocusRepository
 from uuid import UUID
@@ -41,18 +40,23 @@ class SocialService:
     @staticmethod
     async def invite_to_squad(db: AsyncSession, admin_id: UUID, user_id: UUID, squad_id: UUID) -> SquadMember:
         """
-        由战队管理员发起用户邀请。
+        由战队管理员发起用户邀请。为精简交互，已同意互信的好友将被直接免审核拉入。
         """
         admin_check = await SocialRepository.get_squad_admin(db, squad_id, admin_id)
         if not admin_check:
             raise PermissionDeniedException("Only an active admin can invite.")
 
         existing = await SocialRepository.get_squad_member(db, squad_id, user_id)
-        if existing:
+        if existing and existing.status == "ACTIVE":
             return existing
 
-        member = SquadMember(squad_id=squad_id, user_id=user_id, status="PENDING_INVITE")
-        return await SocialRepository.create_squad_member(db, member)
+        if await SocialService._check_user_in_squad(db, user_id):
+            raise ValueError("Player is already active in another hive.")
+
+        member = SquadMember(squad_id=squad_id, user_id=user_id, status="ACTIVE")
+        await SocialRepository.create_squad_member(db, member)
+        await SocialRepository.commit(db)
+        return member
 
     @staticmethod
     async def review_invitation(db: AsyncSession, user_id: UUID, squad_id: UUID, accept: bool) -> Optional[SquadMember]:
@@ -209,13 +213,19 @@ class SocialService:
         active_cutoff = datetime.utcnow() - timedelta(minutes=30)
         tiles_dict = {}
 
+        from app.core.redis_client import redis_client
+        online_users_set = await redis_client.get_global_presence(timeout_sec=15)
+
         async def add_to_tiles(profiles_with_ids, is_squad=False, is_bond=False):
             for profile, uid in profiles_with_ids:
                 if uid in exclude_ids or uid in tiles_dict:
                     continue
                 
                 sessions = await FocusRepository.get_user_sessions(db, uid, limit=1)
-                status, subject_name = "offline", None
+                uid_str = str(uid)
+                status = "online" if uid_str in online_users_set else "offline"
+                subject_name = None
+
                 if sessions:
                     session = sessions[0]
                     if session.end_time is None:
@@ -223,12 +233,9 @@ class SocialService:
                         subjects = await FocusRepository.get_all_subjects(db)
                         subject = next((s for s in subjects if s.id == session.subject_id), None)
                         subject_name = subject.name if subject else None
-                    elif session.end_time > active_cutoff:
+                    elif session.end_time > active_cutoff and status == "offline":
                         status = "break"
                 
-                if status == "offline" and uid in manager.active_connections:
-                    status = "online"
-                    
                 tiles_dict[uid] = HiveMatchTile(
                     user_id=uid, name=profile.name, avatar_url=profile.avatar_url,
                     status=status, subject=subject_name, is_bond=is_bond, is_squad=is_squad,

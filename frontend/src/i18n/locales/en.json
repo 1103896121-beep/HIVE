@@ -174,13 +174,15 @@
         "invalid_file_type": "Invalid image format. Please upload JPEG, PNG, or WEBP."
     },
     "subjects": {
-        "mathematics": "Mathematics",
-        "coding": "Coding",
-        "languages": "Languages",
-        "art": "Art",
-        "science": "Science",
+        "work": "Work",
+        "study": "Study",
+        "writing": "Writing",
+        "fitness": "Fitness",
+        "meditation": "Meditation",
         "music": "Music",
-        "literature": "Literature",
+        "art": "Art",
+        "language": "Language",
+        "science": "Science",
         "others": "Others"
     },
     "themes": {

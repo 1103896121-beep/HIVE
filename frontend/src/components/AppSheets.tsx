@@ -9,7 +9,7 @@ import { ThemePicker, type Theme } from './ThemePicker';
 import { ProfilePortal, type UserProfile } from './ProfilePortal';
 import { SubscriptionSheet } from './SubscriptionSheet';
 import { LanguageSwitcher } from './LanguageSwitcher';
-import type { Subject, Squad, BondEnriched } from '../api/types';
+import type { Subject, Squad, BondEnriched, HiveMatchTile } from '../api/types';
 
 export type SheetType = 'subject' | 'location' | 'timer' | 'squad' | 'bonds' | 'theme' | 'profile' | 'subscription' | null;
 
@@ -23,6 +23,7 @@ interface AppSheetsProps {
   handleTimeSelect: (time: number) => void;
   squads: Squad[];
   bonds: BondEnriched[];
+  hiveTiles: HiveMatchTile[];
   userId: string;
   handleCreateSquad: (name: string) => Promise<void>;
   handleLeaveSquad: (squadId: string) => Promise<void>;
@@ -43,7 +44,7 @@ interface AppSheetsProps {
 export function AppSheets({
   activeSheet, setActiveSheet, subjects, setCurrentSubject,
   setCurrentLocation, timeLeft, handleTimeSelect,
-  squads, bonds, userId, handleCreateSquad, handleLeaveSquad, handleDisbandSquad,
+  squads, bonds, hiveTiles, userId, handleCreateSquad, handleLeaveSquad, handleDisbandSquad,
   showAlert, sendNudge, handleBlock, theme, setTheme,
   userProfile, handleUpdateProfile, handleSignOut, isAuthenticated, trialStatus, setUserProfile
 }: AppSheetsProps) {
@@ -65,7 +66,7 @@ export function AppSheets({
 
       <Sheet isOpen={activeSheet === 'squad'} onClose={() => setActiveSheet(null)} title={t('sheets.hive_hq')}>
         <SquadPortal
-          squads={squads} bonds={bonds} userId={userId}
+          squads={squads} bonds={bonds} userId={userId} hiveTiles={hiveTiles}
           onCreate={handleCreateSquad} onLeave={handleLeaveSquad}
           onDisband={handleDisbandSquad} onAlert={showAlert}
         />

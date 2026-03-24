@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Plus, ShieldCheck, DoorOpen, Trash2, UserPlus, XCircle } from 'lucide-react';
-import type { Squad, BondEnriched } from '../api/types';
+import type { Squad, BondEnriched, HiveMatchTile } from '../api/types';
 import { socialService, userService } from '../api';
 import { validateContent } from '../utils/validation';
 
 interface SquadPortalProps {
     squads: Squad[];
     bonds: BondEnriched[];
+    hiveTiles?: HiveMatchTile[];
     userId: string;
     onCreate: (name: string) => Promise<void>;
     onLeave: (squadId: string) => Promise<void>;
@@ -15,7 +16,7 @@ interface SquadPortalProps {
     onAlert: (title: string, message: string) => void;
 }
 
-export const SquadPortal: React.FC<SquadPortalProps> = ({ squads, bonds, userId, onCreate, onLeave, onDisband, onAlert }) => {
+export const SquadPortal: React.FC<SquadPortalProps> = ({ squads, bonds, hiveTiles = [], userId, onCreate, onLeave, onDisband, onAlert }) => {
     const { t } = useTranslation();
     const [newSquadName, setNewSquadName] = useState('');
     const [isCreating, setIsCreating] = useState(false);
@@ -161,6 +162,34 @@ export const SquadPortal: React.FC<SquadPortalProps> = ({ squads, bonds, userId,
                                 </div>
                             </div>
                         </div>
+                    </div>
+
+                    {/* Roster UI */}
+                    <div className="mt-6 flex flex-col gap-3">
+                        <h4 className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2 px-1">Active Roster</h4>
+                        {hiveTiles.filter(t => t.is_squad).length === 0 ? (
+                            <div className="text-center py-6 text-zinc-600 text-[10px] font-bold uppercase tracking-widest bg-white/5 rounded-3xl border border-white/5 shadow-inner">
+                                You are alone down here.
+                            </div>
+                        ) : (
+                            hiveTiles.filter(t => t.is_squad).map(member => (
+                                <div key={member.user_id} className="flex items-center justify-between p-4 rounded-3xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 rounded-2xl overflow-hidden bg-zinc-800 border-2 border-white/10 relative">
+                                            {member.status === 'offline' && <div className="absolute inset-0 bg-black/60 z-10 transition-colors"></div>}
+                                            <img src={member.avatar_url || `https://i.pravatar.cc/150?u=${member.user_id}`} alt={member.name} className="w-full h-full object-cover" />
+                                            {member.status !== 'offline' && <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 border-2 border-zinc-900 rounded-full z-20"></div>}
+                                        </div>
+                                        <div>
+                                            <div className="text-sm font-bold text-white tracking-tight">{member.name}</div>
+                                            <div className="text-[9px] font-black uppercase tracking-widest text-[#F5A623] drop-shadow-md">
+                                                {member.status === 'focus' ? (member.subject || 'Focus') : member.status === 'online' ? <span className="text-green-500">Online</span> : member.status === 'break' ? <span className="text-cyan-400">Break</span> : <span className="text-zinc-600">Offline</span>}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
+                        )}
                     </div>
                 </div>
             )}

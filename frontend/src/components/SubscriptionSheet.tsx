@@ -57,6 +57,7 @@ export function SubscriptionSheet({ userId, onSuccess, onClose, onAlert }: Subsc
     const { t } = useTranslation();
     const [isLoading, setIsLoading] = useState(false);
     const [products, setProducts] = useState<Array<{ productId: string, title: string, localizedPrice: string, description: string }>>([]);
+    const [selectedSku, setSelectedSku] = useState<string | null>(null);
 
     const productSkus = useMemo(() => [
         { productId: 'com.hive.monthly', title: t('subscription.monthly', 'Monthly'), localizedPrice: '$2.99', description: t('subscription.monthly_desc', 'Billed monthly') },
@@ -118,6 +119,13 @@ export function SubscriptionSheet({ userId, onSuccess, onClose, onAlert }: Subsc
         store.initialize([Platform.APPLE_APPSTORE]);
 
     }, [productSkus, t, onSuccess, onClose, onAlert]);
+
+    useEffect(() => {
+        if (products.length > 0 && !selectedSku) {
+            const popular = products.find(p => p.productId.includes('quarterly'));
+            setSelectedSku(popular ? popular.productId : products[0].productId);
+        }
+    }, [products, selectedSku]);
 
     const handlePurchase = async (sku: string) => {
         try {
@@ -212,7 +220,6 @@ export function SubscriptionSheet({ userId, onSuccess, onClose, onAlert }: Subsc
                         {products.map((product: typeof productSkus[0]) => {
                             let periodStr = '';
                             let badgeStr = '';
-                            let isHighlight = false;
                             let TitleIcon = null;
 
                             if (product.productId.includes('monthly')) {
@@ -220,7 +227,6 @@ export function SubscriptionSheet({ userId, onSuccess, onClose, onAlert }: Subsc
                             } else if (product.productId.includes('quarterly')) {
                                 periodStr = 'qr';
                                 badgeStr = t('subscription.badge_popular');
-                                isHighlight = true;
                             } else if (product.productId.includes('annual')) {
                                 periodStr = 'yr';
                             } else if (product.productId.includes('lifetime')) {
@@ -236,9 +242,9 @@ export function SubscriptionSheet({ userId, onSuccess, onClose, onAlert }: Subsc
                                     period={periodStr}
                                     desc={product.description}
                                     badge={badgeStr}
-                                    onClick={() => handlePurchase(product.productId)}
+                                    onClick={() => setSelectedSku(product.productId)}
                                     disabled={isLoading}
-                                    highlight={isHighlight}
+                                    selected={selectedSku === product.productId}
                                     icon={TitleIcon}
                                 />
                             );
@@ -248,6 +254,13 @@ export function SubscriptionSheet({ userId, onSuccess, onClose, onAlert }: Subsc
             </div>
 
             <div className="mt-4 flex flex-col items-center gap-4">
+                <button
+                    onClick={() => { if(selectedSku) handlePurchase(selectedSku); }}
+                    disabled={!selectedSku || isLoading}
+                    className="w-full py-4 mt-2 rounded-2xl bg-[#F5A623] text-black font-black uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#d48f1f] transition-all hover:scale-[1.02] active:scale-95 shadow-[0_0_20px_rgba(245,166,35,0.3)]"
+                >
+                    {isLoading ? t('common.loading', 'Loading...') : t('subscription.continue_payment', 'Confirm & Pay')}
+                </button>
                 <button
                     onClick={handleRestore}
                     disabled={isLoading}
@@ -290,19 +303,19 @@ interface PlanButtonProps {
     desc: string;
     onClick: () => void;
     disabled?: boolean;
-    highlight?: boolean;
+    selected?: boolean;
     badge?: string;
     icon?: React.ReactNode;
 }
 
-function PlanButton({ title, price, period, desc, onClick, disabled, highlight, badge, icon }: PlanButtonProps) {
+function PlanButton({ title, price, period, desc, onClick, disabled, selected, badge, icon }: PlanButtonProps) {
     return (
         <button
             disabled={disabled}
             onClick={onClick}
             className={clsx(
                 "group relative flex flex-col items-start p-4 rounded-2xl transition-all text-left",
-                highlight 
+                selected 
                     ? "bg-zinc-900 border-2 border-[#F5A623] shadow-[0_0_15px_rgba(245,166,35,0.1)]" 
                     : "bg-white/5 border border-white/10 hover:border-white/20"
             )}
@@ -315,7 +328,7 @@ function PlanButton({ title, price, period, desc, onClick, disabled, highlight, 
             <div className="flex flex-col w-full gap-1 mb-2">
                 <div className="flex items-center gap-1.5">
                     {icon}
-                    <span className={clsx("text-xs font-black uppercase tracking-widest", highlight ? "text-[#F5A623]" : "text-zinc-300")}>{title}</span>
+                    <span className={clsx("text-xs font-black uppercase tracking-widest", selected ? "text-[#F5A623]" : "text-zinc-300")}>{title}</span>
                 </div>
                 <div className="flex items-baseline gap-1 mt-1">
                     <span className="text-xl font-black text-white">{price}</span>

@@ -41,7 +41,29 @@ export function useAppInit() {
         setIsAuthenticated(true);
     };
 
-    // Initialize data
+    // Periodic background sync for dynamic social data (Bonds, Squads, Matches)
+    useEffect(() => {
+        if (!isAuthenticated || !userId) return;
+        const syncSocialData = async () => {
+            try {
+                const [fetchedSquads, fetchedBonds, matchData] = await Promise.all([
+                    socialService.getSquads(userId),
+                    socialService.getBonds(userId),
+                    socialService.getHiveMatching(userId)
+                ]);
+                setSquads(fetchedSquads);
+                setBonds(fetchedBonds);
+                setHiveTiles(matchData.tiles);
+                setAmbientCount(matchData.ambient_count);
+            } catch (err) {
+                console.error('Background sync failed:', err);
+            }
+        };
+        const timer = setInterval(syncSocialData, 30000);
+        return () => clearInterval(timer);
+    }, [userId, isAuthenticated]);
+
+    // Initialize data once on mount
     useEffect(() => {
         if (!isAuthenticated || !userId) return;
 

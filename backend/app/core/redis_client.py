@@ -25,13 +25,18 @@ class RedisClient:
         now = int(time.time())
         cutoff = now - timeout_sec
         key = f"presence:squad:{squad_id}"
-        
-        # 清除超过 timeout_sec 秒没有发送心跳的用户
         await self.client.zremrangebyscore(key, "-inf", cutoff)
-        
-        # 获取当下存活的所有用户ID
         online_users = await self.client.zrange(key, 0, -1)
         return online_users
+
+    async def get_global_presence(self, timeout_sec: int = 20) -> set:
+        """获取平台上所有有效在线的用户的集合集合"""
+        now = int(time.time())
+        cutoff = now - timeout_sec
+        key = "presence:global"
+        await self.client.zremrangebyscore(key, "-inf", cutoff)
+        online_users = await self.client.zrange(key, 0, -1)
+        return set(online_users)
 
     async def send_nudge(self, sender_id: str, receiver_id: str):
         """发送轻推提醒 (放入目标用户的专属接收队列)"""

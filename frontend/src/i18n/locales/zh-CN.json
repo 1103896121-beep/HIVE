@@ -174,13 +174,15 @@
         "invalid_file_type": "无效的图片格式。请上传 JPEG, PNG 或 WEBP。"
     },
     "subjects": {
-        "mathematics": "数学",
-        "coding": "编程",
-        "languages": "语言",
-        "art": "艺术",
-        "science": "科学",
+        "work": "工作",
+        "study": "学习",
+        "writing": "写作",
+        "fitness": "健身",
+        "meditation": "冥想",
         "music": "音乐",
-        "literature": "文学",
+        "art": "艺术",
+        "language": "语言",
+        "science": "科学",
         "others": "其他"
     },
     "themes": {

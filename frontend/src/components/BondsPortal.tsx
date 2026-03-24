@@ -201,13 +201,12 @@ export const BondsPortal: React.FC<BondsPortalProps> = ({ bonds, userId, onNudge
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <div className="text-xs font-bold text-white truncate">{bond.other_user!.name}</div>
-                                            <div className="text-[9px] text-zinc-500 uppercase font-black">{t('bonds.wants_to_bond', 'Wants to bond')}</div>
                                         </div>
                                         <div className="flex gap-2">
                                             <button 
                                                 onClick={async () => {
                                                     try {
-                                                        await socialService.updateBondStatus(bond.user_id_1, bond.user_id_2, 'ACCEPTED');
+                                                        await socialService.updateBondStatus(userId, bond.other_user!.user_id, 'ACCEPTED');
                                                         onAlert(t('common.success'), t('bonds.accepted_success', 'Bond confirmed!'));
                                                         window.location.reload(); // Quick refresh for now
                                                     } catch { onAlert('Error', 'Failed to accept.'); }
@@ -290,7 +289,6 @@ export const BondsPortal: React.FC<BondsPortalProps> = ({ bonds, userId, onNudge
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <div className="text-xs font-bold text-zinc-400 truncate">{bond.other_user!.name}</div>
-                                            <div className="text-[9px] text-zinc-600 uppercase font-black">{t('bonds.awaiting_confirmation', 'Awaiting...')}</div>
                                         </div>
                                         <button 
                                             onClick={() => handleRemoveBond(bond.other_user!.user_id)}

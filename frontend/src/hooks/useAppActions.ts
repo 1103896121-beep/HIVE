@@ -109,7 +109,7 @@ export function useAppActions({
     if (!userId) return;
     try {
       const squad = await socialService.createSquad(userId, name);
-      setSquads([squad]); setCurrentSquad(squad.name); setActiveSheet(null);
+      setSquads([squad]); setCurrentSquad(squad.name);
     } catch (err: unknown) { 
       const msg = err instanceof Error ? err.message : 'Create squad failed.';
       showAlert('Error', msg); 
