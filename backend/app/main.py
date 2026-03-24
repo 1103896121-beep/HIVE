@@ -3,7 +3,7 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import user, focus, social, socket, subscription, auth
+from app.api import user, focus, social, presence, subscription, auth
 from app.core.database import engine, Base
 from app.core.exceptions import HiveException
 from fastapi.responses import JSONResponse
@@ -15,7 +15,6 @@ from logging.handlers import RotatingFileHandler
 import traceback
 import asyncio
 from datetime import datetime
-from app.core.websocket import manager
 
 # 配置标准日志系统
 logger = logging.getLogger("hive")
@@ -67,7 +66,7 @@ app.add_middleware(
 app.include_router(user.router)
 app.include_router(focus.router)
 app.include_router(social.router)
-app.include_router(socket.router)
+app.include_router(presence.router)
 app.include_router(subscription.router)
 app.include_router(auth.router)
 
@@ -88,14 +87,6 @@ async def startup():
             for name in default_subjects:
                 db.add(Subject(name=name))
             await db.commit()
-    
-    # 启动 WebSocket 心跳检测任务 (每 30 秒一次)
-    async def heartbeat_loop():
-        while True:
-            await manager.ping_all()
-            await asyncio.sleep(30)
-    
-    asyncio.create_task(heartbeat_loop())
 
 @app.get("/")
 async def root():

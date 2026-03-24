@@ -3,25 +3,35 @@ version: '3.8'
 services:
   backend:
     build: .
+    container_name: hive_backend
     ports:
-      - "8000:8000"
+      - "${BACKEND_PORT:-9999}:8000"
     env_file:
       - .env
     environment:
       - DATABASE_URL=postgresql+asyncpg://user:password@db:5432/hivedb
+      - REDIS_URL=redis://redis:6379/0
     depends_on:
       - db
+      - redis
+
+  redis:
+    image: redis:7-alpine
+    container_name: hive_redis
+    restart: always
 
   db:
     image: postgres:15
+    container_name: hive_db
     environment:
       - POSTGRES_USER=user
       - POSTGRES_PASSWORD=password
       - POSTGRES_DB=hivedb
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+      - hive_postgres_data:/var/lib/postgresql/data
+    # 彻底杜绝端口冲突：测试数据库不再映射到共有宿主机
+    # ports:
+    #   - "${DB_PORT:-5432}:5432"
 
 volumes:
-  postgres_data:
+  hive_postgres_data:

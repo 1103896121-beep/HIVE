@@ -27,6 +27,9 @@ class Settings(BaseSettings):
         "sqlite+aiosqlite:///./hive_v2.db"
     )
     
+    # Redis 配置 (用于短连接状态长轮询与心跳)
+    REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+    
     # 邮件配置 (SMTP)
     SMTP_TLS: bool = True
     SMTP_PORT: Optional[int] = 587
