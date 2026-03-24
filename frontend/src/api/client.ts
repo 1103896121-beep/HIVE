@@ -1,4 +1,5 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+// NOTE: 默认使用相对路径，由 Vite 代理转发到后端，支持局域网跨设备访问
+const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
 class APIClient {
     private static instance: APIClient;
@@ -15,11 +16,9 @@ class APIClient {
     async request<T>(url: string, options: RequestInit = {}): Promise<T> {
         const response = await fetch(`${API_BASE_URL}${url}`, {
             ...options,
+            credentials: 'include',
             headers: {
                 'Content-Type': 'application/json',
-                ...(localStorage.getItem('hive_token')
-                    ? { 'Authorization': `Bearer ${localStorage.getItem('hive_token')}` }
-                    : {}),
                 ...options.headers,
             },
         });
@@ -70,4 +69,6 @@ class APIClient {
 }
 
 export const apiClient = APIClient.getInstance();
-export const WS_BASE_URL = API_BASE_URL.replace(/^http/, 'ws');
+export const WS_BASE_URL = API_BASE_URL 
+    ? API_BASE_URL.replace(/^http/, 'ws')
+    : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`;

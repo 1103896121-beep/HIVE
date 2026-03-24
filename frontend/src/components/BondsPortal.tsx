@@ -58,7 +58,7 @@ export const BondsPortal: React.FC<BondsPortalProps> = ({ bonds, userId, onNudge
     const handleNudge = (targetId: string) => {
         setNudged(targetId);
         onNudge(targetId);
-        setTimeout(() => setNudged(null), 2000);
+        setTimeout(() => setNudged(null), 300);
     };
 
     const handleSelectUser = async (userId: string) => {
@@ -139,6 +139,7 @@ export const BondsPortal: React.FC<BondsPortalProps> = ({ bonds, userId, onNudge
                             <div key={bond.other_user!.user_id} className="w-10 h-10 rounded-full border-2 border-[#111] bg-zinc-800 flex items-center justify-center overflow-hidden">
                                 <img
                                     src={bond.other_user!.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${bond.other_user!.user_id}`}
+                                    onError={(e) => { e.currentTarget.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${bond.other_user!.user_id}`; }}
                                     alt="avatar"
                                     className="w-full h-full object-cover"
                                 />
@@ -146,7 +147,7 @@ export const BondsPortal: React.FC<BondsPortalProps> = ({ bonds, userId, onNudge
                         ))}
                     </div>
                     <div className="text-right">
-                        <div className="text-sm font-black" style={{ color: 'var(--accent)' }}>{t('bonds.active_count', { count: bonds.length })}</div>
+                        <div className="text-sm font-black" style={{ color: 'var(--accent)' }}>{t('bonds.active_count', { count: bonds.filter(b => b.status === 'ACCEPTED').length })}</div>
                         <div className="text-[10px] font-bold" style={{ color: 'var(--text-secondary)' }}>{t('bonds.connected_desc')}</div>
                     </div>
                 </div>
@@ -182,94 +183,124 @@ export const BondsPortal: React.FC<BondsPortalProps> = ({ bonds, userId, onNudge
                     )}
                 </div>
 
-                <div className="space-y-3">
-                    {bonds.length === 0 ? (
-                        <div className="p-8 text-center text-zinc-600 border border-dashed border-zinc-800 rounded-3xl font-bold uppercase text-[10px] tracking-widest">
-                            {t('bonds.no_bonds')}
-                        </div>
-                    ) : (
-                        bonds
-                            .filter(b => b.other_user)
-                            .filter(b =>
-                                b.other_user!.name.toLowerCase().includes(localSearchQuery.toLowerCase()) ||
-                                (b.other_user!.city || '').toLowerCase().includes(localSearchQuery.toLowerCase())
-                            )
-                            .map((bond, index) => {
-                                const otherUser = bond.other_user!;
-                                const isAccepted = bond.status === 'ACCEPTED';
-
-                                return (
-                                    <div
-                                        key={otherUser.user_id}
-                                        className="flex items-center gap-4 p-5 rounded-[28px] border transition-all duration-500 backdrop-blur-md animate-in fade-in slide-in-from-bottom-4 hover:z-50 relative"
-                                        style={{
-                                            backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                                            borderColor: isAccepted ? 'rgba(var(--accent-rgb), 0.2)' : 'rgba(255, 255, 255, 0.05)',
-                                            animationDelay: `${index * 50}ms`,
-                                            animationFillMode: 'both'
-                                        }}
-                                    >
-                                        <div className="relative">
-                                            <button
-                                                onClick={() => handleSelectUser(otherUser.user_id)}
-                                                disabled={isFetchingProfile}
-                                                className={clsx(
-                                                    "w-14 h-14 rounded-[22px] overflow-hidden border-2 transition-all duration-700 hover:scale-105 active:scale-95 cursor-pointer disabled:opacity-50",
-                                                    isAccepted ? "border-[var(--accent)]" : "border-zinc-800 opacity-60"
-                                                )}
-                                            >
-                                                <img
-                                                    src={otherUser.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${otherUser.user_id}`}
-                                                    alt="Avatar"
-                                                    className="w-full h-full object-cover"
-                                                />
-                                            </button>
-                                            {isAccepted && (
-                                                <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-[var(--accent)] rounded-full border-2 border-[#111] flex items-center justify-center">
-                                                    <Zap size={10} fill="black" />
-                                                </div>
-                                            )}
+                <div className="space-y-6">
+                    {/* Received Requests Section */}
+                    {bonds.some(b => b.status === 'PENDING' && b.requester_id !== userId) && (
+                        <div className="space-y-3">
+                            <h4 className="px-1 text-[9px] font-black uppercase tracking-[0.2em] text-[#F5A623]">{t('bonds.received_requests', 'Received Requests')}</h4>
+                            {bonds
+                                .filter(b => b.status === 'PENDING' && b.requester_id !== userId && b.other_user)
+                                .map(bond => (
+                                    <div key={bond.other_user!.user_id} className="flex items-center gap-4 p-4 rounded-3xl bg-[#F5A623]/5 border border-[#F5A623]/20">
+                                        <div className="w-10 h-10 rounded-full overflow-hidden border border-white/10">
+                                            <img 
+                                                src={bond.other_user!.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${bond.other_user!.user_id}`} 
+                                                onError={(e) => { e.currentTarget.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${bond.other_user!.user_id}`; }}
+                                                className="w-full h-full object-cover" 
+                                            />
                                         </div>
-
                                         <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-2 mb-0.5">
-                                                <span className="font-bold text-white tracking-tight truncate">{otherUser.name}</span>
-                                            </div>
-                                            <div className="text-[10px] font-bold" style={{ color: 'var(--text-secondary)' }}>
-                                                {otherUser.city || t('common.digital_space')}
-                                            </div>
-                                            {!isAccepted && (
-                                                <div className="text-[9px] font-black uppercase tracking-widest mt-1" style={{ color: 'var(--accent)' }}>
-                                                    {bond.status}
-                                                </div>
-                                            )}
+                                            <div className="text-xs font-bold text-white truncate">{bond.other_user!.name}</div>
+                                            <div className="text-[9px] text-zinc-500 uppercase font-black">{t('bonds.wants_to_bond', 'Wants to bond')}</div>
                                         </div>
-
-                                        <div className="flex items-center gap-2">
-                                            {isAccepted && (
-                                                <button
-                                                    onClick={() => handleNudge(otherUser.user_id)}
-                                                    className={clsx(
-                                                        "p-3 rounded-2xl transition-all active:scale-90",
-                                                        nudged === otherUser.user_id
-                                                            ? "text-black"
-                                                            : "bg-white/5 text-zinc-400 hover:text-white"
-                                                    )}
-                                                    style={{ backgroundColor: nudged === otherUser.user_id ? 'var(--accent)' : undefined }}
-                                                >
-                                                    <Zap size={18} fill={nudged === otherUser.user_id ? 'currentColor' : 'none'} className={clsx(nudged === otherUser.user_id && "animate-bounce")} />
-                                                </button>
-                                            )}
-                                            <button
-                                                onClick={() => setActionUser(bond)}
-                                                className="p-3 bg-white/5 rounded-2xl text-zinc-600 hover:text-white transition-colors active:scale-90"
+                                        <div className="flex gap-2">
+                                            <button 
+                                                onClick={async () => {
+                                                    try {
+                                                        await socialService.updateBondStatus(bond.user_id_1, bond.user_id_2, 'ACCEPTED');
+                                                        onAlert(t('common.success'), t('bonds.accepted_success', 'Bond confirmed!'));
+                                                        window.location.reload(); // Quick refresh for now
+                                                    } catch { onAlert('Error', 'Failed to accept.'); }
+                                                }}
+                                                className="px-3 py-1.5 bg-[var(--accent)] rounded-lg text-black text-[9px] font-black uppercase tracking-widest"
                                             >
-                                                <MoreVertical size={16} />
+                                                {t('common.accept', 'Accept')}
+                                            </button>
+                                            <button 
+                                                onClick={() => handleRemoveBond(bond.other_user!.user_id)}
+                                                className="px-3 py-1.5 bg-white/5 rounded-lg text-zinc-400 text-[9px] font-black uppercase tracking-widest"
+                                            >
+                                                {t('common.ignore', 'Ignore')}
                                             </button>
                                         </div>
                                     </div>
-                                );
-                            })
+                                ))}
+                        </div>
+                    )}
+
+                    {/* Active Bonds Section */}
+                    <div className="space-y-3">
+                        <h4 className="px-1 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500">{t('bonds.established_bonds', 'Established')}</h4>
+                        {bonds.filter(b => b.status === 'ACCEPTED').length === 0 ? (
+                            <div className="p-8 text-center text-zinc-600 border border-dashed border-zinc-800 rounded-3xl font-bold uppercase text-[10px] tracking-widest">
+                                {t('bonds.no_bonds')}
+                            </div>
+                        ) : (
+                            bonds
+                                .filter(b => b.status === 'ACCEPTED' && b.other_user)
+                                .map((bond) => {
+                                    const otherUser = bond.other_user!;
+                                    return (
+                                        <div
+                                            key={otherUser.user_id}
+                                            className="flex items-center gap-4 p-5 rounded-[28px] border bg-white/[0.03] border-[var(--accent)]/20 transition-all duration-500"
+                                        >
+                                            <div className="relative">
+                                                <button onClick={() => handleSelectUser(otherUser.user_id)} className="w-14 h-14 rounded-[22px] overflow-hidden border-2 border-[var(--accent)] transition-all">
+                                                    <img 
+                                                        src={otherUser.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${otherUser.user_id}`} 
+                                                        onError={(e) => { e.currentTarget.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${otherUser.user_id}`; }}
+                                                        className="w-full h-full object-cover" 
+                                                    />
+                                                </button>
+                                                <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-[var(--accent)] rounded-full border-2 border-[#111] flex items-center justify-center">
+                                                    <Zap size={10} fill="black" />
+                                                </div>
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <span className="font-bold text-white tracking-tight truncate block">{otherUser.name}</span>
+                                                <div className="text-[10px] font-bold text-zinc-500">{otherUser.city || t('common.digital_space')}</div>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <button onClick={() => handleNudge(otherUser.user_id)} className={clsx("p-3 rounded-2xl transition-all", nudged === otherUser.user_id ? "bg-[var(--accent)] text-black" : "bg-white/5 text-zinc-400")}>
+                                                    <Zap size={18} fill={nudged === otherUser.user_id ? 'currentColor' : 'none'} className={clsx(nudged === otherUser.user_id && "animate-bounce")} />
+                                                </button>
+                                                <button onClick={() => setActionUser(bond)} className="p-3 bg-white/5 rounded-2xl text-zinc-600"><MoreVertical size={16} /></button>
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                        )}
+                    </div>
+
+                    {/* Sent Requests Section */}
+                    {bonds.some(b => b.status === 'PENDING' && b.requester_id === userId) && (
+                        <div className="space-y-3 opacity-60">
+                            <h4 className="px-1 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500">{t('bonds.sent_requests', 'Sent Requests')}</h4>
+                            {bonds
+                                .filter(b => b.status === 'PENDING' && b.requester_id === userId && b.other_user)
+                                .map(bond => (
+                                    <div key={bond.other_user!.user_id} className="flex items-center gap-4 p-4 rounded-3xl bg-white/5 border border-white/5">
+                                        <div className="w-10 h-10 rounded-full overflow-hidden grayscale">
+                                            <img 
+                                                src={bond.other_user!.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${bond.other_user!.user_id}`} 
+                                                onError={(e) => { e.currentTarget.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${bond.other_user!.user_id}`; }}
+                                                className="w-full h-full object-cover" 
+                                            />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="text-xs font-bold text-zinc-400 truncate">{bond.other_user!.name}</div>
+                                            <div className="text-[9px] text-zinc-600 uppercase font-black">{t('bonds.awaiting_confirmation', 'Awaiting...')}</div>
+                                        </div>
+                                        <button 
+                                            onClick={() => handleRemoveBond(bond.other_user!.user_id)}
+                                            className="px-3 py-1.5 bg-white/5 rounded-lg text-zinc-500 text-[9px] font-black uppercase tracking-widest"
+                                        >
+                                            {t('common.cancel', 'Cancel')}
+                                        </button>
+                                    </div>
+                                ))}
+                        </div>
                     )}
                 </div>
             </div>
@@ -372,7 +403,12 @@ export const BondsPortal: React.FC<BondsPortalProps> = ({ bonds, userId, onNudge
                                                 onClick={() => setSelectedUser(user)}
                                                 className="w-10 h-10 rounded-full overflow-hidden bg-zinc-800 hover:scale-105 active:scale-95 transition-transform"
                                             >
-                                                <img src={user.avatar_url || `https://i.pravatar.cc/150?u=${user.id}`} alt={user.name} className="w-full h-full object-cover" />
+                                                <img 
+                                                    src={user.avatar_url || `https://i.pravatar.cc/150?u=${user.id}`} 
+                                                    onError={(e) => { e.currentTarget.src = `https://i.pravatar.cc/150?u=${user.id}`; }}
+                                                    alt={user.name} 
+                                                    className="w-full h-full object-cover" 
+                                                />
                                             </button>
                                             <div>
                                                 <div className="text-sm font-bold text-white">{user.name}</div>
@@ -412,7 +448,12 @@ export const BondsPortal: React.FC<BondsPortalProps> = ({ bonds, userId, onNudge
                         <div className="px-8 pb-10 -mt-16 text-center relative z-10">
                             <div className="inline-block p-1.5 bg-zinc-900 rounded-[32px] mb-4 shadow-2xl">
                                 <div className="w-28 h-28 rounded-[28px] overflow-hidden border-4 border-zinc-800 bg-zinc-800">
-                                    <img src={selectedUser.avatar_url || `https://i.pravatar.cc/150?u=${selectedUser.id}`} alt={selectedUser.name} className="w-full h-full object-cover" />
+                                    <img 
+                                        src={selectedUser.avatar_url || `https://i.pravatar.cc/150?u=${selectedUser.id}`} 
+                                        onError={(e) => { e.currentTarget.src = `https://i.pravatar.cc/150?u=${selectedUser.id}`; }}
+                                        alt={selectedUser.name} 
+                                        className="w-full h-full object-cover" 
+                                    />
                                 </div>
                             </div>
 

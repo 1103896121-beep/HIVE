@@ -25,8 +25,8 @@ class SubscriptionService:
             "com.hive.lifetime": 36500
         }
 
-        # Validate against Sandbox first (or Production first in real world, fallback to Sandbox)
-        validation_url = "https://sandbox.itunes.apple.com/verifyReceipt"
+        # 生产环境应先请求 Apple 生产验证服务器，收到 21007 时降级到沙箱
+        validation_url = "https://buy.itunes.apple.com/verifyReceipt"
         payload = {
             "receipt-data": receipt_data,
         }
@@ -37,12 +37,12 @@ class SubscriptionService:
         data = response.json()
 
         if data.get("status") == 21007:
-            # 沙箱收据发送到生产环境（通常在 TestFlight 或审核时发生），重定向到沙箱
+            # 沙箱收据发送到了生产环境（TestFlight / 审核环境），降级到沙箱
              validation_url = "https://sandbox.itunes.apple.com/verifyReceipt"
              response = requests.post(validation_url, json=payload)
              data = response.json()
         elif data.get("status") == 21008:
-            # 生产收据发送到沙箱，重定向到生产环境
+            # 生产收据发送到沙箱（不应出现在此流程中），重定向到生产环境
              validation_url = "https://buy.itunes.apple.com/verifyReceipt"
              response = requests.post(validation_url, json=payload)
              data = response.json()

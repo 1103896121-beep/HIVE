@@ -8,7 +8,7 @@ import type { Theme } from '../components/ThemePicker';
 export function useAppInit() {
     const { i18n } = useTranslation();
     const [userId, setUserId] = useState<string | null>(localStorage.getItem('hive_user_id'));
-    const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('hive_token'));
+    const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('hive_user_id'));
     
     const [subjects, setSubjects] = useState<Subject[]>([]);
     const [squads, setSquads] = useState<Squad[]>([]);
@@ -30,14 +30,12 @@ export function useAppInit() {
     });
 
     const handleSignOut = () => {
-        localStorage.removeItem('hive_token');
         localStorage.removeItem('hive_user_id');
         setIsAuthenticated(false);
         setUserId(null);
     };
 
-    const handleAuthSuccess = (uId: string, token: string) => {
-        localStorage.setItem('hive_token', token);
+    const handleAuthSuccess = (uId: string) => {
         localStorage.setItem('hive_user_id', uId);
         setUserId(uId);
         setIsAuthenticated(true);

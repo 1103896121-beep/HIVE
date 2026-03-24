@@ -3,6 +3,7 @@ from app.models.social import Squad, SquadMember, Bond, Report, Block
 from app.schemas.social import SquadCreate, ReportCreate, BlockCreate, HiveMatchTile, HiveMatchingResponse
 from datetime import datetime, timedelta
 from app.core.exceptions import LogicConflictException, PermissionDeniedException, ResourceNotFoundException
+from app.core.websocket import manager
 from app.repository.social_repository import SocialRepository
 from app.repository.focus_repository import FocusRepository
 from uuid import UUID
@@ -117,7 +118,8 @@ class SocialService:
         if existing:
             return existing
 
-        db_bond = Bond(user_id_1=u1, user_id_2=u2, status="PENDING")
+        # user_id_1 视为发起者
+        db_bond = Bond(user_id_1=u1, user_id_2=u2, status="PENDING", requester_id=user_id_1)
         await SocialRepository.create_bond(db, db_bond)
         await SocialRepository.commit(db)
         await SocialRepository.refresh(db, db_bond)
@@ -158,13 +160,15 @@ class SocialService:
         res1 = await SocialRepository.get_bonds_as_user1(db, user_id)
         bonds1 = [{
             "user_id_1": b.user_id_1, "user_id_2": b.user_id_2,
-            "status": b.status, "created_at": b.created_at, "other_user": p
+            "status": b.status, "requester_id": b.requester_id,
+            "created_at": b.created_at, "other_user": p
         } for b, p in res1]
 
         res2 = await SocialRepository.get_bonds_as_user2(db, user_id)
         bonds2 = [{
             "user_id_1": b.user_id_1, "user_id_2": b.user_id_2,
-            "status": b.status, "created_at": b.created_at, "other_user": p
+            "status": b.status, "requester_id": b.requester_id,
+            "created_at": b.created_at, "other_user": p
         } for b, p in res2]
 
         return bonds1 + bonds2
@@ -222,6 +226,9 @@ class SocialService:
                     elif session.end_time > active_cutoff:
                         status = "break"
                 
+                if status == "offline" and uid in manager.active_connections:
+                    status = "online"
+                    
                 tiles_dict[uid] = HiveMatchTile(
                     user_id=uid, name=profile.name, avatar_url=profile.avatar_url,
                     status=status, subject=subject_name, is_bond=is_bond, is_squad=is_squad,

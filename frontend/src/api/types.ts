@@ -71,6 +71,7 @@ export interface Bond {
     user_id_1: string;
     user_id_2: string;
     status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+    requester_id?: string;
     created_at: string;
 }
 
@@ -111,7 +112,7 @@ export interface HiveMatchTile {
     user_id: string;
     name: string;
     avatar_url?: string;
-    status: 'focus' | 'break' | 'offline';
+    status: 'focus' | 'break' | 'online' | 'offline';
     subject?: string;
     is_bond: boolean;
     is_squad: boolean;
@@ -127,4 +128,10 @@ export interface PasswordUpdate {
     current_password: string;
     new_password: string;
     confirm_password: string;
+}
+
+export interface ResetPasswordData {
+    email: string;
+    code: string;
+    new_password: string;
 }

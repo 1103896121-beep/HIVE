@@ -215,7 +215,22 @@
         "agree_terms": "By continuing, you agree to our",
         "and": "and",
         "apple_failed": "Apple Sign in failed",
-        "token_missing": "No identity token returned"
+        "token_missing": "No identity token returned",
+        "welcome_back": "Welcome Back",
+        "join_hive": "Join Hive",
+        "confirm_password": "Confirm Password",
+        "passwords_dont_match": "Passwords don't match",
+        "forgot_password": "Forgot Password",
+        "enter_new_password": "Enter New Password",
+        "new_password": "New Password",
+        "email_required": "Email is required",
+        "all_fields_required": "All fields are required",
+        "reset_code_sent": "Check your email for reset code",
+        "password_reset_success": "Password reset successfully. Please login.",
+        "send_reset_code": "Send Reset Code",
+        "update_password": "Update Password",
+        "reset_code": "Verification Code",
+        "back_to_login": "Back to Login"
     },
     "global_map": {
         "status_title": "Planet Hive Global Status",

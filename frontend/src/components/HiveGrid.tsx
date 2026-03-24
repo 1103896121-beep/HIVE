@@ -22,7 +22,7 @@ export const HiveGrid: React.FC<HiveGridProps> = React.memo(({ tiles, onUserClic
                             onClick={() => onUserClick(member)}
                             className={clsx(
                                 "w-[66px] h-[76px] hex-clip relative group transition-all duration-500 cursor-pointer active:scale-95",
-                                member.status === 'focus' ? "bg-[#F5A623] breathing" : member.status === 'offline' ? "bg-zinc-900 border border-zinc-800 opacity-40" : "bg-zinc-800"
+                                member.status === 'focus' ? "bg-[#F5A623] breathing" : member.status === 'offline' ? "bg-zinc-900 border border-zinc-800 opacity-40" : member.status === 'online' ? "bg-green-900/20 border border-green-500/30" : "bg-zinc-800"
                             )}
                         >
                             <div className="absolute inset-[2px] hex-clip bg-[#111] overflow-hidden">
@@ -30,7 +30,7 @@ export const HiveGrid: React.FC<HiveGridProps> = React.memo(({ tiles, onUserClic
                                     <img 
                                         src={member.avatar_url || `https://i.pravatar.cc/150?u=${member.user_id}`} 
                                         alt={member.name} 
-                                        className={clsx("w-full h-full object-cover transition-opacity", member.status !== 'focus' && "opacity-50 grayscale")} 
+                                        className={clsx("w-full h-full object-cover transition-opacity", member.status === 'break' && "opacity-50 grayscale")} 
                                     />
                                 ) : (
                                     <div className="w-full h-full flex items-center justify-center text-zinc-700">
@@ -59,9 +59,9 @@ export const HiveGrid: React.FC<HiveGridProps> = React.memo(({ tiles, onUserClic
                             <div className="text-[10px] font-bold text-zinc-300 truncate px-1">{member.name}</div>
                             <div className={clsx(
                                 "text-[7px] font-black uppercase tracking-widest truncate px-1", 
-                                member.status === 'focus' ? "text-[#F5A623]" : (member.status === 'break' ? "text-cyan-400" : "text-zinc-600")
+                                member.status === 'focus' ? "text-[#F5A623]" : member.status === 'break' ? "text-cyan-400" : member.status === 'online' ? "text-green-500" : "text-zinc-600"
                             )}>
-                                {member.status === 'focus' ? (member.subject || 'Focus') : (member.status === 'offline' ? 'OFF' : 'BREAK')}
+                                {member.status === 'focus' ? (member.subject || 'Focus') : member.status === 'break' ? 'BREAK' : member.status === 'online' ? 'ON' : 'OFF'}
                             </div>
                         </div>
                     </div>
