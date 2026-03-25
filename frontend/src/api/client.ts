@@ -1,6 +1,9 @@
-// NOTE: 默认使用相对路径，由 Vite 代理转发到后端，支持局域网跨设备访问
-const isNative = typeof window !== 'undefined' && window.location.protocol === 'capacitor:';
-const API_BASE_URL = import.meta.env.VITE_API_URL || (isNative ? 'https://hive.merchlens.app' : '');
+// NOTE: 生产环境通过 VITE_API_URL 在构建时注入 API 地址
+// 运行时 fallback：通过 Capacitor.isNativePlatform() 检测原生环境
+import { Capacitor } from '@capacitor/core';
+
+const PRODUCTION_API = 'https://hive.merchlens.app';
+const API_BASE_URL = import.meta.env.VITE_API_URL || (Capacitor.isNativePlatform() ? PRODUCTION_API : '');
 
 // NOTE: 在 Capacitor WKWebView 中，跨域 cookie 不可用（samesite=lax 阻止发送）
 // 因此改用 localStorage 存储 JWT，通过 Authorization Header 发送
@@ -94,10 +97,6 @@ class APIClient {
 }
 
 export const apiClient = APIClient.getInstance();
-
-const defaultBase = 'https://hive.merchlens.app';
-export const WS_BASE_URL = API_BASE_URL 
+export const WS_BASE_URL = API_BASE_URL
     ? API_BASE_URL.replace(/^http/, 'ws')
-    : API_BASE_URL === '' && window.location.protocol === 'capacitor:'
-        ? defaultBase.replace(/^http/, 'ws')
-        : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`;
+    : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`;

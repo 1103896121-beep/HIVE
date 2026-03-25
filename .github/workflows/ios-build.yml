@@ -28,6 +28,8 @@ jobs:
       run: |
         cd frontend
         npm run build
+      env:
+        VITE_API_URL: https://hive.merchlens.app
         
     - name: Capacitor Sync
       run: |
