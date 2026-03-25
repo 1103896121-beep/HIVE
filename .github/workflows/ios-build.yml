@@ -48,10 +48,8 @@ jobs:
 
     - name: Install Provisioning Profile
       run: |
-        mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-        echo "${{ secrets.PROVISIONING_PROFILE_BASE64 }}" | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
-        # Xcode 在手动模式下主要匹配文件内部的 Name，但我们保持文件名清晰
-        cp ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision "~/Library/MobileDevice/Provisioning Profiles/com.qingning.hive AppStore.mobileprovision"
+        mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+        echo "${{ secrets.PROVISIONING_PROFILE_BASE64 }}" | base64 --decode > "$HOME/Library/MobileDevice/Provisioning Profiles/com.qingning.hive AppStore.mobileprovision"
 
     - name: Setup App Store Connect Auth Key
       run: |
