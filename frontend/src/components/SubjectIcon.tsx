@@ -1,7 +1,7 @@
-import React from 'react';
+
 import { 
   Briefcase, BookOpen, PenTool, Dumbbell, Sparkles, 
-  Music, Palette, Languages, FlaskConical, History, 
+  Music, Palette, Languages, FlaskConical, 
   GraduationCap, LayoutGrid, Hash, Code
 } from 'lucide-react';
 

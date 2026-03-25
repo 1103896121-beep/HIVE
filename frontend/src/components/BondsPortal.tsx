@@ -21,7 +21,7 @@ export const BondsPortal: React.FC<BondsPortalProps> = ({ bonds, userId, onNudge
     const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
     const [isSearching, setIsSearching] = useState(false);
     const [selectedUser, setSelectedUser] = useState<UserSearchResult | null>(null);
-    const [isFetchingProfile, setIsFetchingProfile] = useState(false);
+
     const [localSearchQuery, setLocalSearchQuery] = useState('');
     const [actionUser, setActionUser] = useState<BondEnriched | null>(null);
 
@@ -62,7 +62,6 @@ export const BondsPortal: React.FC<BondsPortalProps> = ({ bonds, userId, onNudge
     };
 
     const handleSelectUser = async (userId: string) => {
-        setIsFetchingProfile(true);
         try {
             const profile = await userService.getProfile(userId);
             // Map Profile to UserSearchResult for the modal
@@ -80,7 +79,6 @@ export const BondsPortal: React.FC<BondsPortalProps> = ({ bonds, userId, onNudge
             console.error("Failed to fetch profile:", error);
             onAlert(t('common.error'), t('error.profile_load_failed', 'Could not load user profile.'));
         } finally {
-            setIsFetchingProfile(false);
         }
     };
 

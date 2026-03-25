@@ -61,9 +61,9 @@ export const socialService = {
         apiClient.post<T.Bond>(`/social/bonds?user_id_1=${userId1}&user_id_2=${userId2}`, {}),
     updateBondStatus: (user1: string, user2: string, status: string) =>
         apiClient.patch<T.Bond>(`/social/bonds/status?user_id_1=${user1}&user_id_2=${user2}&status=${status}`, {}),
-    getSquads: (userId: string) =>
+    getSquads: () =>
         apiClient.get<T.Squad[]>(`/social/squads`),
-    getBonds: (userId: string) =>
+    getBonds: () =>
         apiClient.get<T.BondEnriched[]>(`/social/bonds`),
     removeBond: (userId: string, targetId: string) =>
         apiClient.delete<{ status: string }>(`/social/bonds/${targetId}?user_id=${userId}`),
