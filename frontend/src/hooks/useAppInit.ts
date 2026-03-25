@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { userService, focusService, socialService } from '../api';
+import { clearAuthToken } from '../api/client';
 import type { Subject, Squad, BondEnriched, HiveMatchTile } from '../api/types';
 import type { UserProfile } from '../components/ProfilePortal';
 import type { Theme } from '../components/ThemePicker';
@@ -31,6 +32,7 @@ export function useAppInit() {
 
     const handleSignOut = () => {
         localStorage.removeItem('hive_user_id');
+        clearAuthToken();
         setIsAuthenticated(false);
         setUserId(null);
     };

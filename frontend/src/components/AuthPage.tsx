@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Mail, Lock, User, ArrowRight, Zap, Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { authService } from '../api';
+import { setAuthToken } from '../api/client';
 import { SignInWithApple } from '@capacitor-community/apple-sign-in';
 import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
@@ -75,9 +76,11 @@ export function AuthPage({ onSuccess }: AuthPageProps) {
 
             if (mode === 'login') {
                 const resp = await authService.login({ email, password });
+                setAuthToken(resp.access_token);
                 onSuccess(resp.user_id);
             } else if (mode === 'register') {
                 const resp = await authService.register({ email, password, name });
+                setAuthToken(resp.access_token);
                 onSuccess(resp.user_id);
             } else if (mode === 'forgot') {
                 await authService.forgotPassword(email);
@@ -112,6 +115,7 @@ export function AuthPage({ onSuccess }: AuthPageProps) {
                 if (result.response && result.response.identityToken) {
                     const fullName = result.response.givenName ? `${result.response.givenName} ${result.response.familyName}`.trim() : 'Apple User';
                     const resp = await authService.appleLogin(result.response.identityToken, fullName);
+                    setAuthToken(resp.access_token);
                     onSuccess(resp.user_id);
                 } else {
                     throw new Error(t('auth.token_missing'));
@@ -121,6 +125,7 @@ export function AuthPage({ onSuccess }: AuthPageProps) {
                 setTimeout(async () => {
                     try {
                         const resp = await authService.appleLogin('mock-web-token', 'Web User');
+                        setAuthToken(resp.access_token);
                         onSuccess(resp.user_id);
                     } catch(e) {
                          setError(t('auth.apple_failed'));

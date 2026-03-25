@@ -2,6 +2,22 @@
 const isNative = typeof window !== 'undefined' && window.location.protocol === 'capacitor:';
 const API_BASE_URL = import.meta.env.VITE_API_URL || (isNative ? 'https://hive.merchlens.app' : '');
 
+// NOTE: 在 Capacitor WKWebView 中，跨域 cookie 不可用（samesite=lax 阻止发送）
+// 因此改用 localStorage 存储 JWT，通过 Authorization Header 发送
+const TOKEN_KEY = 'hive_access_token';
+
+export function setAuthToken(token: string): void {
+    localStorage.setItem(TOKEN_KEY, token);
+}
+
+export function getAuthToken(): string | null {
+    return localStorage.getItem(TOKEN_KEY);
+}
+
+export function clearAuthToken(): void {
+    localStorage.removeItem(TOKEN_KEY);
+}
+
 class APIClient {
     private static instance: APIClient;
 
@@ -15,13 +31,21 @@ class APIClient {
     }
 
     async request<T>(url: string, options: RequestInit = {}): Promise<T> {
+        const token = getAuthToken();
+        const headers: Record<string, string> = {
+            'Content-Type': 'application/json',
+            ...(options.headers as Record<string, string> || {}),
+        };
+
+        // 如果有 token，自动附加 Authorization Header
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+
         const response = await fetch(`${API_BASE_URL}${url}`, {
             ...options,
             credentials: 'include',
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers,
-            },
+            headers,
         });
 
         if (!response.ok) {

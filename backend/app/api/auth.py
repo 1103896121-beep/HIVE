@@ -18,6 +18,7 @@ class UserLogin(BaseModel):
 
 class LoginResponse(BaseModel):
     user_id: str
+    access_token: str
     message: str = "success"
 
 class AppleLogin(BaseModel):
@@ -56,7 +57,7 @@ async def apple_login(apple_in: AppleLogin, response: Response, db: AsyncSession
             samesite="lax",
             max_age=60*24*7*60
         )
-        return {"user_id": res["user_id"]}
+        return {"user_id": res["user_id"], "access_token": res["access_token"]}
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -77,7 +78,7 @@ async def register(user_in: UserRegister, response: Response, db: AsyncSession =
             samesite="lax",
             max_age=60*24*7*60
         )
-        return {"user_id": res["user_id"]}
+        return {"user_id": res["user_id"], "access_token": res["access_token"]}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -92,7 +93,7 @@ async def login(user_in: UserLogin, response: Response, db: AsyncSession = Depen
             samesite="lax",
             max_age=60*24*7*60
         )
-        return {"user_id": res["user_id"]}
+        return {"user_id": res["user_id"], "access_token": res["access_token"]}
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
