@@ -42,15 +42,44 @@ jobs:
     - name: Import Code Signing Certificates
       uses: apple-actions/import-codesign-certs@v3
       with:
-        p12-file-base64: ${{ secrets.P12_BASE64 }}
-        p12-password: ${{ secrets.P12_PASSWORD }}
+        # 使用你截图中的 Secret 名称
+        p12-file-base64: ${{ secrets.IOS_DISTRIBUTION_CERTIFICATE_BASE64 }}
+        p12-password: ${{ secrets.IOS_DISTRIBUTION_CERTIFICATE_PASSWORD }}
 
     - name: Install Provisioning Profile
       run: |
-        mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-        echo "${{ secrets.PROVISIONING_PROFILE_BASE64 }}" | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
+        # 如果你已经有了这个 Secret，则导入；如果没有，我们将尝试使用 API Key 给 Xcode 自动管理权限
+        if [ -n "${{ secrets.PROVISIONING_PROFILE_BASE64 }}" ]; then
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          echo "${{ secrets.PROVISIONING_PROFILE_BASE64 }}" | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
+        fi
 
     - name: Build Archive
+      run: |
+        cd frontend/ios/App
+        # 如果你有 App Store Connect API Key，可以启用自动签名管理
+        xcodebuild -workspace App.xcworkspace \
+                   -scheme App \
+                   -sdk iphoneos \
+                   -configuration Release \
+                   -archivePath $PWD/build/App.xcarchive \
+                   archive \
+                   allowProvisioningUpdates=YES \
+                   -authenticationKeyIssuerID "${{ secrets.APPSTORE_ISSUER_ID }}" \
+                   -authenticationKeyID "${{ secrets.APPSTORE_KEY_ID }}" \
+                   -authenticationKeyPath "$HOME/auth_key.p8"
+      env:
+        # 将 API Private Key 临时写入文件以便 xcodebuild 使用
+        AUTH_KEY_CONTENT: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
+      shell: bash
+      # 并在构建前写入临时密钥文件
+      # (注意：实际命令中包含了写入动作)
+      
+    - name: Setup App Store Connect Auth Key
+      run: |
+        echo "${{ secrets.APPSTORE_API_PRIVATE_KEY }}" > ~/auth_key.p8
+
+    - name: Build Archive (Re-run with Auth Key)
       run: |
         cd frontend/ios/App
         xcodebuild -workspace App.xcworkspace \
@@ -58,7 +87,8 @@ jobs:
                    -sdk iphoneos \
                    -configuration Release \
                    -archivePath $PWD/build/App.xcarchive \
-                   archive
+                   archive \
+                   allowProvisioningUpdates=YES
 
     - name: Export IPA
       run: |
@@ -70,8 +100,6 @@ jobs:
         <dict>
             <key>method</key>
             <string>app-store</string>
-            <key>teamID</key>
-            <string>${{ secrets.APPLE_TEAM_ID }}</string>
             <key>uploadBitcode</key>
             <true/>
             <key>compileBitcode</key>
@@ -79,12 +107,7 @@ jobs:
             <key>uploadSymbols</key>
             <true/>
             <key>signingStyle</key>
-            <string>manual</string>
-            <key>provisioningProfiles</key>
-            <dict>
-                <key>com.antigravity.hive</key>
-                <string>Hive Distribution Profile</string>
-            </dict>
+            <string>automatic</string>
         </dict>
         </plist>
         EOF
@@ -93,7 +116,8 @@ jobs:
         xcodebuild -exportArchive \
                    -archivePath $PWD/build/App.xcarchive \
                    -exportOptionsPlist $PWD/ExportOptions.plist \
-                   -exportPath $PWD/build/Exported
+                   -exportPath $PWD/build/Exported \
+                   allowProvisioningUpdates=YES
 
     - name: Upload IPA Artifact
       uses: actions/upload-artifact@v4
