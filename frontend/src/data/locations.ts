@@ -125,5 +125,13 @@ export function initializeLocations(): LocationNode[] {
 
     return Array.from(dataMap.values());
 }
+// NOTE: 延迟初始化，避免模块加载时同步处理数万条数据导致 iOS WKWebView 栈溢出
+let _locationCache: LocationNode[] | null = null;
 
-export const LOCATION_DATA = initializeLocations();
+export function getLocationData(): LocationNode[] {
+    if (!_locationCache) {
+        _locationCache = initializeLocations();
+    }
+    return _locationCache;
+}
+

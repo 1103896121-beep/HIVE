@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { ChevronRight, Globe, Search, Navigation, ArrowLeft } from 'lucide-react';
-import { LOCATION_DATA } from '../data/locations';
+import { getLocationData } from '../data/locations';
 
 export const LocationPicker: React.FC<{ onSelect: (location: string) => void }> = ({ onSelect }) => {
     const [path, setPath] = useState<{ id: string, name: string }[]>([{ id: 'Global', name: 'Global' }]);
@@ -42,7 +42,7 @@ export const LocationPicker: React.FC<{ onSelect: (location: string) => void }> 
         });
     };
 
-    const currentLevel = LOCATION_DATA.find(d => d.id === path[path.length - 1].id);
+    const currentLevel = getLocationData().find(d => d.id === path[path.length - 1].id);
     const children = currentLevel?.children || [];
 
     const filteredResults = useMemo(() => {
@@ -53,7 +53,7 @@ export const LocationPicker: React.FC<{ onSelect: (location: string) => void }> 
 
         const query = normalize(searchQuery);
 
-        return LOCATION_DATA.filter(d => {
+        return getLocationData().filter(d => {
             const normalizedName = normalize(d.name);
             const normalizedParent = d.parent ? normalize(d.parent) : '';
 
@@ -81,7 +81,7 @@ export const LocationPicker: React.FC<{ onSelect: (location: string) => void }> 
     }, [searchQuery]);
 
     const handleSelect = (itemId: string, itemName: string) => {
-        const itemData = LOCATION_DATA.find(d => d.id === itemId);
+        const itemData = getLocationData().find(d => d.id === itemId);
         if (itemData && itemData.children.length > 0) {
             setPath([...path, { id: itemId, name: itemName }]);
             setSearchQuery('');
