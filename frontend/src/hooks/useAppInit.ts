@@ -47,8 +47,8 @@ export function useAppInit() {
         const syncSocialData = async () => {
             try {
                 const [fetchedSquads, fetchedBonds, matchData] = await Promise.all([
-                    socialService.getSquads(userId),
-                    socialService.getBonds(userId),
+                    socialService.getSquads(),
+                    socialService.getBonds(),
                     socialService.getHiveMatching(userId)
                 ]);
                 setSquads(fetchedSquads);
@@ -91,8 +91,8 @@ export function useAppInit() {
                 }
 
                 const [fetchedSquads, fetchedBonds] = await Promise.all([
-                    socialService.getSquads(userId),
-                    socialService.getBonds(userId)
+                    socialService.getSquads(),
+                    socialService.getBonds()
                 ]);
                 setSquads(fetchedSquads);
                 setBonds(fetchedBonds);

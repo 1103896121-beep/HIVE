@@ -121,7 +121,7 @@ export function useAppActions({
     showConfirm(t('bonds.block'), t('bonds.block_confirm'), async () => {
       try {
         await socialService.block(userId, blockedId);
-        const fetchedBonds = await socialService.getBonds(userId);
+        const fetchedBonds = await socialService.getBonds();
         setBonds(fetchedBonds);
         showAlert(t('bonds.block'), t('bonds.block_success'));
       } catch (err) { showAlert('Error', 'Failed to block user.'); }
@@ -133,7 +133,7 @@ export function useAppActions({
     try {
       await socialService.createBond(userId, targetId);
       showAlert(t('common.success'), t('bonds.request_sent'));
-      const fetchedBonds = await socialService.getBonds(userId);
+      const fetchedBonds = await socialService.getBonds();
       setBonds(fetchedBonds);
     } catch (err: unknown) { 
       const msg = err instanceof Error ? err.message : 'Failed to send bond request.';
