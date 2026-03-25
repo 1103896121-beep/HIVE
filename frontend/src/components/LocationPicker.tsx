@@ -1,12 +1,22 @@
-import React, { useState, useMemo } from 'react';
-import { ChevronRight, Globe, Search, Navigation, ArrowLeft } from 'lucide-react';
-import { getLocationData } from '../data/locations';
+import React, { useState, useMemo, useEffect } from 'react';
+import { ChevronRight, Globe, Search, Navigation, ArrowLeft, Loader2 } from 'lucide-react';
+import { getLocationData, type LocationNode } from '../data/locations';
 
 export const LocationPicker: React.FC<{ onSelect: (location: string) => void }> = ({ onSelect }) => {
     const [path, setPath] = useState<{ id: string, name: string }[]>([{ id: 'Global', name: 'Global' }]);
     const [searchQuery, setSearchQuery] = useState('');
-
     const [loading, setLoading] = useState(false);
+
+    // 异步加载地区数据（首次打开时触发，只加载一次）
+    const [locationData, setLocationData] = useState<LocationNode[]>([]);
+    const [dataLoading, setDataLoading] = useState(true);
+
+    useEffect(() => {
+        getLocationData().then(data => {
+            setLocationData(data);
+            setDataLoading(false);
+        });
+    }, []);
 
     const handleLocateMe = async () => {
         if (!navigator.geolocation) {
@@ -18,11 +28,8 @@ export const LocationPicker: React.FC<{ onSelect: (location: string) => void }> 
         navigator.geolocation.getCurrentPosition(async (position) => {
             const { latitude, longitude } = position.coords;
             try {
-                // Using Nominatim for reverse geocoding (no API key required for small usage)
                 const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`);
                 const data = await response.json();
-
-                // Try to get city, town, or village
                 const city = data.address.city || data.address.town || data.address.village || data.address.state || data.address.country;
                 if (city) {
                     onSelect(city);
@@ -42,18 +49,18 @@ export const LocationPicker: React.FC<{ onSelect: (location: string) => void }> 
         });
     };
 
-    const currentLevel = getLocationData().find(d => d.id === path[path.length - 1].id);
+    const currentLevel = locationData.find(d => d.id === path[path.length - 1].id);
     const children = currentLevel?.children || [];
 
     const filteredResults = useMemo(() => {
-        if (!searchQuery.trim()) return [];
+        if (!searchQuery.trim() || locationData.length === 0) return [];
 
         const normalize = (str: string) =>
             str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
         const query = normalize(searchQuery);
 
-        return getLocationData().filter(d => {
+        return locationData.filter(d => {
             const normalizedName = normalize(d.name);
             const normalizedParent = d.parent ? normalize(d.parent) : '';
 
@@ -78,10 +85,10 @@ export const LocationPicker: React.FC<{ onSelect: (location: string) => void }> 
                 return 0;
             })
             .slice(0, 40);
-    }, [searchQuery]);
+    }, [searchQuery, locationData]);
 
     const handleSelect = (itemId: string, itemName: string) => {
-        const itemData = getLocationData().find(d => d.id === itemId);
+        const itemData = locationData.find(d => d.id === itemId);
         if (itemData && itemData.children.length > 0) {
             setPath([...path, { id: itemId, name: itemName }]);
             setSearchQuery('');
@@ -95,6 +102,16 @@ export const LocationPicker: React.FC<{ onSelect: (location: string) => void }> 
             setPath(path.slice(0, -1));
         }
     };
+
+    // 数据加载中的占位
+    if (dataLoading) {
+        return (
+            <div className="flex flex-col items-center justify-center py-20">
+                <Loader2 className="animate-spin text-zinc-500 mb-3" size={24} />
+                <p className="text-[10px] text-zinc-500 uppercase font-black tracking-widest">Loading locations...</p>
+            </div>
+        );
+    }
 
     return (
         <div className="flex flex-col h-full">
@@ -196,7 +213,8 @@ export const LocationPicker: React.FC<{ onSelect: (location: string) => void }> 
                 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
                 .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
                 .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
-            `}</style>
+            `}
+            </style>
         </div>
     );
 };

@@ -1,4 +1,4 @@
-import { Country, State, City } from 'country-state-city';
+// NOTE: country-state-city 通过动态 import() 加载，避免模块加载时解析 10MB+ JSON 导致 iOS 栈溢出
 
 export interface LocationNode {
     id: string;
@@ -8,7 +8,10 @@ export interface LocationNode {
     children: { id: string; name: string }[];
 }
 
-export function initializeLocations(): LocationNode[] {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function initializeLocations(): Promise<LocationNode[]> {
+    const { Country, State, City } = await import('country-state-city');
+
     const dataMap = new Map<string, LocationNode>();
 
     const addNode = (node: LocationNode) => {
@@ -35,8 +38,8 @@ export function initializeLocations(): LocationNode[] {
         });
     });
 
-    const allCountries = Country.getAllCountries().filter(c => !['TW', 'HK', 'MO'].includes(c.isoCode));
-    allCountries.forEach(country => {
+    const allCountries = Country.getAllCountries().filter((c: { isoCode: string }) => !['TW', 'HK', 'MO'].includes(c.isoCode));
+    allCountries.forEach((country: { isoCode: string; name: string; timezones?: { zoneName: string }[] }) => {
         const tz = country.timezones?.[0]?.zoneName || '';
         let region = 'Americas';
         if (tz.startsWith('Asia')) region = 'Asia';
@@ -61,7 +64,7 @@ export function initializeLocations(): LocationNode[] {
     });
 
     const allStates = State.getAllStates();
-    allStates.forEach(state => {
+    allStates.forEach((state: { countryCode: string; isoCode: string; name: string }) => {
         const countryId = `country:${state.countryCode}`;
         const countryNode = dataMap.get(countryId);
 
@@ -79,14 +82,13 @@ export function initializeLocations(): LocationNode[] {
     });
 
     const allCities = City.getAllCities();
-    // Some cities might belong directly to countries if no states exist
-    allCities.forEach(city => {
+    allCities.forEach((city: { countryCode: string; stateCode: string; name: string }) => {
         let countryCode = city.countryCode;
         let stateCode = city.stateCode;
 
         // Fix library bug: Jiangsu cities are erroneously mapped to stateCode 'TW' under 'CN'
         if (countryCode === 'CN' && stateCode === 'TW') {
-            stateCode = 'JS'; // Route them back to Jiangsu
+            stateCode = 'JS';
         }
 
         // Map Special Administrative Regions and Taiwan under China
@@ -100,13 +102,12 @@ export function initializeLocations(): LocationNode[] {
         const cityId = `city:${countryCode}-${stateCode}-${city.name}`;
 
         if (stateNode) {
-            // Avoid exact name duplicates
             if (!stateNode.children.find(c => c.name === city.name)) {
                 stateNode.children.push({ id: cityId, name: city.name });
             }
         } else {
-            const countryId = `country:${countryCode}`;
-            const countryNode = dataMap.get(countryId);
+            const cId = `country:${countryCode}`;
+            const countryNode = dataMap.get(cId);
             if (countryNode) {
                 if (!countryNode.children.find(c => c.name === city.name)) {
                     countryNode.children.push({ id: cityId, name: city.name });
@@ -125,13 +126,18 @@ export function initializeLocations(): LocationNode[] {
 
     return Array.from(dataMap.values());
 }
-// NOTE: 延迟初始化，避免模块加载时同步处理数万条数据导致 iOS WKWebView 栈溢出
+
+// NOTE: 异步懒加载，只在用户首次打开地区选择器时触发
 let _locationCache: LocationNode[] | null = null;
+let _loadingPromise: Promise<LocationNode[]> | null = null;
 
-export function getLocationData(): LocationNode[] {
-    if (!_locationCache) {
-        _locationCache = initializeLocations();
+export async function getLocationData(): Promise<LocationNode[]> {
+    if (_locationCache) return _locationCache;
+    if (!_loadingPromise) {
+        _loadingPromise = initializeLocations().then(data => {
+            _locationCache = data;
+            return data;
+        });
     }
-    return _locationCache;
+    return _loadingPromise;
 }
-
