@@ -36,7 +36,19 @@ def main():
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     try:
-        ssh.connect(hostname, port, username, password, timeout=15)
+        ssh.connect(
+            hostname, 
+            port, 
+            username, 
+            password=password, # Fallback for key passphrase
+            look_for_keys=True,
+            key_filename=[
+                r'C:\Users\David\.ssh\id_rsa',
+                r'C:\Users\David\.ssh\id_ed25519',
+                r'C:\Users\David\.ssh\id_ed25519_merchlens'
+            ],
+            timeout=15
+        )
         sftp = ssh.open_sftp()
         
         print(f"Uploading {LOCAL_TAR} to /root/{LOCAL_TAR}...")

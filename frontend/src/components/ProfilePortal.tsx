@@ -286,7 +286,7 @@ export function ProfilePortal({ userId, profile, onUpdate, onSignOut, onAlert }:
                                     const now = new Date();
                                     const subEnd = profile.subscriptionEndAt ? new Date(profile.subscriptionEndAt) : null;
                                     const trialStart = new Date(profile.trialStartAt);
-                                    const trialEnd = new Date(trialStart.getTime() + 3 * 24 * 60 * 60 * 1000); // 3 Days
+                                    const trialEnd = new Date(trialStart.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 Days
 
                                     if (subEnd && subEnd > now) {
                                         const days = Math.ceil((subEnd.getTime() - now.getTime()) / (1000 * 3600 * 24));
