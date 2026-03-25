@@ -48,11 +48,8 @@ jobs:
 
     - name: Install Provisioning Profile
       run: |
-        # 如果你已经有了这个 Secret，则导入；如果没有，我们将尝试使用 API Key 给 Xcode 自动管理权限
-        if [ -n "${{ secrets.PROVISIONING_PROFILE_BASE64 }}" ]; then
-          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          echo "${{ secrets.PROVISIONING_PROFILE_BASE64 }}" | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
-        fi
+        mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+        echo "${{ secrets.PROVISIONING_PROFILE_BASE64 }}" | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/Hive_AppStore_Manual.mobileprovision
 
     - name: Setup App Store Connect Auth Key
       run: |
@@ -66,16 +63,11 @@ jobs:
                    -sdk iphoneos \
                    -configuration Release \
                    -archivePath $PWD/build/App.xcarchive \
-                   archive \
-                   -allowProvisioningUpdates \
-                   -authenticationKeyIssuerID "${{ secrets.APPSTORE_ISSUER_ID }}" \
-                   -authenticationKeyID "${{ secrets.APPSTORE_KEY_ID }}" \
-                   -authenticationKeyPath "$HOME/auth_key.p8"
-
-
+                   archive
+    
     - name: Export IPA
       run: |
-        # 创建 ExportOptions.plist
+        # 创建 ExportOptions.plist (手动模式)
         cat > ExportOptions.plist <<EOF
         <?xml version="1.0" encoding="UTF-8"?>
         <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -90,7 +82,12 @@ jobs:
             <key>uploadSymbols</key>
             <true/>
             <key>signingStyle</key>
-            <string>automatic</string>
+            <string>manual</string>
+            <key>provisioningProfiles</key>
+            <dict>
+                <key>com.qingning.hive</key>
+                <string>Hive_AppStore_Manual</string>
+            </dict>
         </dict>
         </plist>
         EOF
