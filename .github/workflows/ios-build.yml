@@ -67,7 +67,7 @@ jobs:
                    -configuration Release \
                    -archivePath $PWD/build/App.xcarchive \
                    archive \
-                   allowProvisioningUpdates=YES \
+                   -allowProvisioningUpdates \
                    -authenticationKeyIssuerID "${{ secrets.APPSTORE_ISSUER_ID }}" \
                    -authenticationKeyID "${{ secrets.APPSTORE_KEY_ID }}" \
                    -authenticationKeyPath "$HOME/auth_key.p8"
@@ -100,7 +100,7 @@ jobs:
                    -archivePath $PWD/build/App.xcarchive \
                    -exportOptionsPlist $PWD/ExportOptions.plist \
                    -exportPath $PWD/build/Exported \
-                   allowProvisioningUpdates=YES \
+                   -allowProvisioningUpdates \
                    -authenticationKeyIssuerID "${{ secrets.APPSTORE_ISSUER_ID }}" \
                    -authenticationKeyID "${{ secrets.APPSTORE_KEY_ID }}" \
                    -authenticationKeyPath "$HOME/auth_key.p8"
