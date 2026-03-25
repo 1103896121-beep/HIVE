@@ -1,5 +1,6 @@
 // NOTE: 默认使用相对路径，由 Vite 代理转发到后端，支持局域网跨设备访问
-const API_BASE_URL = import.meta.env.VITE_API_URL || '';
+const isNative = typeof window !== 'undefined' && window.location.protocol === 'capacitor:';
+const API_BASE_URL = import.meta.env.VITE_API_URL || (isNative ? 'https://hive.merchlens.app' : '');
 
 class APIClient {
     private static instance: APIClient;
@@ -69,6 +70,10 @@ class APIClient {
 }
 
 export const apiClient = APIClient.getInstance();
+
+const defaultBase = 'https://hive.merchlens.app';
 export const WS_BASE_URL = API_BASE_URL 
     ? API_BASE_URL.replace(/^http/, 'ws')
-    : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`;
+    : API_BASE_URL === '' && window.location.protocol === 'capacitor:'
+        ? defaultBase.replace(/^http/, 'ws')
+        : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`;
