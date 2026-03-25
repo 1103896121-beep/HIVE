@@ -1,10 +1,9 @@
-name: Build iOS
+name: Build & Export iOS IPA
 
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -35,14 +34,69 @@ jobs:
         cd frontend
         npx cap sync ios
         
-    - name: Build App (iOS)
+    - name: Install CocoaPods
       run: |
         cd frontend/ios/App
-        # 注意：此处仅为编译检查。如需导出 IPA，需配置证书与 Provisioning Profile
-        xcodebuild -scheme App -destination 'generic/platform=iOS' build CODE_SIGNING_ALLOWED=NO
+        pod install
         
-    - name: Archive Production
+    - name: Import Code Signing Certificates
+      uses: apple-actions/import-codesign-certs@v3
+      with:
+        p12-file-base64: ${{ secrets.P12_BASE64 }}
+        p12-password: ${{ secrets.P12_PASSWORD }}
+
+    - name: Install Provisioning Profile
+      run: |
+        mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+        echo "${{ secrets.PROVISIONING_PROFILE_BASE64 }}" | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
+
+    - name: Build Archive
+      run: |
+        cd frontend/ios/App
+        xcodebuild -workspace App.xcworkspace \
+                   -scheme App \
+                   -sdk iphoneos \
+                   -configuration Release \
+                   -archivePath $PWD/build/App.xcarchive \
+                   archive
+
+    - name: Export IPA
+      run: |
+        # 创建 ExportOptions.plist
+        cat > ExportOptions.plist <<EOF
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+            <key>method</key>
+            <string>app-store</string>
+            <key>teamID</key>
+            <string>${{ secrets.APPLE_TEAM_ID }}</string>
+            <key>uploadBitcode</key>
+            <true/>
+            <key>compileBitcode</key>
+            <true/>
+            <key>uploadSymbols</key>
+            <true/>
+            <key>signingStyle</key>
+            <string>manual</string>
+            <key>provisioningProfiles</key>
+            <dict>
+                <key>com.antigravity.hive</key>
+                <string>Hive Distribution Profile</string>
+            </dict>
+        </dict>
+        </plist>
+        EOF
+        
+        cd frontend/ios/App
+        xcodebuild -exportArchive \
+                   -archivePath $PWD/build/App.xcarchive \
+                   -exportOptionsPlist $PWD/ExportOptions.plist \
+                   -exportPath $PWD/build/Exported
+
+    - name: Upload IPA Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: hive-ios-build
-        path: frontend/ios/App/build/Release-iphoneos/*.app
+        name: hive-production-ipa
+        path: frontend/ios/App/build/Exported/*.ipa
