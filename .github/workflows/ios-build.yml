@@ -67,6 +67,7 @@ jobs:
     
     - name: Export IPA
       run: |
+        cd frontend/ios/App
         # 创建 ExportOptions.plist (手动模式)
         cat > ExportOptions.plist <<EOF
         <?xml version="1.0" encoding="UTF-8"?>
@@ -92,7 +93,6 @@ jobs:
         </plist>
         EOF
         
-        cd frontend/ios/App
         xcodebuild -exportArchive \
                    -archivePath $PWD/build/App.xcarchive \
                    -exportOptionsPlist $PWD/ExportOptions.plist \
