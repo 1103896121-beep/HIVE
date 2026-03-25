@@ -36,6 +36,10 @@ check_port() {
     fi
 }
 
+# 先停止已有的 Hive 容器以释放端口（重新部署场景）
+echo -e "${BLUE}>>> Stopping existing Hive containers if any...${NC}"
+docker-compose --env-file .env -p $APP_NAME down 2>/dev/null || true
+
 echo -e "${BLUE}>>> Checking port availability for isolation (Backend: $BACKEND_PORT, DB: $DB_PORT)...${NC}"
 check_port $BACKEND_PORT
 check_port $DB_PORT
