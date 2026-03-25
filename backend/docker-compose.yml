@@ -3,6 +3,7 @@ version: '3.8'
 services:
   HIVE_backend:
     build: .
+    image: hive_backend
     container_name: HIVE_backend
     ports:
       - "${BACKEND_PORT:-7777}:8000"
