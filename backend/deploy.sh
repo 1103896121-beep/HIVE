@@ -21,7 +21,7 @@ fi
 # 1.5 Safe Guard: Check if ports are already in use on the host
 # Extract ports or set defaults
 source .env
-BACKEND_PORT=${BACKEND_PORT:-9999}
+BACKEND_PORT=${BACKEND_PORT:-7777}
 DB_PORT=${DB_PORT:-6666}
 
 check_port() {
