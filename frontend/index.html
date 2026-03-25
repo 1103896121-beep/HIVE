@@ -4,23 +4,7 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>frontend</title>
-    <!-- Inject vConsole for debugging TestFlight black screens -->
-    <script src="https://unpkg.com/vconsole@latest/dist/vconsole.min.js"></script>
-    <script>
-      var vConsole = new window.VConsole();
-      window.onerror = function(message, source, lineno, colno, error) {
-        console.error("Global JS Error: ", message, error);
-        var stackText = (error && error.stack) ? error.stack : message;
-        var el = document.createElement('div');
-        el.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:#000;color:#0f0;z-index:9999999;font-size:12px;overflow:auto;padding:20px;word-wrap:break-word;font-family:monospace;';
-        el.innerText = "🚨 APP CRASHED:\n\n" + stackText;
-        document.body.appendChild(el);
-      };
-      window.addEventListener("unhandledrejection", function(event) {
-        console.error("Unhandled Promise Rejection: ", event.reason);
-      });
-    </script>
+    <title>Hive</title>
   </head>
   <body>
     <div id="root"></div>

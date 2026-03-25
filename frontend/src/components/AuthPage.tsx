@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { authService } from '../api';
 import { SignInWithApple } from '@capacitor-community/apple-sign-in';
 import { Capacitor } from '@capacitor/core';
+import { Browser } from '@capacitor/browser';
 import { validateContent } from '../utils/validation';
 
 interface AuthPageProps {
@@ -101,7 +102,7 @@ export function AuthPage({ onSuccess }: AuthPageProps) {
             
             if (Capacitor.isNativePlatform()) {
                 const result = await SignInWithApple.authorize({
-                    clientId: 'com.hive.app', 
+                    clientId: 'com.qingning.hive', 
                     redirectURI: '',
                     scopes: 'email name',
                     state: '12345',
@@ -320,7 +321,10 @@ export function AuthPage({ onSuccess }: AuthPageProps) {
                 </div>
 
                 <p className="text-center mt-12 text-[9px] text-zinc-700 font-bold uppercase tracking-[0.1em] leading-relaxed max-w-[280px] mx-auto">
-                    {t('auth.agree_terms')} <a href="/eula.html" className="text-zinc-500 hover:underline">{t('legal.eula')}</a> {t('auth.and', 'and')} <a href="/privacy.html" className="text-zinc-500 hover:underline">{t('legal.privacy_policy')}</a>.
+                    {t('auth.agree_terms')}{' '}
+                    <button type="button" onClick={() => { if (Capacitor.isNativePlatform()) { Browser.open({ url: 'https://1103896121-beep.github.io/HIVE/eula.html' }); } else { window.open('/eula.html', '_blank'); } }} className="text-zinc-500 hover:underline">{t('legal.eula')}</button>
+                    {' '}{t('auth.and', 'and')}{' '}
+                    <button type="button" onClick={() => { if (Capacitor.isNativePlatform()) { Browser.open({ url: 'https://1103896121-beep.github.io/HIVE/privacy.html' }); } else { window.open('/privacy.html', '_blank'); } }} className="text-zinc-500 hover:underline">{t('legal.privacy_policy')}</button>.
                 </p>
             </div>
         </div>
