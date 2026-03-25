@@ -12,12 +12,31 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7 # 7 days
     
-    # CORS 配置 — 生产环境通过环境变量 CORS_ORIGINS 设置（逗号分隔）
-    CORS_ORIGINS: List[str] = [
-        origin.strip()
-        for origin in os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",")
-        if origin.strip()
-    ]
+    # CORS 配置 — 支持 JSON 数组格式或逗号分隔格式
+    @staticmethod
+    def _parse_cors_origins() -> list[str]:
+        """兼容解析 CORS_ORIGINS 环境变量，支持 JSON 数组和逗号分隔两种格式"""
+        import json
+        raw = os.getenv("CORS_ORIGINS", "")
+        defaults = [
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+            "capacitor://localhost",
+            "https://localhost",
+        ]
+        if not raw:
+            return defaults
+        # 尝试 JSON 数组解析（如 '["http://...", "capacitor://..."]'）
+        try:
+            parsed = json.loads(raw)
+            if isinstance(parsed, list):
+                return [o.strip() for o in parsed if o.strip()]
+        except (json.JSONDecodeError, TypeError):
+            pass
+        # 降级为逗号分隔解析
+        return [o.strip() for o in raw.split(",") if o.strip()]
+
+    CORS_ORIGINS: List[str] = _parse_cors_origins()
     
     # 数据库
     # 优先使用环境变量 DATABASE_URL (例如: postgresql+asyncpg://user:password@localhost/dbname)
