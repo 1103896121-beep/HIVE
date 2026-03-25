@@ -2,7 +2,7 @@
 # Hive Backend One-click Deployment Script
 # As per project user rules, this script should be placed in /opt/hive_work/
 
-APP_NAME="HIVE"
+APP_NAME="hive"
 
 # Colors for better output
 GREEN='\033[0;32m'
