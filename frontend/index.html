@@ -11,6 +11,11 @@
       var vConsole = new window.VConsole();
       window.onerror = function(message, source, lineno, colno, error) {
         console.error("Global JS Error: ", message, error);
+        var stackText = (error && error.stack) ? error.stack : message;
+        var el = document.createElement('div');
+        el.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:#000;color:#0f0;z-index:9999999;font-size:12px;overflow:auto;padding:20px;word-wrap:break-word;font-family:monospace;';
+        el.innerText = "🚨 APP CRASHED:\n\n" + stackText;
+        document.body.appendChild(el);
       };
       window.addEventListener("unhandledrejection", function(event) {
         console.error("Unhandled Promise Rejection: ", event.reason);
