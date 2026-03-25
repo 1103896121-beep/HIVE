@@ -1,7 +1,7 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-    appId: 'com.antigravity.hive',
+    appId: 'com.qingning.hive',
     appName: 'Hive',
     webDir: 'dist',
     server: {
