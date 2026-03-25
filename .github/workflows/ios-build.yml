@@ -54,10 +54,13 @@ jobs:
           echo "${{ secrets.PROVISIONING_PROFILE_BASE64 }}" | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
         fi
 
+    - name: Setup App Store Connect Auth Key
+      run: |
+        echo "${{ secrets.APPSTORE_API_PRIVATE_KEY }}" > ~/auth_key.p8
+
     - name: Build Archive
       run: |
         cd frontend/ios/App
-        # 如果你有 App Store Connect API Key，可以启用自动签名管理
         xcodebuild -workspace App.xcworkspace \
                    -scheme App \
                    -sdk iphoneos \
@@ -68,27 +71,7 @@ jobs:
                    -authenticationKeyIssuerID "${{ secrets.APPSTORE_ISSUER_ID }}" \
                    -authenticationKeyID "${{ secrets.APPSTORE_KEY_ID }}" \
                    -authenticationKeyPath "$HOME/auth_key.p8"
-      env:
-        # 将 API Private Key 临时写入文件以便 xcodebuild 使用
-        AUTH_KEY_CONTENT: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
-      shell: bash
-      # 并在构建前写入临时密钥文件
-      # (注意：实际命令中包含了写入动作)
-      
-    - name: Setup App Store Connect Auth Key
-      run: |
-        echo "${{ secrets.APPSTORE_API_PRIVATE_KEY }}" > ~/auth_key.p8
 
-    - name: Build Archive (Re-run with Auth Key)
-      run: |
-        cd frontend/ios/App
-        xcodebuild -workspace App.xcworkspace \
-                   -scheme App \
-                   -sdk iphoneos \
-                   -configuration Release \
-                   -archivePath $PWD/build/App.xcarchive \
-                   archive \
-                   allowProvisioningUpdates=YES
 
     - name: Export IPA
       run: |
@@ -117,7 +100,10 @@ jobs:
                    -archivePath $PWD/build/App.xcarchive \
                    -exportOptionsPlist $PWD/ExportOptions.plist \
                    -exportPath $PWD/build/Exported \
-                   allowProvisioningUpdates=YES
+                   allowProvisioningUpdates=YES \
+                   -authenticationKeyIssuerID "${{ secrets.APPSTORE_ISSUER_ID }}" \
+                   -authenticationKeyID "${{ secrets.APPSTORE_KEY_ID }}" \
+                   -authenticationKeyPath "$HOME/auth_key.p8"
 
     - name: Upload IPA Artifact
       uses: actions/upload-artifact@v4
