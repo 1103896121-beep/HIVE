@@ -6,6 +6,10 @@ from uuid import UUID
 import math
 from app.core.security import verify_password, get_password_hash
 from typing import Optional, List
+import httpx
+import logging
+
+logger = logging.getLogger("app")
 
 class UserService:
     @staticmethod
@@ -39,6 +43,25 @@ class UserService:
             return None
         
         update_data = profile_in.dict(exclude_unset=True)
+        
+        # 如果提供了经纬度且城市名为空，尝试在后端进行逆编码
+        if "latitude" in update_data and "longitude" in update_data and not update_data.get("city"):
+            try:
+                lat, lon = update_data["latitude"], update_data["longitude"]
+                async with httpx.AsyncClient(timeout=5.0) as client:
+                    resp = await client.get(
+                        f"https://nominatim.openstreetmap.org/reverse?format=json&lat={lat}&lon={lon}&zoom=10",
+                        headers={"User-Agent": "HiveApp/1.0"}
+                    )
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        address = data.get("address", {})
+                        city = address.get("city") or address.get("town") or address.get("village") or address.get("state") or ""
+                        db_profile.city = city
+                        logger.info(f"Backend reverse geocoding success: {city}")
+            except Exception as e:
+                logger.error(f"Backend reverse geocoding failed: {e}")
+
         for key, value in update_data.items():
             setattr(db_profile, key, value)
         

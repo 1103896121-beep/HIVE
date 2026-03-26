@@ -134,27 +134,10 @@ export function ProfilePortal({ userId, profile, onUpdate, onSignOut, onAlert }:
 
             const { latitude, longitude } = position.coords;
             
-            // STAGE 3: Reverse Geocode with strict 5s timeout
-            const controller = new AbortController();
-            const fetchTimeout = setTimeout(() => controller.abort(), 5000);
-            
-            try {
-                const response = await fetch(
-                    `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`,
-                    { signal: controller.signal }
-                );
-                clearTimeout(fetchTimeout);
-                const data = await response.json();
-                const city = data.address.city || data.address.town || data.address.village || data.address.state || '';
-                
-                await onUpdate({ city, latitude, longitude });
-                onAlert(t('common.success'), t('profile.location_synced'));
-            } catch (fetchErr) {
-                console.error('Geocoding failed:', fetchErr);
-                // Even if geocoding fails, update coordinates
-                await onUpdate({ latitude, longitude });
-                onAlert(t('common.info'), t('profile.coordinates_synced_no_city'));
-            }
+            // STAGE 3: Let BACKEND handle reverse geocoding via lat/lon
+            // We just send coordinates, backend UserService will fill the city name if missing
+            await onUpdate({ latitude, longitude });
+            onAlert(t('common.success'), t('profile.location_synced'));
         } catch (error: any) {
             console.error('Location sync failed:', error);
             let errorMsg = t('profile.location_failed', 'Location sync failed.');
