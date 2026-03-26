@@ -102,6 +102,7 @@
         "delete_account": "Delete Account",
         "delete_account_confirm": "This will permanently delete all your focus data. Are you sure?",
         "subscription_status": "Hive Membership",
+        "lifetime_active": "Lifetime Access",
         "active_days_left": "{{count}} Days Remaining",
         "trial_days_left": "Trial: {{count}} Days Left",
         "expired": "Expired",

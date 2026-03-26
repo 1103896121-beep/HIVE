@@ -322,6 +322,9 @@ export function ProfilePortal({ userId, profile, onUpdate, onSignOut, onAlert }:
 
                                     if (subEnd && subEnd > now) {
                                         const days = Math.ceil((subEnd.getTime() - now.getTime()) / (1000 * 3600 * 24));
+                                        if (days > 10000) {
+                                            return t('profile.lifetime_active', 'Lifetime Access');
+                                        }
                                         return t('profile.active_days_left', { count: days, defaultValue: '{{count}} Days Remaining' });
                                     } else if (trialEnd > now) {
                                         const days = Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 3600 * 24));
