@@ -83,12 +83,13 @@ export function ProfilePortal({ userId, profile, onUpdate, onSignOut, onAlert }:
         const bioCheck = validateContent(editForm.bio, 'bio');
         if (!bioCheck.isValid) return onAlert(t('common.error'), t(bioCheck.errorKey as Parameters<typeof t>[0]));
 
-        await onUpdate(editForm);
         setIsEditing(false);
         setTimeout(() => {
             const sheetContent = document.querySelector('.bottom-sheet-content') as HTMLElement;
             if (sheetContent) sheetContent.scrollTop = 0;
         }, 50);
+
+        await onUpdate(editForm);
     };
 
     const handleSyncLocation = async () => {
@@ -106,7 +107,7 @@ export function ProfilePortal({ userId, profile, onUpdate, onSignOut, onAlert }:
                 }
             }
             
-            const position = await Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+            const position = await Geolocation.getCurrentPosition({ enableHighAccuracy: false, timeout: 5000, maximumAge: 300000 });
             const { latitude, longitude } = position.coords;
             const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`);
             const data = await response.json();
@@ -359,12 +360,8 @@ export function ProfilePortal({ userId, profile, onUpdate, onSignOut, onAlert }:
                 </button>
                 <button
                     onClick={async () => {
-                        const url = 'https://hive.merchlens.app' + (i18n.language === 'zh-CN' ? '/privacy.html' : i18n.language === 'zh-TW' ? '/privacy_tw.html' : '/privacy_en.html');
-                        if (Capacitor.isNativePlatform()) {
-                            await Browser.open({ url });
-                        } else {
-                            window.open(url, '_blank');
-                        }
+                        const path = (i18n.language === 'zh-CN' ? '/privacy.html' : i18n.language === 'zh-TW' ? '/privacy_tw.html' : '/privacy_en.html');
+                        await openUrl(path);
                     }}
                     className="flex items-center justify-between p-4 rounded-[24px] bg-white/[0.03] hover:bg-white/[0.05] transition-colors border border-white/[0.03] w-full"
                 >

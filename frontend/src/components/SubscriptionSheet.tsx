@@ -290,7 +290,7 @@ export function SubscriptionSheet({ userId, onSuccess, onClose, onAlert }: Subsc
                     </button>
                     <div className="w-1 h-1 bg-zinc-800 rounded-full" />
                     <button onClick={async () => {
-                        const url = 'https://hive.merchlens.app' + (!Capacitor.isNativePlatform() && document.documentElement.lang.includes('zh') ? '/privacy.html' : '/privacy_en.html');
+                        const url = 'https://1103896121-beep.github.io/HIVE' + (!Capacitor.isNativePlatform() && document.documentElement.lang.includes('zh') ? '/privacy.html' : '/privacy_en.html');
                         if (Capacitor.isNativePlatform()) { await import('@capacitor/browser').then(m => m.Browser.open({ url })); } else { window.open(url, '_blank'); }
                     }} className="text-[9px] text-zinc-600 uppercase font-black tracking-tighter hover:text-zinc-400">
                         {t('legal.privacy_policy')}

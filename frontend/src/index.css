@@ -61,6 +61,11 @@
     transition: background-color 0.5s ease, color 0.5s ease;
   }
 
+  /* 防止 iOS 因为字号低于16px而在输入表单时暴力缩放全局视图 */
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+
   /* Optimize readability for Chinese characters at small sizes */
   :lang(zh-CN) {
     font-weight: 400; /* Chinese characters can look "cluttered" with heavy weights */
