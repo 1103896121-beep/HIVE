@@ -131,13 +131,18 @@ export function SubscriptionSheet({ userId, onSuccess, onClose, onAlert }: Subsc
         try {
             setIsLoading(true);
             
-            if (Capacitor.isNativePlatform() && window.CdvPurchase) {
-                const { store } = window.CdvPurchase;
-                const product = store.get(sku);
-                if (product) {
-                    store.order(product);
+            if (Capacitor.isNativePlatform()) {
+                if (window.CdvPurchase) {
+                    const { store } = window.CdvPurchase;
+                    const product = store.get(sku);
+                    if (product) {
+                        store.order(product);
+                    } else {
+                        onAlert(t('common.error'), t('subscription.product_not_found'));
+                        setIsLoading(false);
+                    }
                 } else {
-                    onAlert(t('common.error'), t('subscription.product_not_found'));
+                    onAlert(t('common.error'), t('subscription.payment_plugin_error', 'In-App Purchases are not available right now. Please try again later.'));
                     setIsLoading(false);
                 }
             } else {
@@ -277,13 +282,19 @@ export function SubscriptionSheet({ userId, onSuccess, onClose, onAlert }: Subsc
                 </div>
 
                 <div className="flex items-center gap-4 mt-2">
-                    <a href="/eula.html" className="text-[9px] text-zinc-600 uppercase font-black tracking-tighter hover:text-zinc-400">
+                    <button onClick={async () => {
+                        const url = 'https://hive.merchlens.app' + (!Capacitor.isNativePlatform() && document.documentElement.lang.includes('zh') ? '/eula.html' : '/eula_en.html');
+                        if (Capacitor.isNativePlatform()) { await import('@capacitor/browser').then(m => m.Browser.open({ url })); } else { window.open(url, '_blank'); }
+                    }} className="text-[9px] text-zinc-600 uppercase font-black tracking-tighter hover:text-zinc-400">
                         {t('legal.eula')}
-                    </a>
+                    </button>
                     <div className="w-1 h-1 bg-zinc-800 rounded-full" />
-                    <a href="/privacy.html" className="text-[9px] text-zinc-600 uppercase font-black tracking-tighter hover:text-zinc-400">
+                    <button onClick={async () => {
+                        const url = 'https://hive.merchlens.app' + (!Capacitor.isNativePlatform() && document.documentElement.lang.includes('zh') ? '/privacy.html' : '/privacy_en.html');
+                        if (Capacitor.isNativePlatform()) { await import('@capacitor/browser').then(m => m.Browser.open({ url })); } else { window.open(url, '_blank'); }
+                    }} className="text-[9px] text-zinc-600 uppercase font-black tracking-tighter hover:text-zinc-400">
                         {t('legal.privacy_policy')}
-                    </a>
+                    </button>
                 </div>
             </div>
 

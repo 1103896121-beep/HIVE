@@ -138,9 +138,14 @@ async def block_user(
 ):
     return await SocialService.block_user(db, current_user.id, block_in)
 
+from typing import Optional
+
 @router.get("/hive/matching", response_model=HiveMatchingResponse)
 async def get_hive_matching(
+    lat: Optional[float] = None,
+    lon: Optional[float] = None,
+    radius_km: Optional[int] = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    return await SocialService.get_hive_matching(db, current_user.id)
+    return await SocialService.get_hive_matching(db, current_user.id, lat, lon, radius_km)

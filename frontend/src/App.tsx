@@ -22,12 +22,11 @@ export default function App() {
   const isScreenshotMode = useMemo(() => new URLSearchParams(window.location.search).get('screenshot') === 'true', []);
 
   const {
-    userId, isAuthenticated, subjects, squads, bonds, hiveTiles, ambientCount, userProfile, theme, currentSquad,
-    setTheme, setCurrentSquad, setUserProfile, setSquads, setBonds, setHiveTiles, handleSignOut, handleAuthSuccess
+    userId, isAuthenticated, subjects, squads, bonds, hiveTiles, ambientCount, userProfile, theme, currentSquad, currentLocation,
+    setTheme, setCurrentSquad, setCurrentLocation, setUserProfile, setSquads, setBonds, setHiveTiles, handleSignOut, handleAuthSuccess
   } = useAppInit();
 
   const [currentSubject, setCurrentSubject] = useState('Work');
-  const [currentLocation, setCurrentLocation] = useState('Global');
   const [activeSheet, setActiveSheet] = useState<SheetType>(null);
   const [viewMode, setViewMode] = useState<'squad' | 'global'>('squad');
   const [lastNudge, setLastNudge] = useState<string | null>(null);
@@ -113,7 +112,7 @@ export default function App() {
     handleUpdateProfile, handleLeaveSquad, handleDisbandSquad,
     handleCreateSquad, handleBlock, handleCreateBond, handleGridUserClick
   } = useAppActions({
-    userId, theme, userProfile, ambientCount, currentLocation,
+    userId, theme, userProfile, ambientCount,
     setUserProfile, setSquads, setCurrentSquad, setActiveSheet, setBonds,
     showAlert, showConfirm, setInteractionUser, t
   });
@@ -296,7 +295,9 @@ export default function App() {
                     />
                   ))}
                 </div>
-                <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-400">+{ambientCount} near {currentLocation}</span>
+                <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-400">
+                  {ambientCount > 0 ? `+${ambientCount} near ${currentLocation}` : `Searching...`}
+                </span>
               </div>
 
               {/* 缩放进入宏观视角的按钮 */}
@@ -395,13 +396,18 @@ export default function App() {
                 onPointerDown={handlePointerDown}
                 onPointerUp={handlePointerUp}
                 onPointerLeave={handlePointerUp}
+                onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); }}
                 className={clsx(
-                  "w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300 shadow-2xl z-20 relative overflow-hidden",
+                  "w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300 shadow-2xl z-20 relative overflow-hidden select-none",
                   isFocusing
                     ? "bg-zinc-900 border-2 border-zinc-800 text-zinc-400"
                     : "text-black hover:scale-105 active:scale-95 shadow-lg"
                 )}
                 style={{
+                  WebkitTouchCallout: 'none',
+                  WebkitUserSelect: 'none',
+                  userSelect: 'none',
+                  touchAction: 'manipulation',
                   backgroundColor: isFocusing ? undefined : 'var(--accent)',
                   boxShadow: isFocusing ? undefined : '0 10px 30px rgba(var(--accent-rgb), 0.3)'
                 }}

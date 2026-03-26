@@ -170,6 +170,53 @@ class SocialRepository:
         )
         result = await db.execute(stmt)
         return result.all()
+
+    @staticmethod
+    async def get_nearby_profiles_by_distance(
+        db: AsyncSession, exclude_ids: set, limit: int, lat: float, lon: float, radius_km: int
+    ) -> Tuple[List[Tuple[Profile, UUID]], int]:
+        from sqlalchemy import func
+        distance_expr = (
+            6371 * func.acos(
+                func.cos(func.radians(lat)) * func.cos(func.radians(Profile.latitude)) *
+                func.cos(func.radians(Profile.longitude) - func.radians(lon)) +
+                func.sin(func.radians(lat)) * func.sin(func.radians(Profile.latitude))
+            )
+        )
+        stmt = (
+            select(Profile, User.id)
+            .join(User, Profile.user_id == User.id)
+            .where(
+                and_(
+                    User.id.not_in(exclude_ids),
+                    Profile.show_location == True,
+                    Profile.latitude.isnot(None),
+                    Profile.longitude.isnot(None),
+                    distance_expr <= radius_km
+                )
+            )
+            .order_by(distance_expr)
+            .limit(limit)
+        )
+        result = await db.execute(stmt)
+        profiles = result.all()
+        
+        count_stmt = (
+            select(func.count(User.id))
+            .join(Profile, Profile.user_id == User.id)
+            .where(
+                and_(
+                    Profile.show_location == True,
+                    Profile.latitude.isnot(None),
+                    Profile.longitude.isnot(None),
+                    distance_expr <= radius_km
+                )
+            )
+        )
+        count_result = await db.execute(count_stmt)
+        ambient_count = count_result.scalar_one_or_none() or 0
+        
+        return profiles, ambient_count
     @staticmethod
     async def refresh(db: AsyncSession, item) -> None:
         await db.refresh(item)

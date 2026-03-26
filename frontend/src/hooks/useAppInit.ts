@@ -15,9 +15,10 @@ export function useAppInit() {
     const [squads, setSquads] = useState<Squad[]>([]);
     const [bonds, setBonds] = useState<BondEnriched[]>([]);
     const [hiveTiles, setHiveTiles] = useState<HiveMatchTile[]>([]);
-    const [ambientCount, setAmbientCount] = useState(24302);
+    const [ambientCount, setAmbientCount] = useState(0);
     const [theme, setTheme] = useState<Theme>('classic');
     const [currentSquad, setCurrentSquad] = useState('Global Hive');
+    const [currentLocation, setCurrentLocation] = useState('Global');
 
     const [userProfile, setUserProfile] = useState<UserProfile>({
         name: '...',
@@ -48,10 +49,17 @@ export function useAppInit() {
         if (!isAuthenticated || !userId) return;
         const syncSocialData = async () => {
             try {
+                const lat = userProfile.latitude;
+                const lon = userProfile.longitude;
+                let radiusKm: number | undefined;
+                if (currentLocation === '5km') radiusKm = 5;
+                else if (currentLocation === '50km') radiusKm = 50;
+                else if (currentLocation === '100km') radiusKm = 100;
+
                 const [fetchedSquads, fetchedBonds, matchData] = await Promise.all([
                     socialService.getSquads(),
                     socialService.getBonds(),
-                    socialService.getHiveMatching(userId)
+                    socialService.getHiveMatching(userId, lat, lon, radiusKm)
                 ]);
                 setSquads(fetchedSquads);
                 setBonds(fetchedBonds);
@@ -103,7 +111,14 @@ export function useAppInit() {
                     setCurrentSquad(fetchedSquads[0].name);
                 }
 
-                const matchData = await socialService.getHiveMatching(userId);
+                const lat = profile?.latitude;
+                const lon = profile?.longitude;
+                let radiusKm: number | undefined;
+                if (currentLocation === '5km') radiusKm = 5;
+                else if (currentLocation === '50km') radiusKm = 50;
+                else if (currentLocation === '100km') radiusKm = 100;
+
+                const matchData = await socialService.getHiveMatching(userId, lat, lon, radiusKm);
                 setHiveTiles(matchData.tiles);
                 setAmbientCount(matchData.ambient_count);
             } catch (err: unknown) {
@@ -115,7 +130,29 @@ export function useAppInit() {
             }
         };
         initData();
-    }, [userId, isAuthenticated]);
+    }, [userId, isAuthenticated]); // Note: currentLocation and profile changes handle updates in subsequent hook
+
+    // Sync when location changes
+    useEffect(() => {
+        if (!isAuthenticated || !userId) return;
+        const fetchMatching = async () => {
+            const lat = userProfile.latitude;
+            const lon = userProfile.longitude;
+            let radiusKm: number | undefined;
+            if (currentLocation === '5km') radiusKm = 5;
+            else if (currentLocation === '50km') radiusKm = 50;
+            else if (currentLocation === '100km') radiusKm = 100;
+
+            try {
+                const matchData = await socialService.getHiveMatching(userId, lat, lon, radiusKm);
+                if (matchData) {
+                    setHiveTiles(matchData.tiles);
+                    setAmbientCount(matchData.ambient_count);
+                }
+            } catch (err) { console.error('Matching fetch failed', err); }
+        };
+        fetchMatching();
+    }, [currentLocation, userId, isAuthenticated, userProfile.latitude, userProfile.longitude]);
 
     // Sync theme and language
     useEffect(() => {
@@ -137,8 +174,10 @@ export function useAppInit() {
         userProfile,
         theme,
         currentSquad,
+        currentLocation,
         setTheme,
         setCurrentSquad,
+        setCurrentLocation,
         setUserProfile,
         setSquads,
         setBonds,

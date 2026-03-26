@@ -71,8 +71,13 @@ export const socialService = {
         apiClient.post<T.Report>(`/social/reports?user_id=${userId}`, { target_id: targetId, target_type: targetType, reason }),
     block: (userId: string, blockedId: string) =>
         apiClient.post<T.Block>(`/social/blocks?user_id=${userId}`, { blocked_id: blockedId }),
-    getHiveMatching: (userId: string) =>
-        apiClient.get<T.HiveMatchingResponse>(`/social/hive/matching?user_id=${userId}`),
+    getHiveMatching: (userId: string, lat?: number, lon?: number, radiusKm?: number) => {
+        let url = `/social/hive/matching?user_id=${userId}`;
+        if (lat !== undefined && lon !== undefined && radiusKm !== undefined) {
+            url += `&lat=${lat}&lon=${lon}&radius_km=${radiusKm}`;
+        }
+        return apiClient.get<T.HiveMatchingResponse>(url);
+    },
 };
 
 export const presenceService = {

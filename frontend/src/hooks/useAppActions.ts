@@ -11,7 +11,6 @@ interface AppActionProps {
   theme: string;
   userProfile: UserProfile;
   ambientCount: number;
-  currentLocation: string;
   setUserProfile: React.Dispatch<React.SetStateAction<UserProfile>>;
   setSquads: React.Dispatch<React.SetStateAction<Squad[]>>;
   setCurrentSquad: React.Dispatch<React.SetStateAction<string>>;
@@ -24,20 +23,14 @@ interface AppActionProps {
 }
 
 export function useAppActions({
-  userId, theme, userProfile, ambientCount, currentLocation,
+  userId, theme, userProfile, ambientCount,
   setUserProfile, setSquads, setCurrentSquad, setActiveSheet, setBonds,
   showAlert, showConfirm, setInteractionUser, t
 }: AppActionProps) {
 
   const dynamicAmbientCount = useMemo(() => {
-    if (currentLocation === 'Global') return ambientCount || 24302; 
-    let hash = 0;
-    for (let i = 0; i < currentLocation.length; i++) {
-        hash = ((hash << 5) - hash) + currentLocation.charCodeAt(i);
-        hash |= 0;
-    }
-    return (Math.floor(Math.abs(hash) % 150)) + (ambientCount % 100);
-  }, [currentLocation, ambientCount]);
+    return ambientCount || 0;
+  }, [ambientCount]);
 
   const ambientParticles = useMemo(() => {
     const count = Math.min(dynamicAmbientCount, 150);

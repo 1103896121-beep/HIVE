@@ -4,6 +4,8 @@ import { Camera, Edit2, Check, Award, Flame, Info, ExternalLink, ShieldCheck, Ke
 import { validateContent, validateImage } from '../utils/validation';
 import { userService } from '../api';
 import clsx from 'clsx';
+import { Capacitor } from '@capacitor/core';
+import { Browser } from '@capacitor/browser';
 
 
 export interface UserProfile {
@@ -82,6 +84,10 @@ export function ProfilePortal({ userId, profile, onUpdate, onSignOut, onAlert }:
 
         await onUpdate(editForm);
         setIsEditing(false);
+        setTimeout(() => {
+            const sheetContent = document.querySelector('.bottom-sheet-content') as HTMLElement;
+            if (sheetContent) sheetContent.scrollTop = 0;
+        }, 50);
     };
 
     const handleSyncLocation = async () => {
@@ -112,9 +118,13 @@ export function ProfilePortal({ userId, profile, onUpdate, onSignOut, onAlert }:
             }
         }, (error) => {
             console.error('Geolocation error:', error);
-            onAlert(t('common.error'), t('profile.location_failed'));
+            let errorMsg = t('profile.location_failed', 'Location sync failed.');
+            if (error.code === error.PERMISSION_DENIED) {
+                 errorMsg = t('profile.location_permission_denied', 'Please enable Location in your device Settings.');
+            }
+            onAlert(t('common.error'), errorMsg);
             setIsSyncingLocation(false);
-        });
+        }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
     };
 
     const handleChangePassword = async () => {
@@ -320,30 +330,40 @@ export function ProfilePortal({ userId, profile, onUpdate, onSignOut, onAlert }:
 
             {/* Legal Links for App Store */}
             <div className="mt-4 pt-6 border-t border-white/[0.05] flex flex-col gap-3">
-                <a
-                    href={i18n.language === 'zh-CN' ? '/eula.html' : i18n.language === 'zh-TW' ? '/eula_tw.html' : '/eula_en.html'}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-between p-4 rounded-[24px] bg-white/[0.03] hover:bg-white/[0.05] transition-colors border border-white/[0.03]"
+                <button
+                    onClick={async () => {
+                        const url = 'https://hive.merchlens.app' + (i18n.language === 'zh-CN' ? '/eula.html' : i18n.language === 'zh-TW' ? '/eula_tw.html' : '/eula_en.html');
+                        if (Capacitor.isNativePlatform()) {
+                            await Browser.open({ url });
+                        } else {
+                            window.open(url, '_blank');
+                        }
+                    }}
+                    className="flex items-center justify-between p-4 rounded-[24px] bg-white/[0.03] hover:bg-white/[0.05] transition-colors border border-white/[0.03] w-full"
                 >
                     <div className="flex items-center gap-2">
                         <ShieldCheck size={14} className="text-zinc-500" />
                         <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">{t('legal.eula')}</span>
                     </div>
                     <ExternalLink size={12} className="text-zinc-600" />
-                </a>
-                <a
-                    href={i18n.language === 'zh-CN' ? '/privacy.html' : i18n.language === 'zh-TW' ? '/privacy_tw.html' : '/privacy_en.html'}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-between p-4 rounded-[24px] bg-white/[0.03] hover:bg-white/[0.05] transition-colors border border-white/[0.03]"
+                </button>
+                <button
+                    onClick={async () => {
+                        const url = 'https://hive.merchlens.app' + (i18n.language === 'zh-CN' ? '/privacy.html' : i18n.language === 'zh-TW' ? '/privacy_tw.html' : '/privacy_en.html');
+                        if (Capacitor.isNativePlatform()) {
+                            await Browser.open({ url });
+                        } else {
+                            window.open(url, '_blank');
+                        }
+                    }}
+                    className="flex items-center justify-between p-4 rounded-[24px] bg-white/[0.03] hover:bg-white/[0.05] transition-colors border border-white/[0.03] w-full"
                 >
                     <div className="flex items-center gap-2">
                         <Info size={14} className="text-zinc-500" />
                         <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">{t('legal.privacy_policy')}</span>
                     </div>
                     <ExternalLink size={12} className="text-zinc-600" />
-                </a>
+                </button>
             </div>
 
             {/* Change Password - Moved to bottom and shrunken */}

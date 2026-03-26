@@ -201,7 +201,7 @@ class SocialService:
         return db_block
 
     @staticmethod
-    async def get_hive_matching(db: AsyncSession, user_id: UUID) -> HiveMatchingResponse:
+    async def get_hive_matching(db: AsyncSession, user_id: UUID, lat: Optional[float] = None, lon: Optional[float] = None, radius_km: Optional[int] = None) -> HiveMatchingResponse:
         """
         核心 Hive 匹配算法。优先级：战队 -> 好友 -> 活跃用户。
         """
@@ -245,8 +245,15 @@ class SocialService:
         await add_to_tiles(squad_members, is_squad=True)
         await add_to_tiles(bonds_members, is_bond=True)
 
-        if len(tiles_dict) < 9:
-            a_res_all = await SocialRepository.get_nearby_profiles(db, exclude_ids | set(tiles_dict.keys()), 9 - len(tiles_dict))
-            await add_to_tiles(a_res_all)
+        ambient_count = 0
+        if lat is not None and lon is not None and radius_km is not None:
+            profiles, ambient_count = await SocialRepository.get_nearby_profiles_by_distance(
+                db, exclude_ids | set(tiles_dict.keys()), 9 - len(tiles_dict), lat, lon, radius_km
+            )
+            await add_to_tiles(profiles)
+        else:
+            if len(tiles_dict) < 9:
+                a_res_all = await SocialRepository.get_nearby_profiles(db, exclude_ids | set(tiles_dict.keys()), 9 - len(tiles_dict))
+                await add_to_tiles(a_res_all)
 
-        return HiveMatchingResponse(tiles=list(tiles_dict.values()), ambient_count=random.randint(50, 500))
+        return HiveMatchingResponse(tiles=list(tiles_dict.values()), ambient_count=ambient_count)

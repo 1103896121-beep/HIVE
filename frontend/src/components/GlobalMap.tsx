@@ -198,17 +198,17 @@ export const GlobalMap: React.FC<{ onExit: () => void }> = ({ onExit }) => {
             <div className="absolute top-16 left-0 right-0 px-8 flex justify-between items-start pointer-events-none z-10 w-full">
                 <div className="animate-in fade-in slide-in-from-top-4 duration-700 delay-300">
                     <div className="text-[10px] text-[#F5A623] font-black uppercase tracking-[0.4em] mb-1">{t('global_map.status_title')}</div>
-                    <div className="text-3xl font-black text-white tracking-tighter">24,302</div>
+                    <div className="text-3xl font-black text-white tracking-tighter">--</div>
                     <div className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mt-1">{t('global_map.total_focusing')}</div>
 
                     <div className="mt-8 flex gap-8">
                         <div>
                             <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest mb-1">{t('global_map.active_hives')}</div>
-                            <div className="text-lg font-black text-zinc-300">1,204</div>
+                            <div className="text-lg font-black text-zinc-300">--</div>
                         </div>
                         <div>
                             <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest mb-1">{t('global_map.daily_sparks')}</div>
-                            <div className="text-lg font-black text-zinc-300">8.4M</div>
+                            <div className="text-lg font-black text-zinc-300">--</div>
                         </div>
                     </div>
                 </div>
