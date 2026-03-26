@@ -105,7 +105,7 @@ export function ProfilePortal({ userId, profile, onUpdate, onSignOut, onAlert }:
             if (Capacitor.isNativePlatform()) {
                 const permission = await withTimeout(Geolocation.checkPermissions(), 3000);
                 if (permission.location !== 'granted') {
-                    const req = await withTimeout(Geolocation.requestPermissions(), 10000);
+                    const req = await withTimeout(Geolocation.requestPermissions(), 6000);
                     if (req.location !== 'granted') {
                         onAlert(t('common.error'), t('profile.location_permission_denied', 'Please enable Location in your device Settings.'));
                         setIsSyncingLocation(false);
@@ -114,18 +114,47 @@ export function ProfilePortal({ userId, profile, onUpdate, onSignOut, onAlert }:
                 }
             }
             
-            const position = await withTimeout(Geolocation.getCurrentPosition({ 
-                enableHighAccuracy: true, 
-                timeout: 10000, 
-                maximumAge: 30000 
-            }), 12000) as any;
+            let position: any = null;
+            try {
+                // STAGE 1: Try high accuracy (GPS) briefly
+                position = await withTimeout(Geolocation.getCurrentPosition({ 
+                    enableHighAccuracy: true, 
+                    timeout: 4000, 
+                    maximumAge: 10000 
+                }), 5000) as any;
+            } catch (err) {
+                console.warn('GPS failed, falling back to network positioning...', err);
+                // STAGE 2: Try network/wifi positioning
+                position = await withTimeout(Geolocation.getCurrentPosition({ 
+                    enableHighAccuracy: false, 
+                    timeout: 6000, 
+                    maximumAge: 30000 
+                }), 8000) as any;
+            }
+
             const { latitude, longitude } = position.coords;
-            const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`);
-            const data = await response.json();
-            const city = data.address.city || data.address.town || data.address.village || data.address.state || '';
             
-            await onUpdate({ city, latitude, longitude });
-            onAlert(t('common.success'), t('profile.location_synced'));
+            // STAGE 3: Reverse Geocode with strict 5s timeout
+            const controller = new AbortController();
+            const fetchTimeout = setTimeout(() => controller.abort(), 5000);
+            
+            try {
+                const response = await fetch(
+                    `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`,
+                    { signal: controller.signal }
+                );
+                clearTimeout(fetchTimeout);
+                const data = await response.json();
+                const city = data.address.city || data.address.town || data.address.village || data.address.state || '';
+                
+                await onUpdate({ city, latitude, longitude });
+                onAlert(t('common.success'), t('profile.location_synced'));
+            } catch (fetchErr) {
+                console.error('Geocoding failed:', fetchErr);
+                // Even if geocoding fails, update coordinates
+                await onUpdate({ latitude, longitude });
+                onAlert(t('common.info'), t('profile.coordinates_synced_no_city', 'Updated coordinates, but could not determine city name.'));
+            }
         } catch (error: any) {
             console.error('Location sync failed:', error);
             let errorMsg = t('profile.location_failed', 'Location sync failed.');
