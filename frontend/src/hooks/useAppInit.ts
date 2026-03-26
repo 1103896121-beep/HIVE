@@ -36,6 +36,24 @@ export function useAppInit() {
         clearAuthToken();
         setIsAuthenticated(false);
         setUserId(null);
+
+        // 清理缓存数据防止切号时出现数据溢出串号
+        setSquads([]);
+        setBonds([]);
+        setHiveTiles([]);
+        setAmbientCount(0);
+        setCurrentSquad('Global Hive');
+        setCurrentLocation('Global');
+        setUserProfile({
+            name: '...',
+            avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=default',
+            bio: 'Focusing on the moment... 🐝',
+            city: '...',
+            totalFocus: 0,
+            sparks: 0,
+            trialStartAt: new Date().toISOString(),
+            showLocation: true,
+        });
     };
 
     const handleAuthSuccess = (uId: string) => {

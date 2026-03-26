@@ -95,10 +95,17 @@ export function ProfilePortal({ userId, profile, onUpdate, onSignOut, onAlert }:
     const handleSyncLocation = async () => {
         setIsSyncingLocation(true);
         try {
+            async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+                return Promise.race([
+                    promise,
+                    new Promise<T>((_, reject) => setTimeout(() => reject(new Error('timeout')), ms))
+                ]);
+            }
+
             if (Capacitor.isNativePlatform()) {
-                const permission = await Geolocation.checkPermissions();
+                const permission = await withTimeout(Geolocation.checkPermissions(), 3000);
                 if (permission.location !== 'granted') {
-                    const req = await Geolocation.requestPermissions();
+                    const req = await withTimeout(Geolocation.requestPermissions(), 10000);
                     if (req.location !== 'granted') {
                         onAlert(t('common.error'), t('profile.location_permission_denied', 'Please enable Location in your device Settings.'));
                         setIsSyncingLocation(false);
@@ -107,7 +114,7 @@ export function ProfilePortal({ userId, profile, onUpdate, onSignOut, onAlert }:
                 }
             }
             
-            const position = await Geolocation.getCurrentPosition({ enableHighAccuracy: false, timeout: 5000, maximumAge: 300000 });
+            const position = await withTimeout(Geolocation.getCurrentPosition({ enableHighAccuracy: false, timeout: 5000, maximumAge: 300000 }), 6000) as any;
             const { latitude, longitude } = position.coords;
             const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`);
             const data = await response.json();
