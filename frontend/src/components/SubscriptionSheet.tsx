@@ -67,22 +67,24 @@ export function SubscriptionSheet({ userId, onSuccess, onClose, onAlert }: Subsc
     ], [t]);
 
     useEffect(() => {
+        // 1. 立即停止界面转圈，使用本地多语言托底数据显示（乐观渲染）
+        setProducts(productSkus);
+
         if (!Capacitor.isNativePlatform() || !window.CdvPurchase) {
-            // Web Mock fallback
-            const timer = setTimeout(() => {
-                setProducts(productSkus);
-            }, 800);
-            return () => clearTimeout(timer);
+            return;
         }
 
         const { store, ProductType, Platform } = window.CdvPurchase;
         
-        store.register([
-            { id: 'com.hive.monthly', type: ProductType.PAID_SUBSCRIPTION, platform: Platform.APPLE_APPSTORE },
-            { id: 'com.hive.quarterly', type: ProductType.PAID_SUBSCRIPTION, platform: Platform.APPLE_APPSTORE },
-            { id: 'com.hive.annual', type: ProductType.PAID_SUBSCRIPTION, platform: Platform.APPLE_APPSTORE },
-            { id: 'com.hive.lifetime', type: ProductType.NON_CONSUMABLE, platform: Platform.APPLE_APPSTORE }
-        ]);
+        // 防止重复注册
+        if (store.products.length === 0) {
+            store.register([
+                { id: 'com.hive.monthly', type: ProductType.PAID_SUBSCRIPTION, platform: Platform.APPLE_APPSTORE },
+                { id: 'com.hive.quarterly', type: ProductType.PAID_SUBSCRIPTION, platform: Platform.APPLE_APPSTORE },
+                { id: 'com.hive.annual', type: ProductType.PAID_SUBSCRIPTION, platform: Platform.APPLE_APPSTORE },
+                { id: 'com.hive.lifetime', type: ProductType.NON_CONSUMABLE, platform: Platform.APPLE_APPSTORE }
+            ]);
+        }
 
         store.when().approved((transaction: CdvTransaction) => transaction.verify());
 
@@ -103,22 +105,35 @@ export function SubscriptionSheet({ userId, onSuccess, onClose, onAlert }: Subsc
             });
         });
 
+        // 收到苹果返回后，仅覆盖获取到本地化价格的真实项
         store.when().updated(() => {
-            const nativeProducts = store.products.filter((p: CdvProduct) => p.canPurchase).map((p: CdvProduct) => ({
-                productId: p.id,
-                title: p.title,
-                localizedPrice: p.pricing?.price || '',
-                description: p.description
-            })).filter((p: { localizedPrice: string }) => !!p.localizedPrice);
+            const nativeProducts = store.products.map((p: CdvProduct) => {
+                const fallback = productSkus.find(f => f.productId === p.id);
+                return {
+                    productId: p.id,
+                    title: p.title || fallback?.title || '',
+                    localizedPrice: p.pricing?.price || fallback?.localizedPrice || '',
+                    description: p.description || fallback?.description || '',
+                    canPurchase: p.canPurchase
+                };
+            });
             
-            if (nativeProducts.length > 0) {
+            // 如果成功向苹果拉取到了任何数据，刷新视图，否则保持原有托底不变
+            if (nativeProducts.length > 0 && nativeProducts.some(p => !!p.localizedPrice)) {
                setProducts(nativeProducts);
             }
         });
 
+        // 记录由底层抛出的任何关于凭证或通信的网络故障
+        // @ts-ignore
+        store.error((error: any) => {
+            console.error('CdvPurchase Error:', error);
+            setIsLoading(false);
+        });
+
         store.initialize([Platform.APPLE_APPSTORE]);
 
-    }, [productSkus, t, onSuccess, onClose, onAlert]);
+    }, [productSkus, t, onSuccess, onClose, onAlert, userId]);
 
     useEffect(() => {
         if (products.length > 0 && !selectedSku) {
