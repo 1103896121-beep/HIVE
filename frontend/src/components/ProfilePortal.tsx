@@ -114,7 +114,11 @@ export function ProfilePortal({ userId, profile, onUpdate, onSignOut, onAlert }:
                 }
             }
             
-            const position = await withTimeout(Geolocation.getCurrentPosition({ enableHighAccuracy: false, timeout: 5000, maximumAge: 300000 }), 6000) as any;
+            const position = await withTimeout(Geolocation.getCurrentPosition({ 
+                enableHighAccuracy: true, 
+                timeout: 10000, 
+                maximumAge: 30000 
+            }), 12000) as any;
             const { latitude, longitude } = position.coords;
             const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`);
             const data = await response.json();

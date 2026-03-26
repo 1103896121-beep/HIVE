@@ -104,6 +104,7 @@ export function AppSheets({
       >
         <SubscriptionSheet
           userId={userId}
+          trialStatus={trialStatus}
           onSuccess={(expiresAt: string) => setUserProfile(prev => ({ ...prev, subscriptionEndAt: expiresAt }))}
           onClose={() => setActiveSheet(null)} onAlert={showAlert}
         />

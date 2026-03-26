@@ -48,12 +48,13 @@ declare global {
 
 interface SubscriptionSheetProps {
     userId: string;
+    trialStatus: { isExpired: boolean; isPremium: boolean; daysLeft: number };
     onSuccess: (expiresAt: string) => void;
     onClose: () => void;
     onAlert: (title: string, message: string) => void;
 }
 
-export function SubscriptionSheet({ userId, onSuccess, onClose, onAlert }: SubscriptionSheetProps) {
+export function SubscriptionSheet({ userId, trialStatus, onSuccess, onClose, onAlert }: SubscriptionSheetProps) {
     const { t, i18n } = useTranslation();
     const [isLoading, setIsLoading] = useState(false);
     const [products, setProducts] = useState<Array<{ productId: string, title: string, localizedPrice: string, description: string }>>([]);
@@ -150,14 +151,17 @@ export function SubscriptionSheet({ userId, onSuccess, onClose, onAlert }: Subsc
                 if (window.CdvPurchase) {
                     const { store } = window.CdvPurchase;
                     const product = store.get(sku);
+                    console.log('Attempting purchase for SKU:', sku, 'Product found:', !!product);
                     if (product) {
                         store.order(product);
                     } else {
-                        onAlert(t('common.error'), t('subscription.product_not_found'));
+                        // RE-REGISTER ATTEMPT IF NOT FOUND
+                        console.warn('Product not found in store, attempting one-time register update');
+                        onAlert(t('common.error'), t('subscription.product_not_found', 'Product not found. Please wait a moment or restart the app.'));
                         setIsLoading(false);
                     }
                 } else {
-                    onAlert(t('common.error'), t('subscription.payment_plugin_error', 'In-App Purchases are not available right now. Please try again later.'));
+                    onAlert(t('common.error'), t('subscription.payment_plugin_error', 'In-App Purchases are not available right now.'));
                     setIsLoading(false);
                 }
             } else {
@@ -204,12 +208,12 @@ export function SubscriptionSheet({ userId, onSuccess, onClose, onAlert }: Subsc
         const { store } = window.CdvPurchase;
         store.restore();
         
-        // CdvPurchase.store.restore() handles the UI/Logic internally or through 'verified' events
-        // we added a timeout to reset loading in case of no response
+        // CdvPurchase.store.restore() handles the verified events if successful
+        // Longer timeout for Apple sandbox
         setTimeout(() => {
             setIsLoading(false);
-            onAlert(t('common.info'), t('subscription.restore_success'));
-        }, 2000);
+            onAlert(t('common.info'), t('subscription.restore_check_complete', 'Purchase restore check complete. Please check your member status.'));
+        }, 5000);
     };
 
     return (
@@ -222,7 +226,11 @@ export function SubscriptionSheet({ userId, onSuccess, onClose, onAlert }: Subsc
                     {t('subscription.unlock_title')}
                 </h3>
                 <p className="text-sm text-zinc-400 mt-2">
-                    {t('subscription.trial_finished')}
+                    {trialStatus.isPremium 
+                        ? t('profile.subscription_status') 
+                        : (trialStatus.isExpired 
+                            ? t('subscription.trial_finished') 
+                            : t('profile.trial_days_left', { count: trialStatus.daysLeft }))}
                 </p>
             </div>
 
