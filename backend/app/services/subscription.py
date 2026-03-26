@@ -19,9 +19,9 @@ class SubscriptionService:
         
         # 根据 Apple 产品 ID 匹配订阅时长
         PRODUCT_DURATION = {
-            "com.hive.monthly": 31,
-            "com.hive.quarterly": 92,
-            "com.hive.annual": 366,
+            "com.hive.sub.monthly": 31,
+            "com.hive.sub.quarterly": 92,
+            "com.hive.sub.annual": 366,
             "com.hive.lifetime": 36500
         }
 

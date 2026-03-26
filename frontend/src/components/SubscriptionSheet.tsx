@@ -60,9 +60,9 @@ export function SubscriptionSheet({ userId, onSuccess, onClose, onAlert }: Subsc
     const [selectedSku, setSelectedSku] = useState<string | null>(null);
 
     const productSkus = useMemo(() => [
-        { productId: 'com.hive.monthly', title: t('subscription.monthly', 'Monthly'), localizedPrice: '$2.99', description: t('subscription.monthly_desc', 'Billed monthly') },
-        { productId: 'com.hive.quarterly', title: t('subscription.quarterly', 'Quarterly'), localizedPrice: '$7.99', description: t('subscription.quarterly_desc', 'Save 11%') },
-        { productId: 'com.hive.annual', title: t('subscription.annual', 'Annual'), localizedPrice: '$24.99', description: t('subscription.annual_desc', 'Save 30%') },
+        { productId: 'com.hive.sub.monthly', title: t('subscription.monthly', 'Monthly'), localizedPrice: '$2.99', description: t('subscription.monthly_desc', 'Billed monthly') },
+        { productId: 'com.hive.sub.quarterly', title: t('subscription.quarterly', 'Quarterly'), localizedPrice: '$7.99', description: t('subscription.quarterly_desc', 'Save 11%') },
+        { productId: 'com.hive.sub.annual', title: t('subscription.annual', 'Annual'), localizedPrice: '$24.99', description: t('subscription.annual_desc', 'Save 30%') },
         { productId: 'com.hive.lifetime', title: t('subscription.lifetime', 'Lifetime'), localizedPrice: '$59.99', description: t('subscription.lifetime_desc', 'One time payment') }
     ], [t]);
 
@@ -79,9 +79,9 @@ export function SubscriptionSheet({ userId, onSuccess, onClose, onAlert }: Subsc
         // 防止重复注册
         if (store.products.length === 0) {
             store.register([
-                { id: 'com.hive.monthly', type: ProductType.PAID_SUBSCRIPTION, platform: Platform.APPLE_APPSTORE },
-                { id: 'com.hive.quarterly', type: ProductType.PAID_SUBSCRIPTION, platform: Platform.APPLE_APPSTORE },
-                { id: 'com.hive.annual', type: ProductType.PAID_SUBSCRIPTION, platform: Platform.APPLE_APPSTORE },
+                { id: 'com.hive.sub.monthly', type: ProductType.PAID_SUBSCRIPTION, platform: Platform.APPLE_APPSTORE },
+                { id: 'com.hive.sub.quarterly', type: ProductType.PAID_SUBSCRIPTION, platform: Platform.APPLE_APPSTORE },
+                { id: 'com.hive.sub.annual', type: ProductType.PAID_SUBSCRIPTION, platform: Platform.APPLE_APPSTORE },
                 { id: 'com.hive.lifetime', type: ProductType.NON_CONSUMABLE, platform: Platform.APPLE_APPSTORE }
             ]);
         }
