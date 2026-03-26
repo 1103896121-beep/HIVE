@@ -13,7 +13,7 @@
     "@capacitor-community/apple-sign-in": "^6.0.0",
     "@capacitor/browser": "^6.0.6",
     "@capacitor/core": "^6.0.0",
-    "@capacitor/geolocation": "^8.1.0",
+    "@capacitor/geolocation": "^6.1.1",
     "@capacitor/ios": "^6.0.0",
     "@types/three": "^0.183.1",
     "clsx": "^2.1.1",
