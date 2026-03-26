@@ -347,7 +347,7 @@ export function ProfilePortal({ userId, profile, onUpdate, onSignOut, onAlert }:
             <div className="mt-4 pt-6 border-t border-white/[0.05] flex flex-col gap-3">
                 <button
                     onClick={async () => {
-                        const path = (i18n.language === 'zh-CN' ? '/eula.html' : i18n.language === 'zh-TW' ? '/eula_tw.html' : '/eula_en.html');
+                        const path = i18n.language.includes('zh') ? '/eula.html' : '/eula_en.html';
                         await openUrl(path);
                     }}
                     className="flex items-center justify-between p-4 rounded-[24px] bg-white/[0.03] hover:bg-white/[0.05] transition-colors border border-white/[0.03] w-full"
@@ -360,7 +360,7 @@ export function ProfilePortal({ userId, profile, onUpdate, onSignOut, onAlert }:
                 </button>
                 <button
                     onClick={async () => {
-                        const path = (i18n.language === 'zh-CN' ? '/privacy.html' : i18n.language === 'zh-TW' ? '/privacy_tw.html' : '/privacy_en.html');
+                        const path = i18n.language.includes('zh') ? '/privacy.html' : '/privacy_en.html';
                         await openUrl(path);
                     }}
                     className="flex items-center justify-between p-4 rounded-[24px] bg-white/[0.03] hover:bg-white/[0.05] transition-colors border border-white/[0.03] w-full"

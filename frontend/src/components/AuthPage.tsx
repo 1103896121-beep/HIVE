@@ -13,7 +13,7 @@ interface AuthPageProps {
 }
 
 export function AuthPage({ onSuccess }: AuthPageProps) {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const [mode, setMode] = useState<'login' | 'register' | 'forgot' | 'reset'>('login');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -327,9 +327,9 @@ export function AuthPage({ onSuccess }: AuthPageProps) {
 
                 <p className="text-center mt-12 text-[9px] text-zinc-700 font-bold uppercase tracking-[0.1em] leading-relaxed max-w-[280px] mx-auto">
                     {t('auth.agree_terms')}{' '}
-                    <button type="button" onClick={() => { if (Capacitor.isNativePlatform()) { Browser.open({ url: 'https://1103896121-beep.github.io/HIVE/eula.html' }); } else { window.open('/eula.html', '_blank'); } }} className="text-zinc-500 hover:underline">{t('legal.eula')}</button>
+                    <button type="button" onClick={() => { const path = i18n.language.includes('zh') ? '/eula.html' : '/eula_en.html'; const url = 'https://1103896121-beep.github.io/HIVE' + path; if (Capacitor.isNativePlatform()) { Browser.open({ url }); } else { window.open(url, '_blank'); } }} className="text-zinc-500 hover:underline">{t('legal.eula')}</button>
                     {' '}{t('auth.and', 'and')}{' '}
-                    <button type="button" onClick={() => { if (Capacitor.isNativePlatform()) { Browser.open({ url: 'https://1103896121-beep.github.io/HIVE/privacy.html' }); } else { window.open('/privacy.html', '_blank'); } }} className="text-zinc-500 hover:underline">{t('legal.privacy_policy')}</button>.
+                    <button type="button" onClick={() => { const path = i18n.language.includes('zh') ? '/privacy.html' : '/privacy_en.html'; const url = 'https://1103896121-beep.github.io/HIVE' + path; if (Capacitor.isNativePlatform()) { Browser.open({ url }); } else { window.open(url, '_blank'); } }} className="text-zinc-500 hover:underline">{t('legal.privacy_policy')}</button>.
                 </p>
             </div>
         </div>

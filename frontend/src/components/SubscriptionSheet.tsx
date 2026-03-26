@@ -283,14 +283,14 @@ export function SubscriptionSheet({ userId, onSuccess, onClose, onAlert }: Subsc
 
                 <div className="flex items-center gap-4 mt-2">
                     <button onClick={async () => {
-                        const url = 'https://1103896121-beep.github.io/HIVE' + (i18n.language === 'zh-CN' ? '/eula.html' : i18n.language === 'zh-TW' ? '/eula_tw.html' : '/eula_en.html');
+                        const url = 'https://1103896121-beep.github.io/HIVE' + (i18n.language.includes('zh') ? '/eula.html' : '/eula_en.html');
                         if (Capacitor.isNativePlatform()) { await import('@capacitor/browser').then(m => m.Browser.open({ url })); } else { window.open(url, '_blank'); }
                     }} className="text-[9px] text-zinc-600 uppercase font-black tracking-tighter hover:text-zinc-400">
                         {t('legal.eula')}
                     </button>
                     <div className="w-1 h-1 bg-zinc-800 rounded-full" />
                     <button onClick={async () => {
-                        const url = 'https://1103896121-beep.github.io/HIVE' + (!Capacitor.isNativePlatform() && document.documentElement.lang.includes('zh') ? '/privacy.html' : '/privacy_en.html');
+                        const url = 'https://1103896121-beep.github.io/HIVE' + (i18n.language.includes('zh') ? '/privacy.html' : '/privacy_en.html');
                         if (Capacitor.isNativePlatform()) { await import('@capacitor/browser').then(m => m.Browser.open({ url })); } else { window.open(url, '_blank'); }
                     }} className="text-[9px] text-zinc-600 uppercase font-black tracking-tighter hover:text-zinc-400">
                         {t('legal.privacy_policy')}
