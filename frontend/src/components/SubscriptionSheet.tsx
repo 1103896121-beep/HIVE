@@ -54,7 +54,7 @@ interface SubscriptionSheetProps {
 }
 
 export function SubscriptionSheet({ userId, onSuccess, onClose, onAlert }: SubscriptionSheetProps) {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const [isLoading, setIsLoading] = useState(false);
     const [products, setProducts] = useState<Array<{ productId: string, title: string, localizedPrice: string, description: string }>>([]);
     const [selectedSku, setSelectedSku] = useState<string | null>(null);
@@ -283,7 +283,7 @@ export function SubscriptionSheet({ userId, onSuccess, onClose, onAlert }: Subsc
 
                 <div className="flex items-center gap-4 mt-2">
                     <button onClick={async () => {
-                        const url = 'https://hive.merchlens.app' + (!Capacitor.isNativePlatform() && document.documentElement.lang.includes('zh') ? '/eula.html' : '/eula_en.html');
+                        const url = 'https://1103896121-beep.github.io/HIVE' + (i18n.language === 'zh-CN' ? '/eula.html' : i18n.language === 'zh-TW' ? '/eula_tw.html' : '/eula_en.html');
                         if (Capacitor.isNativePlatform()) { await import('@capacitor/browser').then(m => m.Browser.open({ url })); } else { window.open(url, '_blank'); }
                     }} className="text-[9px] text-zinc-600 uppercase font-black tracking-tighter hover:text-zinc-400">
                         {t('legal.eula')}

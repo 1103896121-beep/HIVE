@@ -5,6 +5,7 @@ import { validateContent, validateImage } from '../utils/validation';
 import { userService } from '../api';
 import clsx from 'clsx';
 import { Capacitor } from '@capacitor/core';
+import { Geolocation } from '@capacitor/geolocation';
 import { Browser } from '@capacitor/browser';
 
 
@@ -91,40 +92,38 @@ export function ProfilePortal({ userId, profile, onUpdate, onSignOut, onAlert }:
     };
 
     const handleSyncLocation = async () => {
-        if (!navigator.geolocation) {
-            onAlert(t('common.error'), 'Geolocation not supported');
-            return;
-        }
-
         setIsSyncingLocation(true);
-        navigator.geolocation.getCurrentPosition(async (position) => {
-            const { latitude, longitude } = position.coords;
-            try {
-                const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`);
-                const data = await response.json();
-                const city = data.address.city || data.address.town || data.address.village || data.address.state || '';
-                
-                await onUpdate({ 
-                    city, 
-                    latitude, 
-                    longitude 
-                });
-                onAlert(t('common.success'), t('profile.location_synced'));
-            } catch (error) {
-                console.error('Location sync failed:', error);
-                onAlert(t('common.error'), t('profile.location_failed'));
-            } finally {
-                setIsSyncingLocation(false);
+        try {
+            if (Capacitor.isNativePlatform()) {
+                const permission = await Geolocation.checkPermissions();
+                if (permission.location !== 'granted') {
+                    const req = await Geolocation.requestPermissions();
+                    if (req.location !== 'granted') {
+                        onAlert(t('common.error'), t('profile.location_permission_denied', 'Please enable Location in your device Settings.'));
+                        setIsSyncingLocation(false);
+                        return;
+                    }
+                }
             }
-        }, (error) => {
-            console.error('Geolocation error:', error);
+            
+            const position = await Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+            const { latitude, longitude } = position.coords;
+            const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`);
+            const data = await response.json();
+            const city = data.address.city || data.address.town || data.address.village || data.address.state || '';
+            
+            await onUpdate({ city, latitude, longitude });
+            onAlert(t('common.success'), t('profile.location_synced'));
+        } catch (error: any) {
+            console.error('Location sync failed:', error);
             let errorMsg = t('profile.location_failed', 'Location sync failed.');
-            if (error.code === error.PERMISSION_DENIED) {
+            if (error?.message?.includes('denied')) {
                  errorMsg = t('profile.location_permission_denied', 'Please enable Location in your device Settings.');
             }
             onAlert(t('common.error'), errorMsg);
+        } finally {
             setIsSyncingLocation(false);
-        }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+        }
     };
 
     const handleChangePassword = async () => {
@@ -152,6 +151,21 @@ export function ProfilePortal({ userId, profile, onUpdate, onSignOut, onAlert }:
             onAlert(t('common.error'), (err as {response?: {data?: {detail?: string}}}).response?.data?.detail || t('common.error'));
         } finally {
             setIsUpdatingPassword(false);
+        }
+    };
+
+    const openUrl = async (path: string) => {
+        const baseUrl = 'https://1103896121-beep.github.io/HIVE';
+        const fullUrl = baseUrl + path;
+        try {
+            if (Capacitor.isNativePlatform()) {
+                await Browser.open({ url: fullUrl });
+            } else {
+                window.open(fullUrl, '_blank');
+            }
+        } catch (error) {
+            console.error('Failed to open URL:', error);
+            onAlert(t('common.error'), t('common.failed_to_open_link'));
         }
     };
 
@@ -332,12 +346,8 @@ export function ProfilePortal({ userId, profile, onUpdate, onSignOut, onAlert }:
             <div className="mt-4 pt-6 border-t border-white/[0.05] flex flex-col gap-3">
                 <button
                     onClick={async () => {
-                        const url = 'https://hive.merchlens.app' + (i18n.language === 'zh-CN' ? '/eula.html' : i18n.language === 'zh-TW' ? '/eula_tw.html' : '/eula_en.html');
-                        if (Capacitor.isNativePlatform()) {
-                            await Browser.open({ url });
-                        } else {
-                            window.open(url, '_blank');
-                        }
+                        const path = (i18n.language === 'zh-CN' ? '/eula.html' : i18n.language === 'zh-TW' ? '/eula_tw.html' : '/eula_en.html');
+                        await openUrl(path);
                     }}
                     className="flex items-center justify-between p-4 rounded-[24px] bg-white/[0.03] hover:bg-white/[0.05] transition-colors border border-white/[0.03] w-full"
                 >

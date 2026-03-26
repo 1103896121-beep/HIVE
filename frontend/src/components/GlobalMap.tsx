@@ -120,30 +120,6 @@ export const GlobalMap: React.FC<{ onExit: () => void }> = ({ onExit }) => {
         pulseRing.lookAt(new THREE.Vector3(0, 0, 0));
         earth.add(pulseRing);
 
-        // 活跃用户光点 (Sprite)
-        const spriteMaterial = new THREE.SpriteMaterial({
-            color: 0xF5A623,
-            transparent: true,
-            opacity: 0.6,
-            sizeAttenuation: true,
-        });
-
-        for (let i = 0; i < 500; i++) {
-            const sPhi = Math.acos(-1 + Math.random() * 2);
-            const sTheta = Math.random() * Math.PI * 2;
-            const sRadius = 1.005;
-            const sprite = new THREE.Sprite(spriteMaterial.clone());
-            sprite.position.set(
-                -sRadius * Math.sin(sPhi) * Math.cos(sTheta),
-                sRadius * Math.cos(sPhi),
-                sRadius * Math.sin(sPhi) * Math.sin(theta)
-            );
-            sprite.scale.set(0.008, 0.008, 1);
-            // 为每个光点设置随机 opacity
-            (sprite.material as THREE.SpriteMaterial).opacity = Math.random() * 0.5 + 0.3;
-            earth.add(sprite);
-        }
-
         // Lighting
         const ambientLight = new THREE.AmbientLight(0x333333, 1.5);
         scene.add(ambientLight);

@@ -81,7 +81,9 @@ def main():
         run_cmd(ssh, deploy_cmd)
 
     except Exception as e:
+        import traceback
         print(f"Deployment failed: {e}")
+        traceback.print_exc()
     finally:
         ssh.close()
         print("DEPLOY COMPLETE.")

@@ -50,9 +50,19 @@ export function useTimer({
 
     const handleEndFocus = useCallback(async (shouldResetTime = false) => {
         if (!userId || !activeSessionId) return null;
+        
+        // 1. 立即停止界面的倒计时避免视觉延迟
+        setIsFocusing(false);
+        const currentSessionId = activeSessionId;
+        setActiveSessionId(null);
+        setTargetEndTime(null);
+        if (shouldResetTime) {
+            setTimeLeft(maxTime);
+        }
+
         try {
             // 后端现在自主计算，我们传 0 即可
-            const response = await focusService.endSession(activeSessionId, 0);
+            const response = await focusService.endSession(currentSessionId, 0);
             const actualMins = response?.duration_mins || 0;
 
             const updatedProfile = await userService.getProfile(userId);
@@ -64,13 +74,6 @@ export function useTimer({
                     trialStartAt: updatedProfile.trial_start_at,
                     subscriptionEndAt: updatedProfile.subscription_end_at,
                 });
-            }
-
-            setIsFocusing(false);
-            setActiveSessionId(null);
-            setTargetEndTime(null);
-            if (shouldResetTime) {
-                setTimeLeft(maxTime);
             }
 
             const matchData = await socialService.getHiveMatching(userId);
