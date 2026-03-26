@@ -153,7 +153,7 @@ export function ProfilePortal({ userId, profile, onUpdate, onSignOut, onAlert }:
                 console.error('Geocoding failed:', fetchErr);
                 // Even if geocoding fails, update coordinates
                 await onUpdate({ latitude, longitude });
-                onAlert(t('common.info'), t('profile.coordinates_synced_no_city', 'Updated coordinates, but could not determine city name.'));
+                onAlert(t('common.info'), t('profile.coordinates_synced_no_city'));
             }
         } catch (error: any) {
             console.error('Location sync failed:', error);

@@ -157,7 +157,8 @@ export function SubscriptionSheet({ userId, trialStatus, onSuccess, onClose, onA
                     } else {
                         // RE-REGISTER ATTEMPT IF NOT FOUND
                         console.warn('Product not found in store, attempting one-time register update');
-                        onAlert(t('common.error'), t('subscription.product_not_found', 'Product not found. Please wait a moment or restart the app.'));
+                        const availableIds = store.products.map(p => p.id).join(', ');
+                        onAlert(t('common.error'), t('subscription.product_not_found', { ids: availableIds || 'NONE' }));
                         setIsLoading(false);
                     }
                 } else {
@@ -212,7 +213,7 @@ export function SubscriptionSheet({ userId, trialStatus, onSuccess, onClose, onA
         // Longer timeout for Apple sandbox
         setTimeout(() => {
             setIsLoading(false);
-            onAlert(t('common.info'), t('subscription.restore_check_complete', 'Purchase restore check complete. Please check your member status.'));
+            onAlert(t('common.info'), t('subscription.restore_check_complete'));
         }, 5000);
     };
 

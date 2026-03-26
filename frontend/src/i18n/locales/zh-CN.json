@@ -105,6 +105,7 @@
         "lifetime_active": "终身会员",
         "active_days_left": "剩余 {{count}} 天",
         "trial_days_left": "试用剩余 {{count}} 天",
+        "coordinates_synced_no_city": "位置获取成功，但未解析到城市名",
         "expired": "已过期",
         "renew": "续订"
     },
@@ -130,9 +131,10 @@
         "secure_note": "安全保障：由 App Store 管理。数据完美同步，随时取消。",
         "restore_purchases": "恢复购买",
         "restore_success": "购买项已成功恢复！",
+        "restore_check_complete": "购买恢复自检已完成，请查看会员状态。",
         "verify_failed": "凭据验证失败。",
         "native_only": "恢复购买仅能在 iOS/Android 原生环境下使用。",
-        "product_not_found": "商店中未找到该产品。",
+        "product_not_found": "商品未找到。当前商店可用商品：{{ids}}",
         "loading_products": "正在加载商店数据...",
         "mock_failed": "模拟环境订阅失败。"
     },

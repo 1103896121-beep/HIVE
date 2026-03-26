@@ -11,6 +11,7 @@ interface UseTimerProps {
     setUserProfile: (profile: UserProfile) => void;
     setHiveTiles: (tiles: HiveMatchTile[]) => void;
     onOpenSubscription: () => void;
+    onComplete?: () => Promise<void>;
     showAlert: (title: string, message: string) => void;
 }
 
@@ -22,6 +23,7 @@ export function useTimer({
     setUserProfile,
     setHiveTiles,
     onOpenSubscription,
+    onComplete,
     showAlert
 }: UseTimerProps) {
     const [isFocusing, setIsFocusing] = useState(false);
@@ -42,6 +44,9 @@ export function useTimer({
                 if (diff === 0) {
                     setIsFocusing(false);
                     setTargetEndTime(null);
+                    if (onComplete) {
+                        onComplete();
+                    }
                 }
             }, 1000);
         }

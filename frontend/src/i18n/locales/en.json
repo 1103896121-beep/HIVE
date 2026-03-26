@@ -105,6 +105,7 @@
         "lifetime_active": "Lifetime Access",
         "active_days_left": "{{count}} Days Remaining",
         "trial_days_left": "Trial: {{count}} Days Left",
+        "coordinates_synced_no_city": "Location synced, but city name not found.",
         "expired": "Expired",
         "renew": "Renew"
     },
@@ -130,9 +131,10 @@
         "secure_note": "Safe & Secure: Managed by App Store. Data remains perfectly synced. Cancel anytime.",
         "restore_purchases": "Restore Purchases",
         "restore_success": "Purchases restored successfully!",
+        "restore_check_complete": "Restore check complete. Please check your member status.",
         "verify_failed": "Receipt verification failed.",
         "native_only": "Restore is only available on iOS/Android native platform.",
-        "product_not_found": "Product not found on store.",
+        "product_not_found": "Product not found. Available IDs: {{ids}}",
         "loading_products": "Loading products from store...",
         "mock_failed": "Mock purchase failed."
     },

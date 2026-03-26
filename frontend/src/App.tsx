@@ -58,6 +58,18 @@ export default function App() {
   } = useTimer({
     userId, subjects, currentSubject, userProfile, setUserProfile, setHiveTiles,
     onOpenSubscription: () => setActiveSheet('subscription'),
+    onComplete: async () => {
+      const result = await handleEndFocus(true);
+      if (result && result.durationMins > 0) {
+        setSparkAward(result.durationMins);
+        setSparkFadeOut(false);
+        setTimeout(() => setSparkFadeOut(true), 1500);
+        setTimeout(() => {
+          setSparkAward(null);
+          setSparkFadeOut(false);
+        }, 2500);
+      }
+    },
     showAlert
   });
 
