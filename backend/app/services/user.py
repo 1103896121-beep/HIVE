@@ -114,15 +114,17 @@ class UserService:
 
     @staticmethod
     async def delete_account(db: AsyncSession, user_id: UUID) -> bool:
-        # 1. 删除关联的 Profile
-        profile = await UserRepository.get_profile(db, user_id)
-        if profile:
-            await UserRepository.delete_item(db, profile)
-        
-        # 2. 删除 User
+        """分阶段级联删除用户所有数据，确保无外键冲突"""
+        # 1. 获取用户
         user = await UserRepository.get_user_by_id(db, user_id)
-        if user:
-            await UserRepository.delete_item(db, user)
+        if not user:
+            return False
+            
+        # 2. 调用 Repository 的全量数据清理方法（级联删除关联实体）
+        await UserRepository.clear_all_user_data(db, user_id)
+        
+        # 3. 最后删除 User 本体
+        await UserRepository.delete_item(db, user)
         
         await UserRepository.commit(db)
         return True

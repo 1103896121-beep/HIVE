@@ -1,8 +1,7 @@
 import os
 import requests
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.repository.user_repository import UserRepository
-from uuid import UUID
+from app.models.user import User, ProcessedTransaction
 from datetime import datetime, timedelta
 from typing import Dict, Any
 
@@ -22,7 +21,7 @@ class SubscriptionService:
         # 使用 sys.stderr 确保在 Docker logs 中可见
         import sys
         
-        # 根据 Apple 产品 ID 匹配订阅时长
+        # 1. 基础映射
         PRODUCT_DURATION = {
             "com.hive.sub.monthly": 30,
             "com.hive.sub.quarterly": 90,
@@ -30,65 +29,74 @@ class SubscriptionService:
             "com.hive.lifetime": 36500
         }
 
-        # 生产环境应先请求 Apple 生产验证服务器
+        # 2. 生产环境验证请求
         validation_url = "https://buy.itunes.apple.com/verifyReceipt"
-        payload = {
-            "receipt-data": receipt_data,
-        }
+        payload = {"receipt-data": receipt_data}
         if APPLE_SHARED_SECRET:
              payload["password"] = APPLE_SHARED_SECRET
-             print(f"[APPLE-IAP] Payload password set (Length: {len(APPLE_SHARED_SECRET)}, First4: {APPLE_SHARED_SECRET[:4]})", file=sys.stderr)
-        else:
-             print("[APPLE-IAP] APPLE_SHARED_SECRET is MISSING in environment", file=sys.stderr)
-
-        print(f"[APPLE-IAP] Sending request to {validation_url}", file=sys.stderr)
         
         try:
             response = requests.post(validation_url, json=payload, timeout=15)
             data = response.json()
-            print(f"[APPLE-IAP] HTTP Status: {response.status_code}, Apple Status: {data.get('status')}", file=sys.stderr)
-            print(f"[APPLE-IAP] Apple RAW response: {data}", file=sys.stderr)
+            if data.get("status") == 21007:
+                 validation_url = "https://sandbox.itunes.apple.com/verifyReceipt"
+                 response = requests.post(validation_url, json=payload, timeout=15)
+                 data = response.json()
+            
+            if data.get("status") != 0:
+                 print(f"[APPLE-IAP] Final Verification FAILED: {data.get('status')}", file=sys.stderr)
+                 raise ValueError(f"Invalid receipt. Apple status: {data.get('status')}")
         except Exception as e:
             print(f"[APPLE-IAP] Request failed: {str(e)}", file=sys.stderr)
             raise ValueError(f"Failed to connect to Apple: {str(e)}")
 
-        if data.get("status") == 21007:
-            # 沙箱收据发送到了生产环境，降级到沙箱
-             validation_url = "https://sandbox.itunes.apple.com/verifyReceipt"
-             print(f"[APPLE-IAP] Falling back to Sandbox: {validation_url}", file=sys.stderr)
-             response = requests.post(validation_url, json=payload, timeout=15)
-             data = response.json()
-             print(f"[APPLE-IAP] Apple Sandbox RAW response: {data}", file=sys.stderr)
-
-        if data.get("status") != 0:
-            print(f"[APPLE-IAP] Final Verification FAILED with status: {data.get('status')}", file=sys.stderr)
-            raise ValueError(f"Invalid receipt. Apple status: {data.get('status')}")
-
-        # 收据包含一个应用内购数组。
-        # 查找最新的一笔交易。
-        receipt = data.get("receipt", {})
-        in_app_purchases = receipt.get("in_app", [])
-        
-        if not in_app_purchases:
-            raise ValueError("No purchases found in receipt")
-
-        latest_purchase = sorted(in_app_purchases, key=lambda p: float(p.get("purchase_date_ms", 0)), reverse=True)[0]
-        product_id = latest_purchase.get("product_id")
-
-        if product_id not in PRODUCT_DURATION:
-             raise ValueError(f"Unknown product ID: {product_id}")
-
-        days_to_add = PRODUCT_DURATION[product_id]
-
-        # 使用 Repository 更新数据库
+        # 3. 获取用户并计算最远到期点 (幂等且累加逻辑)
         user = await UserRepository.get_user_by_id(db, user_id)
         if not user:
              raise ValueError("User not found")
-
-        current_expiry = user.subscription_end_at if user.subscription_end_at and user.subscription_end_at > datetime.utcnow() else datetime.utcnow()
-        user.subscription_end_at = current_expiry + timedelta(days=days_to_add)
         
+        trial_end = user.trial_start_at + timedelta(days=7)
+        
+        receipt = data.get("receipt", {})
+        in_app_purchases = receipt.get("in_app", [])
+        
+        # 排序：按购买时间从旧到新处理，确保累加顺序正确
+        in_app_purchases.sort(key=lambda x: float(x.get("purchase_date_ms", 0)))
+        
+        new_transactions_count = 0
+        for p in in_app_purchases:
+            t_id = str(p.get("transaction_id"))
+            p_id = p.get("product_id")
+            
+            if p_id not in PRODUCT_DURATION: continue
+            
+            # 幂等性检查：如果此交易已处理过，则跳过
+            if await UserRepository.is_transaction_processed(db, t_id):
+                continue
+
+            # 确定累加基准：max(当前时间, 试用期结束, 当前已有的订阅结束时间)
+            current_base = max(datetime.utcnow(), trial_end, user.subscription_end_at or datetime.min)
+            
+            # 累加天数
+            days = PRODUCT_DURATION[p_id]
+            user.subscription_end_at = current_base + timedelta(days=days)
+            
+            # 记录交易
+            p_date_ms = float(p.get("purchase_date_ms", 0))
+            new_tx = ProcessedTransaction(
+                user_id=user.id,
+                transaction_id=t_id,
+                original_transaction_id=p.get("original_transaction_id", t_id),
+                product_id=p_id,
+                purchase_date=datetime.utcfromtimestamp(p_date_ms / 1000.0)
+            )
+            await UserRepository.record_transaction(db, new_tx)
+            new_transactions_count += 1
+
+        # 4. 更新数据库
         await UserRepository.commit(db)
+        
+        print(f"[APPLE-IAP] User {user_id} processed {new_transactions_count} new transactions. Final expiry: {user.subscription_end_at}", file=sys.stderr)
         return {"status": "success", "expires_at": user.subscription_end_at}
 
     @staticmethod
@@ -112,8 +120,10 @@ class SubscriptionService:
             raise ValueError("Invalid plan type")
             
         days = PLAN_DURATION[plan]
-        current_expiry = user.subscription_end_at if user.subscription_end_at and user.subscription_end_at > datetime.utcnow() else datetime.utcnow()
-        user.subscription_end_at = current_expiry + timedelta(days=days)
+        trial_end = user.trial_start_at + timedelta(days=7)
+        # 同样采用顺延逻辑，确保模拟环境测试结果与线上一致
+        current_base = max(datetime.utcnow(), trial_end, user.subscription_end_at or datetime.min)
+        user.subscription_end_at = current_base + timedelta(days=days)
         
         await UserRepository.commit(db)
         return {"status": "success", "expires_at": user.subscription_end_at}

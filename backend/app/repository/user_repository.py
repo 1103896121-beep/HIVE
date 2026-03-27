@@ -1,10 +1,11 @@
+from sqlalchemy import or_, and_, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from app.models.user import User, Profile
-from app.models.social import Block
+from app.models.user import User, Profile, ProcessedTransaction
+from app.models.social import SquadMember, Bond, Nudge, Report, Block
+from app.models.focus import FocusSession
 from uuid import UUID
 from typing import Optional, List, Tuple
-from sqlalchemy import or_, and_
 
 class UserRepository:
     @staticmethod
@@ -92,6 +93,35 @@ class UserRepository:
         )
         result = await db.execute(stmt)
         return result.all()
+    @staticmethod
+    async def is_transaction_processed(db: AsyncSession, transaction_id: str) -> bool:
+        result = await db.execute(select(ProcessedTransaction).where(ProcessedTransaction.transaction_id == transaction_id))
+        return result.scalars().first() is not None
+
+    @staticmethod
+    async def record_transaction(db: AsyncSession, tx: ProcessedTransaction) -> None:
+        db.add(tx)
+
+    @staticmethod
+    async def clear_all_user_data(db: AsyncSession, user_id: UUID) -> None:
+        """物理删除用户的所有关联数据，以支持账号注销"""
+        # 1. 交易记录
+        await db.execute(delete(ProcessedTransaction).where(ProcessedTransaction.user_id == user_id))
+        # 2. 专注时段
+        await db.execute(delete(FocusSession).where(FocusSession.user_id == user_id))
+        # 3. 小队成员
+        await db.execute(delete(SquadMember).where(SquadMember.user_id == user_id))
+        # 4. 数字羁绊 (作为参与者 1 或 2)
+        await db.execute(delete(Bond).where(or_(Bond.user_id_1 == user_id, Bond.user_id_2 == user_id)))
+        # 5. 轻推 (作为发起者或接收者)
+        await db.execute(delete(Nudge).where(or_(Nudge.sender_id == user_id, Nudge.receiver_id == user_id)))
+        # 6. 举报
+        await db.execute(delete(Report).where(Report.reporter_id == user_id))
+        # 7. 拉黑 (作为拉黑者或被拉黑者)
+        await db.execute(delete(Block).where(or_(Block.user_id == user_id, Block.blocked_id == user_id)))
+        # 8. 档案
+        await db.execute(delete(Profile).where(Profile.user_id == user_id))
+
     @staticmethod
     async def commit(db: AsyncSession) -> None:
         await db.commit()

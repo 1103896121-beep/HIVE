@@ -19,6 +19,20 @@ class User(Base):
 
     profile = relationship("Profile", back_populates="user", uselist=False)
     focus_sessions = relationship("FocusSession", back_populates="user")
+    processed_transactions = relationship("ProcessedTransaction", back_populates="user")
+
+class ProcessedTransaction(Base):
+    __tablename__ = "processed_transactions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    transaction_id = Column(String(100), unique=True, index=True)
+    original_transaction_id = Column(String(100), index=True)
+    product_id = Column(String(100))
+    purchase_date = Column(DateTime)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", back_populates="processed_transactions")
 
 class Profile(Base):
     __tablename__ = "profiles"

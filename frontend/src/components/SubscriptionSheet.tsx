@@ -32,6 +32,7 @@ export function SubscriptionSheet({ userId, trialStatus, onSuccess, onClose, onA
     const isMountedRef = useRef(true);
     const safetyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const storeInitializedRef = useRef(false);
+    const hasAlertedSuccessRef = useRef(false);
 
     useEffect(() => {
         isMountedRef.current = true;
@@ -112,11 +113,14 @@ export function SubscriptionSheet({ userId, trialStatus, onSuccess, onClose, onA
                         const expires = resp.expires_at || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
                         onSuccess(expires);
                         
-                        // NOTE: 区分恢复与新购的提示词
-                        const successTitle = t('common.success');
-                        const successMsg = isRestoring ? t('subscription.restore_success') : t('subscription.success_msg', { plan: 'Premium' });
-                        onAlert(successTitle, successMsg);
-                        onClose();
+                        // NOTE: 仅弹出一次成功提示，防止恢复多笔订单时弹窗堆叠
+                        if (!hasAlertedSuccessRef.current) {
+                            hasAlertedSuccessRef.current = true;
+                            const successTitle = t('common.success');
+                            const successMsg = isRestoring ? t('subscription.restore_success') : t('subscription.success_msg', { plan: 'Premium' });
+                            onAlert(successTitle, successMsg);
+                            onClose();
+                        }
                     }
                 } else {
                     // 收据为空但 Apple 已批准 — 仍标记成功
@@ -226,6 +230,7 @@ export function SubscriptionSheet({ userId, trialStatus, onSuccess, onClose, onA
 
                 if (result && 'isError' in result) {
                     const err = result as any;
+                    console.error('[IAP] Order error:', err);
                     if (err.code !== 6777006) {
                         onAlert(t('common.error'), err.message || t('subscription.purchase_error', 'Purchase failed'));
                     }
@@ -254,7 +259,7 @@ export function SubscriptionSheet({ userId, trialStatus, onSuccess, onClose, onA
                             const future = new Date();
                             future.setDate(future.getDate() + 30);
                             onSuccess(future.toISOString());
-                            onAlert(t('common.success'), t('subscription.success_msg', { plan: mapPlan() }));
+                            onAlert(t('common.success'), t('subscription.success_msg', { plan: 'Premium' }));
                             onClose();
                         }
                     } catch {
@@ -267,7 +272,9 @@ export function SubscriptionSheet({ userId, trialStatus, onSuccess, onClose, onA
         } catch (error: unknown) {
             console.error('[IAP] handlePurchase error:', error);
             const err = error as { code?: number | string; message?: string };
-            if (err.code !== 6777006 && err.code !== 'E_USER_CANCELLED') {
+            const errorCode = String(err.code);
+            // 6777006 or E_USER_CANCELLED are cancel codes in v13
+            if (errorCode !== '6777006' && errorCode !== 'E_USER_CANCELLED') {
                 onAlert(t('common.error'), err.message || t('common.error'));
             }
             safeResetLoading();
@@ -288,6 +295,7 @@ export function SubscriptionSheet({ userId, trialStatus, onSuccess, onClose, onA
         try {
             setIsLoading(true);
             setIsRestoring(true); // 标记当前为恢复购买来源
+            hasAlertedSuccessRef.current = false; // 重置标识位
             setStatusText(t('subscription.restoring', 'Restoring purchases...'));
 
             const { store } = window.CdvPurchase;
