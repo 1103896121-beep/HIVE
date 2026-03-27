@@ -53,6 +53,15 @@ class APIClient {
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
+
+            // NOTE: 401 表示 Token 过期或无效，自动清除本地状态触发重新登录
+            // 避免用户卡在"认证失败"的死循环中
+            if (response.status === 401) {
+                clearAuthToken();
+                localStorage.removeItem('hive_user_id');
+                window.location.reload();
+            }
+
             throw new Error(errorData.detail || `Request failed with status ${response.status}`);
         }
 

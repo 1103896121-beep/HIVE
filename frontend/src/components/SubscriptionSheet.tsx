@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { Zap, Star, Shield, Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import clsx from 'clsx';
@@ -60,6 +60,21 @@ export function SubscriptionSheet({ userId, trialStatus, onSuccess, onClose, onA
     const [products, setProducts] = useState<Array<{ productId: string, title: string, localizedPrice: string, description: string }>>([]);
     const [selectedSku, setSelectedSku] = useState<string | null>(null);
 
+    // NOTE: 使用 ref 追踪组件是否已挂载，防止在组件卸载后设置 state
+    const isMountedRef = useRef(true);
+    // NOTE: 安全超时引用，用于在支付流程卡住时自动重置 isLoading
+    const safetyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    useEffect(() => {
+        isMountedRef.current = true;
+        return () => {
+            isMountedRef.current = false;
+            if (safetyTimeoutRef.current) {
+                clearTimeout(safetyTimeoutRef.current);
+            }
+        };
+    }, []);
+
     const productSkus = useMemo(() => [
         { productId: 'com.hive.sub.monthly', title: t('subscription.monthly', 'Monthly'), localizedPrice: '$2.99', description: t('subscription.monthly_desc', 'Billed monthly') },
         { productId: 'com.hive.sub.quarterly', title: t('subscription.quarterly', 'Quarterly'), localizedPrice: '$7.99', description: t('subscription.quarterly_desc', 'Save 11%') },
@@ -102,7 +117,14 @@ export function SubscriptionSheet({ userId, trialStatus, onSuccess, onClose, onA
             }).catch(() => {
                 onAlert(t('common.error'), t('subscription.verify_failed'));
             }).finally(() => {
-                setIsLoading(false);
+                if (isMountedRef.current) {
+                    setIsLoading(false);
+                }
+                // 清除安全超时
+                if (safetyTimeoutRef.current) {
+                    clearTimeout(safetyTimeoutRef.current);
+                    safetyTimeoutRef.current = null;
+                }
             });
         });
 
@@ -129,7 +151,14 @@ export function SubscriptionSheet({ userId, trialStatus, onSuccess, onClose, onA
         // @ts-ignore
         store.error((error: any) => {
             console.error('CdvPurchase Error:', error);
-            setIsLoading(false);
+            if (isMountedRef.current) {
+                setIsLoading(false);
+            }
+            // 清除安全超时
+            if (safetyTimeoutRef.current) {
+                clearTimeout(safetyTimeoutRef.current);
+                safetyTimeoutRef.current = null;
+            }
         });
 
         store.initialize([Platform.APPLE_APPSTORE]);
@@ -154,6 +183,16 @@ export function SubscriptionSheet({ userId, trialStatus, onSuccess, onClose, onA
                     console.log('Attempting purchase for SKU:', sku, 'Product found:', !!product);
                     if (product) {
                         store.order(product);
+
+                        // NOTE: store.order() 是异步操作，不返回 Promise
+                        // 如果用户取消 Apple 支付弹窗或发生其他问题，没有明确的失败回调
+                        // 设置安全超时（30秒），防止 isLoading 状态永远卡住
+                        safetyTimeoutRef.current = setTimeout(() => {
+                            if (isMountedRef.current) {
+                                setIsLoading(false);
+                                console.warn('Purchase safety timeout: resetting loading state after 30s');
+                            }
+                        }, 30000);
                     } else {
                         // RE-REGISTER ATTEMPT IF NOT FOUND
                         console.warn('Product not found in store, attempting one-time register update');
@@ -209,12 +248,14 @@ export function SubscriptionSheet({ userId, trialStatus, onSuccess, onClose, onA
         const { store } = window.CdvPurchase;
         store.restore();
         
-        // CdvPurchase.store.restore() handles the verified events if successful
-        // Longer timeout for Apple sandbox
-        setTimeout(() => {
-            setIsLoading(false);
-            onAlert(t('common.info'), t('subscription.restore_check_complete'));
-        }, 5000);
+        // NOTE: Apple Sandbox 环境的 restore 操作可能非常慢
+        // 增加超时到 15 秒，并确保最终一定会重置 isLoading 状态
+        safetyTimeoutRef.current = setTimeout(() => {
+            if (isMountedRef.current) {
+                setIsLoading(false);
+                onAlert(t('common.info'), t('subscription.restore_check_complete'));
+            }
+        }, 15000);
     };
 
     return (
@@ -374,4 +415,3 @@ function PlanButton({ title, price, period, desc, onClick, disabled, selected, b
         </button>
     );
 }
-

@@ -35,6 +35,7 @@ class ProfileUpdate(BaseModel):
     theme_preference: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
+    show_location: Optional[bool] = None
 
 class ProfileResponse(ProfileBase):
     user_id: UUID

@@ -51,8 +51,22 @@ export function useAppActions({
   const handleUpdateProfile = async (updates: Partial<UserProfile>) => {
     if (!userId) return;
     try {
-      const { avatar, ...rest } = updates;
-      await userService.updateProfile(userId, { ...rest, avatar_url: avatar, theme_preference: theme });
+      // NOTE: 前端 UserProfile 使用 camelCase，后端 ProfileUpdate 使用 snake_case
+      // 必须在此做显式映射，否则 Pydantic 会忽略不认识的字段
+      const { avatar, showLocation, ...rest } = updates;
+      const payload: Record<string, unknown> = { ...rest, theme_preference: theme };
+
+      // avatar → avatar_url 映射
+      if (avatar !== undefined) {
+        payload.avatar_url = avatar;
+      }
+
+      // showLocation → show_location 映射
+      if (showLocation !== undefined) {
+        payload.show_location = showLocation;
+      }
+
+      await userService.updateProfile(userId, payload as Partial<import('../api/types').Profile>);
       const freshProfile = await userService.getProfile(userId);
       if (freshProfile) {
         setUserProfile({

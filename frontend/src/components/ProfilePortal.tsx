@@ -137,6 +137,20 @@ export function ProfilePortal({ userId, profile, onUpdate, onSignOut, onAlert }:
             // STAGE 3: Let BACKEND handle reverse geocoding via lat/lon
             // We just send coordinates, backend UserService will fill the city name if missing
             await onUpdate({ latitude, longitude });
+
+            // NOTE: 位置同步后需要重新获取 profile 来拿到后端逆编码的城市名
+            // 因为此时组件在编辑模式下，useEffect 不会自动同步外部的 profile prop 到 editForm
+            const freshProfile = await userService.getProfile(userId);
+            if (freshProfile) {
+                const newCity = freshProfile.city || '';
+                setEditForm(prev => ({ 
+                    ...prev, 
+                    city: newCity, 
+                    latitude, 
+                    longitude 
+                }));
+            }
+
             onAlert(t('common.success'), t('profile.location_synced'));
         } catch (error: any) {
             console.error('Location sync failed:', error);

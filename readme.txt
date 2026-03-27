@@ -1,36 +1,38 @@
-# 角色设定与项目背景
-你现在是 HIVE 项目的首席全栈工程师（React + Capacitor + FastAPI 专家）。
-HIVE 是一个独立于 MerchLens 项目的沉浸式专注与社交联机 iOS App。
-- **前端技术栈**：React + TypeScript + Vite + Capacitor 6（UI 风格严格遵循 iOS 原生高级感与深色模式）。
-- **后端技术栈**：Python 3.10+ FastAPI + PostgreSQL 15 + Redis 7。
-- **架构特点**：前端打包为 iOS 原生应用；后端通过 HTTP 短轮询与 Redis 维护心跳无状态交互；前后端完全脱离 Cookie，改用基于 header 的 Authorization Bearer Token 制。
+好的，我为你整理了一份**“项目续航提示词”**。你可以将这段话直接粘贴给新会话中的 AI 助手，它能立即接手当前的工作进度。
 
-# 已完成的核心工作进度（截至目前）
-1. **重构生产环境跨域与鉴权机制**：
-   - 因为 iOS Capacitor (WKWebView) 拦截了 `capacitor://localhost` 的跨域 Cookie，我们已废弃了 httponly Cookie 机制。
-   - **后端**：已修改 [app/api/auth.py](cci:7://file:///e:/workrooten/Hive/backend/app/api/auth.py:0:0-0:0)，将会把 `access_token` 放在 JSON 响应体返回；修复了 [config.py](cci:7://file:///e:/workrooten/Hive/backend/app/core/config.py:0:0-0:0) 的 CORS 数组解析 Bug 以放行 `capacitor://` 协议。
-   - **前端**：已修改 [client.ts](cci:7://file:///e:/workrooten/Hive/frontend/src/api/client.ts:0:0-0:0) 及整个认证流，将 Token 存入 localStorage，并通过统一拦截器向每个请求自动注入 `Authorization: Bearer <token>` 头部；双重保障 `VITE_API_URL` 注入以确保准确指向生产 API `https://hive.merchlens.app`。
-2. **解决 Apple 登录 1000 报错**：
-   - 发现并创建了 Xcode 缺失的 [App.entitlements](cci:7://file:///e:/workrooten/Hive/frontend/ios/App/App/App.entitlements:0:0-0:0) 文件加入 `com.apple.developer.applesignin` 能力，并已正确配置到 [project.pbxproj](cci:7://file:///e:/workrooten/Hive/frontend/ios/App/App.xcodeproj/project.pbxproj:0:0-0:0) 中。
-3. **试用期规则统一**：
-   - 将前后端的免费试用期硬编码全部对齐并统一为 **7天**（包含 [ProfilePortal.tsx](cci:7://file:///e:/workrooten/Hive/frontend/src/components/ProfilePortal.tsx:0:0-0:0) 和后端逻辑）。
-4. **后端生产环境一键部署跑通**：
-   - 完善了基于本地私钥自动免密 SSH 登录的 [deploy_to_server.py](cci:7://file:///e:/workrooten/Hive/deploy_to_server.py:0:0-0:0) 脚本，并实现了停旧容器、清端口、重新构建新容器的 [deploy.sh](cci:7://file:///e:/workrooten/Hive/backend/deploy.sh:0:0-0:0) 安全迭代更新（且严格限制 `HIVE_` 前缀，物理隔离了同服务器的 MerchLens 项目）。
+---
 
-# 当前我们的工作节点（当前状态）
-目前最新的前后端代码均已 Commit 并 push 至 Github [main](cci:1://file:///e:/workrooten/Hive/deploy_to_server.py:29:0-86:33) 分支。
-后端服务（103.91.219.230 的 `/opt/hive_work`）已经完成最新的拉取和容器重启。
-Github Actions 正在/已经自动化打包最新的打包产物。
+### 🛡️ HIVE 项目接管指令 (Context Prompt)
 
-# 我们这次对话的核心任务（Next Steps）
-1. **测试验证**：目前正在等待我（用户）在 iOS 真机或模拟器上安装包含上述所有修复的新包，验证 Apple Sign-In 以及常规注册登录流程是否顺利调通，是否还存在 401 或 CORS 报错。
-2. **处理新 Bug（如有）**：根据我稍后提供的最新报错信息或截图，继续排查并修复剩下的任何接口、UI 逻辑或支付（In-App Purchase）问题。
-3. **遵守严格规范**：在接下来的每一次代码修改中，你必须：
-   - 前端默认函数式组件 + TS；
-   - 后端绝对禁止 API 层直接写裸 [except](cci:1://file:///e:/workrooten/Hive/backend/app/main.py:36:0-41:5) 和直接操作 DB 操作（必须经过 Service 层）；
-   - 在提出改动建议前必须自行查找项目中类似代码以保持全局规范统一。
+**1. 项目背景与定位**
+*   **项目名称**：Hive (一款主打专注与数字羁绊的 iOS 应用)。
+*   **技术栈**：后端 FastAPI + 前端 React/Capacitor + PostgreSQL + Redis。
+*   **线上环境**：生产服务器 `103.91.219.230`。
+    *   **架构规范**：HIVE 与主项目 `merchlens` 物理隔离，根目录位于 `/opt/hive_work/`。
+    *   **部署方式**：本地 `git archive` 打包后运行 `python deploy_to_server.py`。
 
-请回复“收到”，并等待我提供最新的测试结果反馈。
+**2. 核心逻辑重构状态 (2026-03-26)**
+*   **定位系统**：已将“地理逆编码”逻辑从移动前端移至后端。前端仅抓取坐标，后端通过 `httpx` 调用 Nominatim 自动补全城市名。彻底解决了室内测试时由于网络超时导致的 UI 卡死和英文报错。
+*   **计时结算**：重构了 [useTimer](cci:1://file:///e:/workrooten/Hive/frontend/src/hooks/useTimer.ts:17:0-142:1) 状态机。现在计时器在 00:00 时会自动触发结算并播放“+星火”动画，无需用户手动操作。
+*   **支付系统 (IAP)**：
+    *   商品 ID 已统一迁移至 `com.hive.sub.*` 格式。
+    *   前端增加了 SKU 自检逻辑，如果点击“支付”无反应，会弹窗列出商店识别到的所有可用商品 ID 列表以便诊断。
+
+**3. 当前进展与瓶颈**
+*   **前端发布**：由于今天上传测试包过于频繁，已触发苹果 **409 Upload limit reached** 限制。最新前端代码（包含计时器自结、定位汉化等修复）暂时无法通过 TestFlight 下发。
+*   **临时验证方案**：用户正在通过 GitHub Actions 下载 `hive-production-ipa` 产物，并尝试使用 **Sideloadly** 工具通过数据线手动安装到手机上。
+*   **后端状态**：后端生产环境已经是最新的（包含 `httpx` 依赖和逆编码逻辑），处于“万事俱备”状态。
+
+**4. 立即待办事项 (Next Steps)**
+*   [ ] **验证手装包**：确认 Sideloadly 安装的最新包是否能实现“15分钟自动结分”和“室内秒出定位”。
+*   [ ] **追踪支付状态**：如果点击订阅依然无效，请获取“可用商品 ID 列表”的截图进行比对。
+*   [ ] **清理工作**：待明天 TestFlight 限制解除后，重新恢复正常的 CI/CD 流程。
+
+**🚫 核心禁令**：绝对禁止在未获得用户单次明确指令的情况下直接执行部署脚本！绝对禁止改动任何属于 `merchlens` 路径的内容！
+
+---
+
+你可以将以上内容存入记事本。新对话开始时，直接发送即可。
 
 
 
