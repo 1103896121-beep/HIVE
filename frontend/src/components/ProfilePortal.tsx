@@ -67,6 +67,8 @@ export function ProfilePortal({ userId, profile, onUpdate, onSignOut, onAlert }:
             const reader = new FileReader();
             reader.onloadend = async () => {
                 const base64String = reader.result as string;
+                // NOTE: 乐观更新 - 立即显示新头像，不等后端响应
+                setEditForm(prev => ({ ...prev, avatar: base64String }));
                 await onUpdate({ avatar: base64String });
             };
             reader.readAsDataURL(file);
@@ -83,13 +85,15 @@ export function ProfilePortal({ userId, profile, onUpdate, onSignOut, onAlert }:
         const bioCheck = validateContent(editForm.bio, 'bio');
         if (!bioCheck.isValid) return onAlert(t('common.error'), t(bioCheck.errorKey as Parameters<typeof t>[0]));
 
+        // NOTE: 先等后端保存完成并更新 profile prop，再退出编辑模式
+        // 这样 useEffect 同步 editForm 时拿到的就是最新数据，避免闪回旧数据
+        await onUpdate(editForm);
+
         setIsEditing(false);
         setTimeout(() => {
             const sheetContent = document.querySelector('.bottom-sheet-content') as HTMLElement;
             if (sheetContent) sheetContent.scrollTop = 0;
         }, 50);
-
-        await onUpdate(editForm);
     };
 
     const handleSyncLocation = async () => {
