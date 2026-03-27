@@ -6,12 +6,11 @@ import { subscriptionService } from '../api';
 import { Capacitor } from '@capacitor/core';
 
 /**
- * NOTE: cordova-plugin-purchase v13 的关键 API 差异（vs 老版本）：
- * 1. store.order() 接收 Offer 对象，不是 Product 对象
- *    正确：store.order(product.getOffer()) 或 product.getOffer().order()
- * 2. store.initialize() 返回 Promise，需要 await
- * 3. verified 回调的参数是 VerifiedReceipt，不是简单的 receipt
- * 4. store.when() 返回链式 EventManager，需要通过 .approved().verified() 链式调用
+ * NOTE: cordova-plugin-purchase v13 的关键 API 要点：
+ * 1. store.order() 接收 Offer 不是 Product → product.getOffer().order()
+ * 2. store.initialize() 返回 Promise
+ * 3. 不设置 store.validator 时，plugin 内部 mock 验证导致收据数据为空
+ *    → 解决方案：在 approved 回调中直接从 transaction.parentReceipt.nativeData 提取真实收据
  */
 
 interface SubscriptionSheetProps {
@@ -25,7 +24,7 @@ interface SubscriptionSheetProps {
 export function SubscriptionSheet({ userId, trialStatus, onSuccess, onClose, onAlert }: SubscriptionSheetProps) {
     const { t, i18n } = useTranslation();
     const [isLoading, setIsLoading] = useState(false);
-    const [products, setProducts] = useState<Array<{ productId: string, title: string, localizedPrice: string, description: string }>>([]);
+    const [products, setProducts] = useState<Array<{ productId: string; title: string; localizedPrice: string; description: string }>>([]);
     const [selectedSku, setSelectedSku] = useState<string | null>(null);
     const [statusText, setStatusText] = useState('');
 
@@ -37,13 +36,10 @@ export function SubscriptionSheet({ userId, trialStatus, onSuccess, onClose, onA
         isMountedRef.current = true;
         return () => {
             isMountedRef.current = false;
-            if (safetyTimeoutRef.current) {
-                clearTimeout(safetyTimeoutRef.current);
-            }
+            if (safetyTimeoutRef.current) clearTimeout(safetyTimeoutRef.current);
         };
     }, []);
 
-    // 固定 SKU 列表（托底数据 + 多语言）
     const productSkus = useMemo(() => [
         { productId: 'com.hive.sub.monthly', title: t('subscription.monthly', 'Monthly'), localizedPrice: '$2.99', description: t('subscription.monthly_desc', 'Billed monthly') },
         { productId: 'com.hive.sub.quarterly', title: t('subscription.quarterly', 'Quarterly'), localizedPrice: '$7.99', description: t('subscription.quarterly_desc', 'Save 11%') },
@@ -51,9 +47,6 @@ export function SubscriptionSheet({ userId, trialStatus, onSuccess, onClose, onA
         { productId: 'com.hive.lifetime', title: t('subscription.lifetime', 'Lifetime'), localizedPrice: '$59.99', description: t('subscription.lifetime_desc', 'One time payment') }
     ], [t]);
 
-    /**
-     * 安全重置 loading 状态，防止组件卸载后操作
-     */
     const safeResetLoading = useCallback(() => {
         if (isMountedRef.current) {
             setIsLoading(false);
@@ -66,29 +59,22 @@ export function SubscriptionSheet({ userId, trialStatus, onSuccess, onClose, onA
     }, []);
 
     /**
-     * 初始化 CdvPurchase store
-     * NOTE: 使用 ref 确保只初始化一次，避免重复注册回调
+     * 初始化 CdvPurchase store（仅执行一次）
      */
     useEffect(() => {
-        // 立即用托底数据渲染（乐观渲染）
         setProducts(productSkus);
 
         if (!Capacitor.isNativePlatform() || !window.CdvPurchase) {
             console.log('[IAP] Not native platform or CdvPurchase not available');
             return;
         }
-
-        // 只初始化一次
         if (storeInitializedRef.current) return;
         storeInitializedRef.current = true;
 
         const { store, ProductType, Platform } = window.CdvPurchase;
-
-        // 开启详细日志便于调试
-        store.verbosity = 4; // DEBUG level
+        store.verbosity = 4;
 
         console.log('[IAP] Registering products...');
-
         store.register([
             { id: 'com.hive.sub.monthly', type: ProductType.PAID_SUBSCRIPTION, platform: Platform.APPLE_APPSTORE },
             { id: 'com.hive.sub.quarterly', type: ProductType.PAID_SUBSCRIPTION, platform: Platform.APPLE_APPSTORE },
@@ -96,95 +82,93 @@ export function SubscriptionSheet({ userId, trialStatus, onSuccess, onClose, onA
             { id: 'com.hive.lifetime', type: ProductType.NON_CONSUMABLE, platform: Platform.APPLE_APPSTORE }
         ]);
 
-        // NOTE: v13 的 when() 返回链式 EventManager
-        store.when()
-            .approved((transaction: any) => {
-                console.log('[IAP] Transaction approved, verifying...', transaction);
-                transaction.verify();
-            })
-            .verified((receipt: any) => {
-                console.log('[IAP] Receipt verified:', receipt);
+        /**
+         * NOTE: 不使用 store.validator！
+         * 在 approved 回调中直接提取 Apple 真实收据并发送到我们自己的后端验证。
+         * 这样避免 CdvPurchase 内部 mock verification 导致收据数据为空。
+         */
+        store.when().approved(async (transaction: any) => {
+            console.log('[IAP] Transaction approved:', JSON.stringify({
+                transactionId: transaction.transactionId,
+                state: transaction.state,
+                products: transaction.products?.map((p: any) => p.id),
+            }));
 
-                // NOTE: v13 VerifiedReceipt 的结构不同于老版本
-                // nativeData 可能在 receipt.sourceReceipt.nativeData 或 receipt 本身
-                const sourceReceipt = receipt.sourceReceipt || receipt;
-                const nativeData = sourceReceipt?.nativeData;
-                const receiptData = nativeData?.appStoreReceipt || nativeData?.receipt || '';
+            try {
+                // 从 transaction 的 parentReceipt 中提取 Apple 真实收据
+                const parentReceipt = transaction.parentReceipt;
+                const nativeData = parentReceipt?.nativeData;
+                const receiptData = nativeData?.appStoreReceipt || '';
+
+                console.log('[IAP] Receipt data available:', !!receiptData, 'length:', receiptData?.length || 0);
 
                 if (receiptData) {
-                    // 发送到我们的后端验证
-                    subscriptionService.verifyReceipt(userId, receiptData).then(resp => {
-                        console.log('[IAP] Backend verify response:', resp);
-                        if (resp.status === 'success') {
-                            const expires = resp.expires_at || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-                            onSuccess(expires);
-                            onAlert(t('common.success'), t('subscription.success_msg', { plan: 'Premium' }));
-                            onClose();
-                        }
-                    }).catch(err => {
-                        console.error('[IAP] Backend verify failed:', err);
-                        onAlert(t('common.error'), t('subscription.verify_failed'));
-                    }).finally(() => {
-                        safeResetLoading();
-                    });
+                    const resp = await subscriptionService.verifyReceipt(userId, receiptData);
+                    console.log('[IAP] Backend verify response:', resp);
+
+                    if (resp.status === 'success' && isMountedRef.current) {
+                        const expires = resp.expires_at || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+                        onSuccess(expires);
+                        onAlert(t('common.success'), t('subscription.success_msg', { plan: 'Premium' }));
+                        onClose();
+                    }
                 } else {
-                    console.warn('[IAP] No receipt data found in verified receipt, finishing directly');
-                    // 即使没有找到 receipt data，也标记成功（Apple 端已验证）
-                    onSuccess(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString());
-                    onAlert(t('common.success'), t('subscription.success_msg', { plan: 'Premium' }));
-                    onClose();
-                    safeResetLoading();
+                    // 收据为空但 Apple 已批准 — 仍标记成功
+                    console.warn('[IAP] No receipt data, Apple already approved. Marking success.');
+                    if (isMountedRef.current) {
+                        onSuccess(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString());
+                        onAlert(t('common.success'), t('subscription.success_msg', { plan: 'Premium' }));
+                        onClose();
+                    }
                 }
 
-                // 完成交易
-                receipt.finish();
-            });
+                transaction.finish();
+            } catch (err: any) {
+                console.error('[IAP] Receipt verification error:', err);
+                if (isMountedRef.current) {
+                    onAlert(t('common.error'), err?.message || t('subscription.verify_failed'));
+                }
+                // 即使验证失败也 finish 交易，避免 Apple 重复扣款
+                transaction.finish();
+            } finally {
+                safeResetLoading();
+            }
+        });
 
-        // 监听产品加载完毕
+        // 产品信息更新（从 Apple 获取真实价格）
         store.when().updated(() => {
-            console.log('[IAP] Store updated, products:', store.products.length);
             if (!isMountedRef.current) return;
-
             const nativeProducts = store.products.map((p: any) => {
-                const fallback = productSkus.find(f => f.productId === p.id);
+                const fallback = productSkus.find((f: any) => f.productId === p.id);
                 return {
                     productId: p.id,
                     title: p.title || fallback?.title || '',
                     localizedPrice: p.pricing?.price || fallback?.localizedPrice || '',
                     description: p.description || fallback?.description || '',
-                    canPurchase: p.canPurchase
                 };
             });
-
             if (nativeProducts.length > 0 && nativeProducts.some((p: any) => !!p.localizedPrice)) {
                 setProducts(nativeProducts);
             }
         });
 
-        // 错误处理
         store.error((error: any) => {
             console.error('[IAP] Store error:', error);
             safeResetLoading();
         });
 
-        // NOTE: store.initialize() 是异步的，返回 Promise
         console.log('[IAP] Initializing store...');
         const initPromise = store.initialize([Platform.APPLE_APPSTORE]);
-
-        // initialize 可能返回 void 也可能返回 Promise
         if (initPromise && typeof initPromise.then === 'function') {
             initPromise.then(() => {
-                console.log('[IAP] Store initialized successfully, products:', store.products.length);
+                console.log('[IAP] Store initialized, products:', store.products.length);
             }).catch((err: any) => {
                 console.error('[IAP] Store init failed:', err);
             });
-        } else {
-            // fallback：直接设为就绪
         }
-
     }, [productSkus, userId, t, onSuccess, onClose, onAlert, safeResetLoading]);
 
-    // 默认选中 quarterly 方案
+    // 默认选中 quarterly
     useEffect(() => {
         if (products.length > 0 && !selectedSku) {
             const popular = products.find(p => p.productId.includes('quarterly'));
@@ -194,8 +178,6 @@ export function SubscriptionSheet({ userId, trialStatus, onSuccess, onClose, onA
 
     /**
      * 发起购买
-     * NOTE: v13 中必须使用 product.getOffer().order() 或 store.order(offer)
-     * 不能直接传 Product 给 store.order()
      */
     const handlePurchase = async (sku: string) => {
         try {
@@ -211,7 +193,7 @@ export function SubscriptionSheet({ userId, trialStatus, onSuccess, onClose, onA
 
                 const { store } = window.CdvPurchase;
                 const product = store.get(sku);
-                console.log('[IAP] Purchase attempt - SKU:', sku, 'Product:', product ? 'FOUND' : 'NOT FOUND');
+                console.log('[IAP] Purchase - SKU:', sku, 'Product found:', !!product);
 
                 if (!product) {
                     console.error('[IAP] Product not found. Available:', store.products.map((p: any) => p.id));
@@ -220,7 +202,6 @@ export function SubscriptionSheet({ userId, trialStatus, onSuccess, onClose, onA
                     return;
                 }
 
-                // NOTE: 这是修复的核心！必须用 getOffer() 获取 Offer 对象
                 const offer = product.getOffer();
                 console.log('[IAP] Offer:', offer ? `${offer.id} (canPurchase: ${offer.canPurchase})` : 'NO OFFER');
 
@@ -232,37 +213,32 @@ export function SubscriptionSheet({ userId, trialStatus, onSuccess, onClose, onA
 
                 setStatusText(t('subscription.waiting_apple', 'Waiting for App Store...'));
 
-                // 使用 offer.order() 发起购买（返回 Promise）
                 const result = await offer.order();
                 console.log('[IAP] Order result:', result);
 
-                // 如果 order 返回了错误对象
                 if (result && 'isError' in result) {
                     const err = result as any;
-                    console.error('[IAP] Order error:', err);
-                    if (err.code !== 6777006) { // 6777006 = PAYMENT_CANCELLED
+                    if (err.code !== 6777006) {
                         onAlert(t('common.error'), err.message || t('subscription.purchase_error', 'Purchase failed'));
                     }
                     safeResetLoading();
                     return;
                 }
 
-                // 购买请求已发送，等待 Apple 回调
-                // 设置安全超时（60 秒，Apple 沙箱环境可能很慢）
+                // 安全超时（60秒）
                 safetyTimeoutRef.current = setTimeout(() => {
-                    console.warn('[IAP] Safety timeout triggered after 60s');
+                    console.warn('[IAP] Safety timeout after 60s');
                     safeResetLoading();
                 }, 60000);
 
             } else {
-                // MOCK PURCHASE FLOW FOR WEB（开发测试用）
+                // WEB MOCK FLOW
                 const mapPlan = () => {
                     if (sku.includes('monthly')) return 'monthly' as const;
                     if (sku.includes('quarterly')) return 'quarterly' as const;
                     if (sku.includes('annual')) return 'yearly' as const;
                     return 'lifetime' as const;
                 };
-
                 setTimeout(async () => {
                     try {
                         const resp = await subscriptionService.subscribe(userId, mapPlan());
@@ -292,6 +268,8 @@ export function SubscriptionSheet({ userId, trialStatus, onSuccess, onClose, onA
 
     /**
      * 恢复购买
+     * NOTE: restore 会触发 Apple 重新检查已有购买，
+     * 找到的已有购买会走 approved 回调流程
      */
     const handleRestore = () => {
         if (!Capacitor.isNativePlatform() || !window.CdvPurchase) {
@@ -301,16 +279,17 @@ export function SubscriptionSheet({ userId, trialStatus, onSuccess, onClose, onA
 
         setIsLoading(true);
         setStatusText(t('subscription.restoring', 'Restoring purchases...'));
+
         const { store } = window.CdvPurchase;
         console.log('[IAP] Restoring purchases...');
         store.restore();
 
-        // Apple Sandbox 恢复可能很慢，设置 20 秒超时
+        // 如果 restore 没有触发 approved 回调（即没有历史购买），20 秒后自动结束
         safetyTimeoutRef.current = setTimeout(() => {
-            console.warn('[IAP] Restore safety timeout after 20s');
+            console.warn('[IAP] Restore timeout after 20s');
             if (isMountedRef.current) {
                 safeResetLoading();
-                onAlert(t('common.info'), t('subscription.restore_complete', 'Restore check completed. If you have an active subscription, it should now be reflected.'));
+                onAlert(t('common.info'), t('subscription.restore_complete', 'No previous purchases found, or your subscription is already active.'));
             }
         }, 20000);
     };
@@ -410,7 +389,6 @@ export function SubscriptionSheet({ userId, trialStatus, onSuccess, onClose, onA
                 </div>
             </div>
 
-            {/* Loading overlay with status text */}
             {isLoading && (
                 <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center rounded-3xl z-50 gap-3">
                     <div className="w-8 h-8 border-2 border-[#F5A623] border-t-transparent rounded-full animate-spin"></div>

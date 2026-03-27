@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { focusService, userService, socialService } from '../api';
+import { triggerHaptic } from '../utils/haptics';
 import type { Subject, HiveMatchTile } from '../api/types';
 import type { UserProfile } from '../components/ProfilePortal';
 
@@ -7,19 +8,45 @@ interface UseTimerProps {
     userId: string | null;
     subjects: Subject[];
     currentSubject: string;
-    userProfile: UserProfile;
-    setUserProfile: (profile: UserProfile) => void;
+    setUserProfile: React.Dispatch<React.SetStateAction<UserProfile>>;
     setHiveTiles: (tiles: HiveMatchTile[]) => void;
     onOpenSubscription: () => void;
     onComplete?: () => Promise<void>;
     showAlert: (title: string, message: string) => void;
 }
 
+/**
+ * 播放倒计时结束铃声
+ * NOTE: 使用 Web Audio API 合成简单的提示音
+ * 避免加载外部音频文件（Capacitor WKWebView 中音频路径可能有问题）
+ */
+function playCompletionSound() {
+    try {
+        const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+
+        // 播放两声短促的提示音 (C5 → E5)
+        const notes = [523.25, 659.25]; // C5, E5 频率
+        notes.forEach((freq, i) => {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0.3, audioCtx.currentTime + i * 0.2);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + i * 0.2 + 0.3);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(audioCtx.currentTime + i * 0.2);
+            osc.stop(audioCtx.currentTime + i * 0.2 + 0.3);
+        });
+    } catch (e) {
+        console.warn('Audio playback failed:', e);
+    }
+}
+
 export function useTimer({
     userId,
     subjects,
     currentSubject,
-    userProfile,
     setUserProfile,
     setHiveTiles,
     onOpenSubscription,
@@ -44,6 +71,11 @@ export function useTimer({
                 if (diff === 0) {
                     setIsFocusing(false);
                     setTargetEndTime(null);
+
+                    // NOTE: 倒计时结束时播放声音和震动提醒用户
+                    playCompletionSound();
+                    triggerHaptic('notification');
+
                     if (onComplete) {
                         onComplete();
                     }
@@ -72,13 +104,15 @@ export function useTimer({
 
             const updatedProfile = await userService.getProfile(userId);
             if (updatedProfile) {
-                setUserProfile({
-                    ...userProfile,
+                // NOTE: 必须使用函数式 setState 基于最新状态更新
+                // 之前用 ...userProfile 展开的是闭包中的旧值，导致新头像被覆盖
+                setUserProfile(prev => ({
+                    ...prev,
                     totalFocus: updatedProfile.total_focus_mins,
                     sparks: updatedProfile.total_sparks,
                     trialStartAt: updatedProfile.trial_start_at,
                     subscriptionEndAt: updatedProfile.subscription_end_at,
-                });
+                }));
             }
 
             const matchData = await socialService.getHiveMatching(userId);
@@ -91,7 +125,7 @@ export function useTimer({
             showAlert('Error', 'Failed to end focus session.');
             return null;
         }
-    }, [userId, activeSessionId, maxTime, userProfile, setUserProfile, setHiveTiles, showAlert]);
+    }, [userId, activeSessionId, maxTime, setUserProfile, setHiveTiles, showAlert]);
 
     const toggleFocus = useCallback(async () => {
         if (!userId) return;
@@ -141,3 +175,4 @@ export function useTimer({
         handleTimeSelect
     };
 }
+

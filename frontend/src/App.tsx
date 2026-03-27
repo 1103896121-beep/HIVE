@@ -56,7 +56,7 @@ export default function App() {
   const {
     isFocusing, timeLeft, maxTime, activeSessionId, toggleFocus, handleEndFocus, handleTimeSelect
   } = useTimer({
-    userId, subjects, currentSubject, userProfile, setUserProfile, setHiveTiles,
+    userId, subjects, currentSubject, setUserProfile, setHiveTiles,
     onOpenSubscription: () => setActiveSheet('subscription'),
     onComplete: async () => {
       const result = await handleEndFocus(true);
