@@ -29,9 +29,10 @@ interface ProfilePortalProps {
     onUpdate: (updates: Partial<UserProfile>) => Promise<void>;
     onSignOut: () => void;
     onAlert: (title: string, message: string) => void;
+    trialStatus: { isExpired: boolean; isPremium: boolean; daysLeft: number; isPermanent: boolean };
 }
 
-export function ProfilePortal({ userId, profile, onUpdate, onSignOut, onAlert }: ProfilePortalProps) {
+export function ProfilePortal({ userId, profile, onUpdate, onSignOut, onAlert, trialStatus }: ProfilePortalProps) {
     const { t, i18n } = useTranslation();
     const [isEditing, setIsEditing] = useState(false);
     const [editForm, setEditForm] = useState(profile);
@@ -41,14 +42,19 @@ export function ProfilePortal({ userId, profile, onUpdate, onSignOut, onAlert }:
     const [showPasswordForm, setShowPasswordForm] = useState(false);
     const [passwordData, setPasswordData] = useState({ current: '', new: '', confirm: '' });
     const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+    const isMountedRef = useRef(true);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Sync form with profile when not editing
     useEffect(() => {
+        isMountedRef.current = true;
         if (!isEditing) {
             setEditForm(profile);
         }
+        return () => {
+            isMountedRef.current = false;
+        };
     }, [profile, isEditing]);
 
     const handleAvatarClick = () => {
@@ -85,10 +91,10 @@ export function ProfilePortal({ userId, profile, onUpdate, onSignOut, onAlert }:
         const bioCheck = validateContent(editForm.bio, 'bio');
         if (!bioCheck.isValid) return onAlert(t('common.error'), t(bioCheck.errorKey as Parameters<typeof t>[0]));
 
-        // NOTE: 先等后端保存完成并更新 profile prop，再退出编辑模式
-        // 这样 useEffect 同步 editForm 时拿到的就是最新数据，避免闪回旧数据
-        await onUpdate(editForm);
-
+        // NOTE: 不再等待后端保存，立即退出编辑模式，实现秒级响应
+        // 配合 useAppActions 里的 setUserProfile 乐观更新，用户感官完全秒存
+        onUpdate(editForm);
+        
         setIsEditing(false);
         setTimeout(() => {
             const sheetContent = document.querySelector('.bottom-sheet-content') as HTMLElement;
@@ -98,6 +104,11 @@ export function ProfilePortal({ userId, profile, onUpdate, onSignOut, onAlert }:
 
     const handleSyncLocation = async () => {
         setIsSyncingLocation(true);
+        // NOTE: 静默获取位置，任何成功/失败都不再弹窗。增加 10s 强制超时。
+        const syncTimeout = setTimeout(() => {
+            if (isMountedRef.current) setIsSyncingLocation(false);
+        }, 10000);
+
         try {
             async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
                 return Promise.race([
@@ -109,43 +120,35 @@ export function ProfilePortal({ userId, profile, onUpdate, onSignOut, onAlert }:
             if (Capacitor.isNativePlatform()) {
                 const permission = await withTimeout(Geolocation.checkPermissions(), 3000);
                 if (permission.location !== 'granted') {
-                    const req = await withTimeout(Geolocation.requestPermissions(), 6000);
+                    const req = await withTimeout(Geolocation.requestPermissions(), 5000);
                     if (req.location !== 'granted') {
-                        onAlert(t('common.error'), t('profile.location_permission_denied', 'Please enable Location in your device Settings.'));
                         setIsSyncingLocation(false);
-                        return;
+                        clearTimeout(syncTimeout);
+                        return; // 静默退出
                     }
                 }
             }
             
             let position: any = null;
             try {
-                // STAGE 1: Try high accuracy (GPS) briefly
                 position = await withTimeout(Geolocation.getCurrentPosition({ 
                     enableHighAccuracy: true, 
                     timeout: 4000, 
                     maximumAge: 10000 
                 }), 5000) as any;
             } catch (err) {
-                console.warn('GPS failed, falling back to network positioning...', err);
-                // STAGE 2: Try network/wifi positioning
                 position = await withTimeout(Geolocation.getCurrentPosition({ 
                     enableHighAccuracy: false, 
-                    timeout: 6000, 
+                    timeout: 4000, 
                     maximumAge: 30000 
-                }), 8000) as any;
+                }), 5000) as any;
             }
 
             const { latitude, longitude } = position.coords;
-            
-            // STAGE 3: Let BACKEND handle reverse geocoding via lat/lon
-            // We just send coordinates, backend UserService will fill the city name if missing
             await onUpdate({ latitude, longitude });
 
-            // NOTE: 位置同步后需要重新获取 profile 来拿到后端逆编码的城市名
-            // 因为此时组件在编辑模式下，useEffect 不会自动同步外部的 profile prop 到 editForm
             const freshProfile = await userService.getProfile(userId);
-            if (freshProfile) {
+            if (freshProfile && isMountedRef.current) {
                 const newCity = freshProfile.city || '';
                 setEditForm(prev => ({ 
                     ...prev, 
@@ -154,16 +157,10 @@ export function ProfilePortal({ userId, profile, onUpdate, onSignOut, onAlert }:
                     longitude 
                 }));
             }
-
-            onAlert(t('common.success'), t('profile.location_synced'));
         } catch (error: any) {
-            console.error('Location sync failed:', error);
-            let errorMsg = t('profile.location_failed', 'Location sync failed.');
-            if (error?.message?.includes('denied')) {
-                 errorMsg = t('profile.location_permission_denied', 'Please enable Location in your device Settings.');
-            }
-            onAlert(t('common.error'), errorMsg);
+            console.error('Location sync failed (silent):', error);
         } finally {
+            clearTimeout(syncTimeout);
             setIsSyncingLocation(false);
         }
     };
@@ -354,11 +351,10 @@ export function ProfilePortal({ userId, profile, onUpdate, onSignOut, onAlert }:
                                     const trialStart = new Date(profile.trialStartAt);
                                     const trialEnd = new Date(trialStart.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 Days
 
-                                    if (subEnd && subEnd > now) {
+                                    if (trialStatus.isPermanent) {
+                                        return t('profile.lifetime_active', 'Lifetime Access');
+                                    } else if (subEnd && subEnd > now) {
                                         const days = Math.ceil((subEnd.getTime() - now.getTime()) / (1000 * 3600 * 24));
-                                        if (days > 10000) {
-                                            return t('profile.lifetime_active', 'Lifetime Access');
-                                        }
                                         return t('profile.active_days_left', { count: days, defaultValue: '{{count}} Days Remaining' });
                                     } else if (trialEnd > now) {
                                         const days = Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 3600 * 24));

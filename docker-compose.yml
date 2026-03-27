@@ -17,18 +17,28 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    restart: always
+    ports:
+      - "6379:6379"
+
   backend:
     build: ./backend
     ports:
-      - "8000:8000"
+      - "7777:8000"
     env_file:
       - ./backend/.env
     environment:
       - DATABASE_URL=postgresql+asyncpg://hive_user:hive_password@db:5432/hivedb
-      - PROJECT_NAME=Hive-Local-Test
+      - APPLE_SHARED_SECRET=63e3a31c98b147b89344d8caba4b321f
+      - REDIS_URL=redis://redis:6379/0
+      - PROJECT_NAME=Hive-Production
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_started
 
   frontend:
     build:

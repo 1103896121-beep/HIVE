@@ -99,16 +99,19 @@ export default function App() {
   }, []);
 
   const trialStatus = useMemo(() => {
-    if (!userProfile.trialStartAt) return { isExpired: false, daysLeft: 7, isPremium: false };
+    const defaultStatus = { isExpired: false, daysLeft: 7, isPremium: false, isPermanent: false };
+    if (!userProfile.trialStartAt) return defaultStatus;
+    
     const now = new Date();
     if (userProfile.subscriptionEndAt && new Date(userProfile.subscriptionEndAt) > now) {
       const remainingDays = Math.ceil((new Date(userProfile.subscriptionEndAt).getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-      return { isExpired: false, isPremium: true, daysLeft: remainingDays };
+      const isPermanent = remainingDays > 10000;
+      return { isExpired: false, isPremium: true, daysLeft: isPermanent ? 0 : remainingDays, isPermanent };
     }
     const start = new Date(userProfile.trialStartAt).getTime();
     const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
     const elapsed = Date.now() - start;
-    return { isExpired: elapsed > sevenDaysMs, daysLeft: Math.max(0, Math.ceil((sevenDaysMs - elapsed) / (1000 * 60 * 60 * 24))), isPremium: false };
+    return { isExpired: elapsed > sevenDaysMs, daysLeft: Math.max(0, Math.ceil((sevenDaysMs - elapsed) / (1000 * 60 * 60 * 24))), isPremium: false, isPermanent: false };
   }, [userProfile.trialStartAt, userProfile.subscriptionEndAt]);
 
 

@@ -37,7 +37,7 @@ interface AppSheetsProps {
   handleUpdateProfile: (updates: Partial<UserProfile>) => Promise<void>;
   handleSignOut: () => void;
   isAuthenticated: boolean;
-  trialStatus: { isExpired: boolean; isPremium: boolean; daysLeft: number };
+  trialStatus: { isExpired: boolean; isPremium: boolean; daysLeft: number; isPermanent: boolean };
   setUserProfile: React.Dispatch<React.SetStateAction<UserProfile>>;
 }
 
@@ -91,6 +91,7 @@ export function AppSheets({
         <ProfilePortal
           userId={userId} profile={userProfile} onUpdate={handleUpdateProfile}
           onSignOut={handleSignOut} onAlert={showAlert}
+          trialStatus={trialStatus}
         />
       </Sheet>
 

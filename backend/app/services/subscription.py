@@ -24,9 +24,9 @@ class SubscriptionService:
         
         # 根据 Apple 产品 ID 匹配订阅时长
         PRODUCT_DURATION = {
-            "com.hive.sub.monthly": 31,
-            "com.hive.sub.quarterly": 92,
-            "com.hive.sub.annual": 366,
+            "com.hive.sub.monthly": 30,
+            "com.hive.sub.quarterly": 90,
+            "com.hive.sub.annual": 365,
             "com.hive.lifetime": 36500
         }
 
@@ -102,9 +102,9 @@ class SubscriptionService:
             raise ValueError("User not found")
             
         PLAN_DURATION = {
-            "monthly": 31,
-            "quarterly": 92,
-            "yearly": 366,
+            "monthly": 30,
+            "quarterly": 90,
+            "yearly": 365,
             "lifetime": 36500
         }
         

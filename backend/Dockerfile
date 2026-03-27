@@ -21,4 +21,4 @@ COPY . .
 EXPOSE 8000
 
 # 启动命令：使用 Gunicorn 配合 Uvicorn 工作进程，适合生产环境
-CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000", "app.main:app"]
+CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000", "--access-logfile", "-", "app.main:app"]

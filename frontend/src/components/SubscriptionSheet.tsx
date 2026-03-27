@@ -27,6 +27,7 @@ export function SubscriptionSheet({ userId, trialStatus, onSuccess, onClose, onA
     const [products, setProducts] = useState<Array<{ productId: string; title: string; localizedPrice: string; description: string }>>([]);
     const [selectedSku, setSelectedSku] = useState<string | null>(null);
     const [statusText, setStatusText] = useState('');
+    const [isRestoring, setIsRestoring] = useState(false);
 
     const isMountedRef = useRef(true);
     const safetyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -51,6 +52,7 @@ export function SubscriptionSheet({ userId, trialStatus, onSuccess, onClose, onA
         if (isMountedRef.current) {
             setIsLoading(false);
             setStatusText('');
+            setIsRestoring(false);
         }
         if (safetyTimeoutRef.current) {
             clearTimeout(safetyTimeoutRef.current);
@@ -109,7 +111,11 @@ export function SubscriptionSheet({ userId, trialStatus, onSuccess, onClose, onA
                     if (resp.status === 'success' && isMountedRef.current) {
                         const expires = resp.expires_at || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
                         onSuccess(expires);
-                        onAlert(t('common.success'), t('subscription.success_msg', { plan: 'Premium' }));
+                        
+                        // NOTE: 区分恢复与新购的提示词
+                        const successTitle = t('common.success');
+                        const successMsg = isRestoring ? t('subscription.restore_success') : t('subscription.success_msg', { plan: 'Premium' });
+                        onAlert(successTitle, successMsg);
                         onClose();
                     }
                 } else {
@@ -117,7 +123,8 @@ export function SubscriptionSheet({ userId, trialStatus, onSuccess, onClose, onA
                     console.warn('[IAP] No receipt data, Apple already approved. Marking success.');
                     if (isMountedRef.current) {
                         onSuccess(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString());
-                        onAlert(t('common.success'), t('subscription.success_msg', { plan: 'Premium' }));
+                        const successMsg = isRestoring ? t('subscription.restore_success') : t('subscription.success_msg', { plan: 'Premium' });
+                        onAlert(t('common.success'), successMsg);
                         onClose();
                     }
                 }
@@ -182,6 +189,7 @@ export function SubscriptionSheet({ userId, trialStatus, onSuccess, onClose, onA
     const handlePurchase = async (sku: string) => {
         try {
             setIsLoading(true);
+            setIsRestoring(false); // 明确标记为非恢复流程
             setStatusText(t('subscription.processing', 'Processing...'));
 
             if (Capacitor.isNativePlatform()) {
@@ -279,6 +287,7 @@ export function SubscriptionSheet({ userId, trialStatus, onSuccess, onClose, onA
 
         try {
             setIsLoading(true);
+            setIsRestoring(true); // 标记当前为恢复购买来源
             setStatusText(t('subscription.restoring', 'Restoring purchases...'));
 
             const { store } = window.CdvPurchase;
