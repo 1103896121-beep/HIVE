@@ -41,3 +41,5 @@
 hive.merchlens.app
 https://1103896121-beep.github.io/HIVE/privacy_en.html
 https://1103896121-beep.github.io/HIVE/eula_en.html
+专用共享密钥：
+63e3a31c98b147b89344d8caba4b321f

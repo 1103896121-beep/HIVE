@@ -268,30 +268,44 @@ export function SubscriptionSheet({ userId, trialStatus, onSuccess, onClose, onA
 
     /**
      * 恢复购买
-     * NOTE: restore 会触发 Apple 重新检查已有购买，
-     * 找到的已有购买会走 approved 回调流程
+     * NOTE: v13 中使用 restorePurchases()
+     * 找到的已有购买会像普通购买一样触发 approved 回调流程
      */
-    const handleRestore = () => {
+    const handleRestore = async () => {
         if (!Capacitor.isNativePlatform() || !window.CdvPurchase) {
             onAlert(t('common.info', 'Info'), t('subscription.native_only'));
             return;
         }
 
-        setIsLoading(true);
-        setStatusText(t('subscription.restoring', 'Restoring purchases...'));
+        try {
+            setIsLoading(true);
+            setStatusText(t('subscription.restoring', 'Restoring purchases...'));
 
-        const { store } = window.CdvPurchase;
-        console.log('[IAP] Restoring purchases...');
-        store.restore();
+            const { store } = window.CdvPurchase;
+            console.log('[IAP] Calling store.restorePurchases()...');
+            
+            // 安全超时（20秒）
+            safetyTimeoutRef.current = setTimeout(() => {
+                console.warn('[IAP] Restore safety timeout after 20s');
+                if (isMountedRef.current) {
+                    safeResetLoading();
+                    onAlert(t('common.info'), t('subscription.restore_complete', 'No previous purchases found, or your subscription is already active.'));
+                }
+            }, 20000);
 
-        // 如果 restore 没有触发 approved 回调（即没有历史购买），20 秒后自动结束
-        safetyTimeoutRef.current = setTimeout(() => {
-            console.warn('[IAP] Restore timeout after 20s');
+            await store.restorePurchases();
+            console.log('[IAP] store.restorePurchases() call completed');
+            
+            // NOTE: restorePurchases() 完成并不代表交易已恢复，
+            // 它是异步触发 approved 回调。所以这里不手动关闭 loading，
+            // 除非 20s 超时或 approved 触发。
+        } catch (error: any) {
+            console.error('[IAP] restorePurchases failed:', error);
             if (isMountedRef.current) {
+                onAlert(t('common.error'), t('subscription.restore_failed', 'Restore failed: ') + (error?.message || 'Unknown error'));
                 safeResetLoading();
-                onAlert(t('common.info'), t('subscription.restore_complete', 'No previous purchases found, or your subscription is already active.'));
             }
-        }, 20000);
+        }
     };
 
     return (
