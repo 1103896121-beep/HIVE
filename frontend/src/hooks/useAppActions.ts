@@ -50,23 +50,21 @@ export function useAppActions({
 
   const handleUpdateProfile = async (updates: Partial<UserProfile>) => {
     if (!userId) return;
+    
+    // 1. 乐观更新：立即更新本地状态，让 UI 秒变
+    setUserProfile(prev => ({ ...prev, ...updates }));
+
     try {
-      // NOTE: 前端 UserProfile 使用 camelCase，后端 ProfileUpdate 使用 snake_case
-      // 必须在此做显式映射，否则 Pydantic 会忽略不认识的字段
+      // 2. 映射字段并发送请求
       const { avatar, showLocation, ...rest } = updates;
+      // 显式保留原始 updates 里的字段，防止被 rest 过滤掉不认识的字段
       const payload: Record<string, unknown> = { ...rest, theme_preference: theme };
-
-      // avatar → avatar_url 映射
-      if (avatar !== undefined) {
-        payload.avatar_url = avatar;
-      }
-
-      // showLocation → show_location 映射
-      if (showLocation !== undefined) {
-        payload.show_location = showLocation;
-      }
+      if (avatar !== undefined) payload.avatar_url = avatar;
+      if (showLocation !== undefined) payload.show_location = showLocation;
 
       await userService.updateProfile(userId, payload as Partial<import('../api/types').Profile>);
+      
+      // 3. 静默后台同步最新数据（防止后端有额外逻辑如自动生成城市名）
       const freshProfile = await userService.getProfile(userId);
       if (freshProfile) {
         setUserProfile({
@@ -83,7 +81,10 @@ export function useAppActions({
           showLocation: freshProfile.show_location,
         });
       }
-    } catch (err) { console.error('Update profile failed:', err); }
+    } catch (err) { 
+      console.error('Update profile failed:', err); 
+      // FIXME: 如果极度重要且失败频率高，此处应增加回退逻辑（从之前的 prev 恢复）
+    }
   };
 
   const handleLeaveSquad = async (squadId: string) => {
