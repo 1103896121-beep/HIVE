@@ -19,13 +19,13 @@ class FocusSession(Base):
     __tablename__ = "focus_sessions"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
     subject_id = Column(Integer, ForeignKey("subjects.id"), nullable=False)
     squad_id = Column(UUID(as_uuid=True), ForeignKey("squads.id"), nullable=True)
     start_time = Column(DateTime, default=datetime.utcnow)
-    end_time = Column(DateTime, nullable=True)
+    end_time = Column(DateTime, nullable=True, index=True)
     duration_mins = Column(Integer, default=0)
-    status = Column(String(20), default="COMPLETED") # COMPLETED, INTERRUPTED
+    status = Column(String(20), default="COMPLETED", index=True) # COMPLETED, INTERRUPTED
 
     user = relationship("User", back_populates="focus_sessions")
     subject = relationship("Subject", back_populates="sessions")
