@@ -215,7 +215,7 @@ export default function App() {
           <div className="flex-1 overflow-y-auto overflow-x-hidden pt-32 pb-40 px-6 hide-scrollbar flex flex-col items-center">
 
             {/* 1.5 临期提醒条 (适用于试用期或订阅期) */}
-            {!trialStatus.isExpired && trialStatus.daysLeft <= 3 && (
+            {!trialStatus.isPermanent && !trialStatus.isExpired && trialStatus.daysLeft <= 3 && (
               <div
                 className="w-full mb-6 z-20 px-4 py-3 rounded-2xl border flex items-center justify-between backdrop-blur-md animate-in fade-in"
                 style={{
@@ -226,7 +226,7 @@ export default function App() {
                 <div className="flex items-center gap-2">
                   <Zap size={14} style={{ color: 'var(--accent)' }} />
                   <span className="text-[10px] font-black uppercase tracking-widest text-zinc-300">
-                    {trialStatus.daysLeft === 0 
+                    {trialStatus.daysLeft === 0 && !trialStatus.isPremium
                       ? t('trial.expired') 
                       : trialStatus.isPremium 
                         ? t('nav.sub_expiring', { count: trialStatus.daysLeft, defaultValue: `Premium Ends in ${trialStatus.daysLeft}d` }) 

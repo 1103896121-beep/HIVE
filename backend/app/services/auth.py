@@ -146,7 +146,9 @@ class AuthService:
             logger.warning(f"Forgot password requested for non-existent email: {email}")
             return True
             
-        code = "123456" # MVP 固定验证码
+        import random
+        code = f"{random.randint(100000, 999999)}"
+
         AuthService._reset_codes[email] = {
             "code": code,
             "expires": datetime.now() + timedelta(minutes=10)

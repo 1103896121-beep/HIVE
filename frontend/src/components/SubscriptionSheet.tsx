@@ -15,7 +15,7 @@ import { Capacitor } from '@capacitor/core';
 
 interface SubscriptionSheetProps {
     userId: string;
-    trialStatus: { isExpired: boolean; isPremium: boolean; daysLeft: number };
+    trialStatus: { isExpired: boolean; isPremium: boolean; daysLeft: number; isPermanent?: boolean };
     onSuccess: (expiresAt: string) => void;
     onClose: () => void;
     onAlert: (title: string, message: string) => void;
@@ -215,6 +215,11 @@ export function SubscriptionSheet({ userId, trialStatus, onSuccess, onClose, onA
      * 发起购买
      */
     const handlePurchase = async (sku: string) => {
+        if (trialStatus.isPermanent) {
+            onAlert(t('common.info', 'Info'), t('subscription.already_lifetime', '您已经是终身会员！'));
+            safeResetLoading();
+            return;
+        }
         try {
             setIsLoading(true);
             lastUserActionRef.current = 'purchase';

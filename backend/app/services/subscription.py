@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.user import User, ProcessedTransaction
 from datetime import datetime, timedelta
 from typing import Dict, Any
+from app.repository.user_repository import UserRepository
 
 class SubscriptionService:
     @staticmethod
