@@ -60,8 +60,9 @@ class Settings(BaseSettings):
     RESEND_API_KEY: Optional[str] = os.getenv("RESEND_API_KEY")
     RESEND_FROM_EMAIL: Optional[str] = os.getenv("RESEND_FROM_EMAIL", "noreply@hive.app")
     
+    SMTP_FROM_NAME: Optional[str] = "Hive Support"
     EMAILS_FROM_EMAIL: Optional[str] = os.getenv("RESEND_FROM_EMAIL", "info@hiveapp.com")
-    EMAILS_FROM_NAME: Optional[str] = os.getenv("SMTP_FROM_NAME", "Hive Support")
+    EMAILS_FROM_NAME: Optional[str] = "Hive Support"
 
     class Config:
         env_file = ".env"

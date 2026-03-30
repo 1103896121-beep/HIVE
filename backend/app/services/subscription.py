@@ -37,19 +37,37 @@ class SubscriptionService:
              payload["password"] = APPLE_SHARED_SECRET
         
         try:
+            print(f"[APPLE-IAP] Sending receipt to {validation_url} (length: {len(receipt_data)})", file=sys.stderr)
             response = requests.post(validation_url, json=payload, timeout=15)
+            response.raise_for_status()
             data = response.json()
-            if data.get("status") == 21007:
-                 validation_url = "https://sandbox.itunes.apple.com/verifyReceipt"
-                 response = requests.post(validation_url, json=payload, timeout=15)
-                 data = response.json()
-            
-            if data.get("status") != 0:
-                 print(f"[APPLE-IAP] Final Verification FAILED: {data.get('status')}", file=sys.stderr)
-                 raise ValueError(f"Invalid receipt. Apple status: {data.get('status')}")
         except Exception as e:
             print(f"[APPLE-IAP] Request failed: {str(e)}", file=sys.stderr)
-            raise ValueError(f"Failed to connect to Apple: {str(e)}")
+            # 不要直接抛出 ValueError，使用 HTTPException 以便前端能接收到详细错误码
+            from fastapi import HTTPException
+            raise HTTPException(status_code=502, detail=f"Apple verification connection failed: {str(e)}")
+
+        status = data.get("status")
+        print(f"[APPLE-IAP] Apple response status: {status}", file=sys.stderr)
+        
+        if status != 0:
+            # 如果是 21007，说明是 Sandbox 票据发到了 Production，需要重试 Sandbox URL
+            if status == 21007:
+                print("[APPLE-IAP] Status 21007: Retrying with Sandbox URL...", file=sys.stderr)
+                try:
+                    validation_url = "https://sandbox.itunes.apple.com/verifyReceipt"
+                    response = requests.post(validation_url, json=payload, timeout=15)
+                    data = response.json()
+                    status = data.get("status")
+                    print(f"[APPLE-IAP] Sandbox response status: {status}", file=sys.stderr)
+                except Exception as e:
+                    print(f"[APPLE-IAP] Sandbox request failed: {e}", file=sys.stderr)
+                    from fastapi import HTTPException
+                    raise HTTPException(status_code=502, detail="Apple sandbox verification failed")
+            
+            if status != 0:
+                from fastapi import HTTPException
+                raise HTTPException(status_code=400, detail=f"Apple Verification Failed: Status {status}")
 
         # 3. 获取用户并计算最远到期点 (幂等且累加逻辑)
         user = await UserRepository.get_user_by_id(db, user_id)

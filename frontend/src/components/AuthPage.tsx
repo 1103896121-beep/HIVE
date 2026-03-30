@@ -208,7 +208,7 @@ export function AuthPage({ onSuccess }: AuthPageProps) {
                                         value={resetCode}
                                         onChange={(e) => setResetCode(e.target.value)}
                                         className="w-full bg-white/5 border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-white focus:outline-none focus:border-[#F5A623]/50 focus:bg-white/[0.08] transition-all"
-                                        placeholder="123456"
+                                        placeholder={t('auth.code_placeholder', '6-digit code')}
                                     />
                                 </div>
                             </div>

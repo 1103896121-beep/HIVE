@@ -155,8 +155,15 @@ export function SubscriptionSheet({ userId, trialStatus, onSuccess, onClose, onA
             } catch (err: any) {
                 console.error('[IAP] Receipt verification error:', err);
                 safeResetLoading();
+                
+                // 尝试提取后端返回的详细错误
+                let errorMsg = err?.message || t('subscription.verify_failed');
+                if (err?.response?.data?.detail) {
+                    errorMsg = err.response.data.detail;
+                }
+                
                 if (isMountedRef.current) {
-                    onAlert(t('common.error'), err?.message || t('subscription.verify_failed'));
+                    onAlert(t('common.error'), errorMsg);
                 }
                 // 即使验证失败也 finish 交易，避免 Apple 重复扣款
                 transaction.finish();
