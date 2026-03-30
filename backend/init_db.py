@@ -7,7 +7,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from app.core.database import engine, Base
 # 导入所有模型以确保它们在 Base.metadata 中注册
-from app.models.user import User
+from app.models.user import User, ProcessedTransaction
 from app.models.social import Squad, Bond, SquadMember
 from app.models.focus import FocusSession, Subject
 
