@@ -262,7 +262,7 @@ class SocialService:
         """
         获取全球 Hive 实时统计数据。
         1. total_online: 当前心跳活跃用户总数
-        2. active_hives: 正在进行专注的独特小队数 (包含 Global Hive)
+        2. active_hives: 实际正在进行专注的用户终端总数
         3. total_sparks_today: 今日(UTC)已完成专注产生的累计星火 (通过 duration_mins 汇总)
         """
         from sqlalchemy import func, select
@@ -273,18 +273,13 @@ class SocialService:
         # 1. 在线人数 (Redis 实时心跳)
         total_online = await redis_client.get_global_presence_count()
         
-        # 2. 活跃 Hive (正在专注的小队数 + 1如果有人在 Global Hive 专注)
-        # 获取所有 status='IN_PROGRESS' 的会话的小队 ID
+        # 2. 活跃 Hive (实际正在进行专注的用户终端总数)
+        # 统计所有 status='IN_PROGRESS' 的唯一用户数量
         active_sessions_res = await db.execute(
-            select(FocusSession.squad_id).where(FocusSession.status == "IN_PROGRESS")
+            select(func.count(FocusSession.user_id.distinct()))
+            .where(FocusSession.status == "IN_PROGRESS")
         )
-        active_squad_ids = {row[0] for row in active_sessions_res.all()}
-        
-        # 计算逻辑：唯一非空 squad_id 的数量
-        hives_count = len([sid for sid in active_squad_ids if sid is not None])
-        # 如果集合中包含 None，意味着有人在 Global Hive (默认空间) 专注，也算 1 个 Hive
-        if None in active_squad_ids:
-            hives_count += 1
+        hives_count = active_sessions_res.scalar() or 0
             
         # 3. 每日累计星火 (今天已完成的所有会话时长总和)
         today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)

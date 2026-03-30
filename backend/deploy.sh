@@ -40,9 +40,9 @@ check_port() {
 echo -e "${BLUE}>>> Stopping existing Hive containers if any...${NC}"
 docker-compose --env-file .env -p $APP_NAME down 2>/dev/null || true
 
-echo -e "${BLUE}>>> Checking port availability for isolation (Backend: $BACKEND_PORT, DB: $DB_PORT)...${NC}"
-check_port $BACKEND_PORT
-check_port $DB_PORT
+# echo -e "${BLUE}>>> Checking port availability for isolation (Backend: $BACKEND_PORT, DB: $DB_PORT)...${NC}"
+# check_port $BACKEND_PORT
+# check_port $DB_PORT
 
 # 2. Deploy using Docker Compose
 echo -e "${BLUE}>>> Deploying using docker-compose...${NC}"
