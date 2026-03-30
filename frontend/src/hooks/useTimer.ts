@@ -24,19 +24,19 @@ function playCompletionSound() {
     try {
         const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
 
-        // 播放两声短促的提示音 (C5 → E5)
-        const notes = [523.25, 659.25]; // C5, E5 频率
+        // 播放多段长声音 (C5 → E5 → G5 → C6) 提高音量并加长时长
+        const notes = [523.25, 659.25, 783.99, 1046.50, 523.25, 659.25, 783.99, 1046.50]; 
         notes.forEach((freq, i) => {
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
-            osc.type = 'sine';
+            osc.type = 'triangle'; // triangle 更柔和但有穿透力
             osc.frequency.value = freq;
-            gain.gain.setValueAtTime(0.3, audioCtx.currentTime + i * 0.2);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + i * 0.2 + 0.3);
+            gain.gain.setValueAtTime(1.0, audioCtx.currentTime + i * 0.3); // 音量加大至 1.0
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + i * 0.3 + 0.6); // 延长时间到 0.6s
             osc.connect(gain);
             gain.connect(audioCtx.destination);
-            osc.start(audioCtx.currentTime + i * 0.2);
-            osc.stop(audioCtx.currentTime + i * 0.2 + 0.3);
+            osc.start(audioCtx.currentTime + i * 0.3);
+            osc.stop(audioCtx.currentTime + i * 0.3 + 0.6);
         });
     } catch (e) {
         console.warn('Audio playback failed:', e);

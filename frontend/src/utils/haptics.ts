@@ -39,7 +39,8 @@ export const triggerHaptic = (type: 'impact' | 'notification' | 'selection' = 'i
   // 2. Fallback to Web Vibrate API (Works on Android/Chrome, NOT iOS Safari)
   if (navigator.vibrate) {
     if (type === 'notification') {
-      navigator.vibrate([100, 30, 100, 30, 100]);
+      // Create a prolonged SOS-style vibration pattern for focus completion
+      navigator.vibrate([150, 50, 150, 50, 150, 200, 300, 100, 300, 100, 300, 200, 150, 50, 150, 50, 150]);
     } else {
       navigator.vibrate(50);
     }
