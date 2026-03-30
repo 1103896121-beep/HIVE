@@ -58,13 +58,25 @@ class SubscriptionService:
         trial_end = user.trial_start_at + timedelta(days=7)
         
         receipt = data.get("receipt", {})
+        # subscriptions should also check latest_receipt_info if available (requires shared secret)
         in_app_purchases = receipt.get("in_app", [])
+        latest_info = data.get("latest_receipt_info", [])
+        if isinstance(latest_info, list):
+            in_app_purchases.extend(latest_info)
         
-        # 排序：按购买时间从旧到新处理，确保累加顺序正确
-        in_app_purchases.sort(key=lambda x: float(x.get("purchase_date_ms", 0)))
+        # 排序并去重（通过 transaction_id）
+        seen_tids = set()
+        unique_purchases = []
+        for p in in_app_purchases:
+            tid = str(p.get("transaction_id"))
+            if tid not in seen_tids:
+                unique_purchases.append(p)
+                seen_tids.add(tid)
+
+        unique_purchases.sort(key=lambda x: float(x.get("purchase_date_ms", 0)))
         
         new_transactions_count = 0
-        for p in in_app_purchases:
+        for p in unique_purchases:
             t_id = str(p.get("transaction_id"))
             p_id = p.get("product_id")
             
