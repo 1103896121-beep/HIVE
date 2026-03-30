@@ -139,9 +139,12 @@ export function SubscriptionSheet({ userId, trialStatus, onSuccess, onClose, onA
                     console.warn('[IAP] No receipt data, Apple already approved. Marking success.');
                     if (isMountedRef.current) {
                         onSuccess(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString());
-                        const successMsg = isRestoring ? t('subscription.restore_success') : t('subscription.success_msg', { plan: 'Premium' });
+                        const isRestore = lastUserActionRef.current === 'restore';
+                        const successMsg = isRestore ? t('subscription.restore_success') : t('subscription.success_msg', { plan: 'Premium' });
                         onAlert(t('common.success'), successMsg);
                         onClose();
+                        lastUserActionRef.current = null;
+                        safeResetLoading();
                     }
                 }
 

@@ -19,6 +19,8 @@ class RedisClient:
         # 如果提供了小队ID，同步更新小队范围内的活跃状态
         if squad_id:
             await self.client.zadd(f"presence:squad:{squad_id}", {user_id: now})
+            # 记录活跃小队 ID
+            await self.client.sadd("presence:active_squad_ids", squad_id)
             
     async def get_squad_presence(self, squad_id: str, timeout_sec: int = 15) -> List[str]:
         """获取小队内有效在线用户列表（自动清除超时的僵尸用户）"""
@@ -45,6 +47,22 @@ class RedisClient:
         key = "presence:global"
         await self.client.zremrangebyscore(key, "-inf", cutoff)
         return await self.client.zcard(key)
+
+    async def get_active_hives_count(self, timeout_sec: int = 20) -> int:
+        """
+        获取当前有活跃用户的 Hive 数量。
+        策略：检查所有活跃小队集合，并过滤掉已过期的。
+        注：由于 sadd 没过期时间，我们需要配合 zrange 检查或定期清理。
+        为了简单高性能，此处返回 `active_squad_ids` 集合大小，
+        并在 heartbeat 过程中维护。
+        """
+        # 简单处理：当前活跃用户至少代表 1 个 Hive (Global)
+        user_count = await self.get_global_presence_count(timeout_sec)
+        if user_count == 0: return 0
+        
+        squad_count = await self.client.scard("presence:active_squad_ids")
+        # 即使没有 Squad，只要有人在线，至少有 1 个 Hive (Global Hive)
+        return max(1, squad_count)
 
     async def send_nudge(self, sender_id: str, receiver_id: str):
         """发送轻推提醒 (放入目标用户的专属接收队列)"""

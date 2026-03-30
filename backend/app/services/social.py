@@ -266,15 +266,17 @@ class SocialService:
         from app.models.social import Squad
         from app.models.user import Profile
         
-        # 1. 活跃战队总数
-        squad_count_res = await db.execute(select(func.count(Squad.id)))
-        active_hives = squad_count_res.scalar() or 0
+        # 1. 在线人数与活跃 Hive (直接从 Redis 获取实时数据)
+        from app.core.redis_client import redis_client
+        total_online = await redis_client.get_global_presence_count()
+        active_hives = await redis_client.get_active_hives_count()
         
-        # 2. 累计星火 (作为近似“今日星火”，此处取所有活跃用户的星火总额作为看板演示数据)
+        # 2. 累计星火 (作为看板演示数据)
         spark_sum_res = await db.execute(select(func.sum(Profile.total_sparks)))
         total_sparks = spark_sum_res.scalar() or 0
         
         return {
+            "total_online": total_online,
             "active_hives": active_hives,
             "total_sparks_today": total_sparks
         }
