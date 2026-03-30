@@ -27,7 +27,6 @@ export function SubscriptionSheet({ userId, trialStatus, onSuccess, onClose, onA
     const [products, setProducts] = useState<Array<{ productId: string; title: string; localizedPrice: string; description: string }>>([]);
     const [selectedSku, setSelectedSku] = useState<string | null>(null);
     const [statusText, setStatusText] = useState('');
-    const [isRestoring, setIsRestoring] = useState(false);
 
     const isMountedRef = useRef(true);
     const safetyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -54,7 +53,6 @@ export function SubscriptionSheet({ userId, trialStatus, onSuccess, onClose, onA
         if (isMountedRef.current) {
             setIsLoading(false);
             setStatusText('');
-            setIsRestoring(false);
         }
         if (safetyTimeoutRef.current) {
             clearTimeout(safetyTimeoutRef.current);
