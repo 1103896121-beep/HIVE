@@ -114,18 +114,39 @@ class UserService:
 
     @staticmethod
     async def delete_account(db: AsyncSession, user_id: UUID) -> bool:
-        """分阶段级联删除用户所有数据，确保无外键冲突"""
+        """软删除用户并级联解散关联小队"""
         # 1. 获取用户
         user = await UserRepository.get_user_by_id(db, user_id)
         if not user:
             return False
             
-        # 2. 调用 Repository 的全量数据清理方法（级联删除关联实体）
-        await UserRepository.clear_all_user_data(db, user_id)
+        # 2. 解散由该用户担任队长的小队
+        from app.models.social import Squad
+        from app.services.social import SocialService
+        from sqlalchemy import select
+        result = await db.execute(select(Squad).where(Squad.created_by == user_id))
+        squads = result.scalars().all()
+        for squad in squads:
+            try:
+                await SocialService.disband_squad(db, user_id, squad.id)
+            except Exception as e:
+                import sys
+                print(f"[DELETE-ACCOUNT] Disband squad {squad.id} failed: {e}", file=sys.stderr)
         
-        # 3. 最后删除 User 本体
-        await UserRepository.delete_item(db, user)
-        
+        # 3. 标记为软删除且脱敏字段
+        user.is_active = False
+        user.apple_sub = None # 解绑苹果登录，使得允许重新注册
+        if user.email and '@' in user.email:
+            user.email = f"deleted_{user.id.hex[:8]}@{user.email.split('@')[1]}"
+        else:
+            user.email = f"deleted_{user.id.hex[:8]}"
+            
+        profile = await UserRepository.get_profile(db, user_id)
+        if profile:
+            profile.name = "已注销用户"
+            profile.avatar_url = None
+            profile.bio = None
+            
         await UserRepository.commit(db)
         return True
 

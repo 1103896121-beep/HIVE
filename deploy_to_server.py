@@ -72,6 +72,13 @@ def main():
             cp .env.production.sample .env
         fi
         
+        echo "Updating APPLE_SHARED_SECRET in remote .env..."
+        if ! grep -q "^APPLE_SHARED_SECRET=" .env; then
+            echo "APPLE_SHARED_SECRET=63e3a31c98b147b89344d8caba4b321f" >> .env
+        else
+            sed -i 's/^APPLE_SHARED_SECRET=.*/APPLE_SHARED_SECRET=63e3a31c98b147b89344d8caba4b321f/' .env
+        fi
+        
         echo "Executing HIVE deploy.sh..."
         chmod +x deploy.sh
         # Convert dos2unix just in case

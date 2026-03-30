@@ -477,8 +477,9 @@ export function ProfilePortal({ userId, profile, onUpdate, onSignOut, onAlert, t
                         try {
                             await userService.deleteAccount(userId);
                             onSignOut();
-                        } catch (err) {
-                            onAlert(t('common.error'), t('common.error'));
+                        } catch (err: any) {
+                            const errorMsg = err?.response?.data?.detail || err?.message || t('common.error');
+                            onAlert(t('common.error'), errorMsg);
                         }
                     }
                 }}

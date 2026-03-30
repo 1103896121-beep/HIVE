@@ -289,9 +289,7 @@ export function SubscriptionSheet({ userId, trialStatus, onSuccess, onClose, onA
                     try {
                         const resp = await subscriptionService.subscribe(userId, mapPlan());
                         if (resp.status === 'success') {
-                            const future = new Date();
-                            future.setDate(future.getDate() + 30);
-                            onSuccess(future.toISOString());
+                            onSuccess(resp.expires_at || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString());
                             onAlert(t('common.success'), t('subscription.success_msg', { plan: 'Premium' }));
                             onClose();
                         }
