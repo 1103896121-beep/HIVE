@@ -19,6 +19,11 @@ class SubscriptionService:
         APPLE_SHARED_SECRET = os.getenv("APPLE_SHARED_SECRET")
         if APPLE_SHARED_SECRET:
             APPLE_SHARED_SECRET = APPLE_SHARED_SECRET.strip()
+            
+        if not APPLE_SHARED_SECRET:
+            # 明确抛出 500 错误，以防因为空密钥引发难以排查的 Apple 21004 报错
+            from fastapi import HTTPException
+            raise HTTPException(status_code=500, detail="Apple shared secret (APPLE_SHARED_SECRET) is not configured on the server")
         
         # 使用 sys.stderr 确保在 Docker logs 中可见
         import sys

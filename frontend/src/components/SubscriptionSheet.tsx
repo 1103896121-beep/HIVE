@@ -252,7 +252,7 @@ export function SubscriptionSheet({ userId, trialStatus, onSuccess, onClose, onA
                     return;
                 }
 
-                setStatusText(t('subscription.waiting_apple', 'Waiting for App Store...'));
+                setStatusText(t('subscription.waiting_apple', '正在安全拉起 Apple 支付...'));
 
                 const result = await offer.order();
                 console.log('[IAP] Order result:', result);
