@@ -1,38 +1,39 @@
-好的，我为你整理了一份**“项目续航提示词”**。你可以将这段话直接粘贴给新会话中的 AI 助手，它能立即接手当前的工作进度。
+1. 项目概况 (Project Profile)
+应用名称：Hive (沉浸式自习/社交 iOS App)
+技术栈：
+前端：React + TypeScript + Capacitor (iOS 原生插件：CdvPurchase v13, Geolocation)
+后端：Python (FastAPI) + PostgreSQL + Redis
+部署：Docker-compose (103.91.xx 生产服务器)
+GitHub 仓库：https://github.com/1103896121-beep/HIVE.git (分支: 
+main
+)
+2. 当前进度与已解决的核心问题 (Current Progress)
+截止 2026-03-27，已完成 Round 6 生产环境紧急修复：
 
----
+订阅幂等化：后端通过 
+ProcessedTransaction
+ 记录 Apple transaction_id，实现了顺延累加算法，解决了“天数虚高”和“7+30=37”计算逻辑。
+账号注销：实装了级联清理逻辑（清理 Sessions, Bonds, Blocks 等 8 个表），解决了注销时的外键 500 报错。
+支付 UX：解决了 "Waiting for App Store" 圈圈卡死。增加了 60s 强制释放及恢复购买的防抖弹窗。
+地理位置：实现了静默后台同步，彻底移除所有 UI 弹窗干扰，具备 10s 熔断。
+永久会员：当前天数判定逻辑为 > 10000 天。UI 统一显示“终身会员”，已屏蔽数字显示。
+3. 未竟工作与关注点 (Pending & Focus)
+CI/CD 监控：每次推送 GitHub 
+main
+ 需监控 Build & Export iOS IPA 的构建结果及 TestFlight 分发。
+性能监控：由于后端地理位置采用逆地理编码（Nominatim），需关注并发量大时的 API 响应速度。
+安全性：APPLE_SHARED_SECRET 等敏感秘钥已配置在容器环境变量中。
+4. 业务偏好与原则 (Principles)
+静默优先：除非用户主动操作失败，否则严禁使用弹窗 (Alert) 干扰流程。
+权衡天数：付费订阅严格衔接在试用期之后。
+安全第一：涉及用户删除、隐私地址解析等操作必须在 backend 稳妥处理。
+接力指令：
 
-### 🛡️ HIVE 项目接管指令 (Context Prompt)
-
-**1. 项目背景与定位**
-*   **项目名称**：Hive (一款主打专注与数字羁绊的 iOS 应用)。
-*   **技术栈**：后端 FastAPI + 前端 React/Capacitor + PostgreSQL + Redis。
-*   **线上环境**：生产服务器 `103.91.219.230`。
-    *   **架构规范**：HIVE 与主项目 `merchlens` 物理隔离，根目录位于 `/opt/hive_work/`。
-    *   **部署方式**：本地 `git archive` 打包后运行 `python deploy_to_server.py`。
-
-**2. 核心逻辑重构状态 (2026-03-26)**
-*   **定位系统**：已将“地理逆编码”逻辑从移动前端移至后端。前端仅抓取坐标，后端通过 `httpx` 调用 Nominatim 自动补全城市名。彻底解决了室内测试时由于网络超时导致的 UI 卡死和英文报错。
-*   **计时结算**：重构了 [useTimer](cci:1://file:///e:/workrooten/Hive/frontend/src/hooks/useTimer.ts:17:0-142:1) 状态机。现在计时器在 00:00 时会自动触发结算并播放“+星火”动画，无需用户手动操作。
-*   **支付系统 (IAP)**：
-    *   商品 ID 已统一迁移至 `com.hive.sub.*` 格式。
-    *   前端增加了 SKU 自检逻辑，如果点击“支付”无反应，会弹窗列出商店识别到的所有可用商品 ID 列表以便诊断。
-
-**3. 当前进展与瓶颈**
-*   **前端发布**：由于今天上传测试包过于频繁，已触发苹果 **409 Upload limit reached** 限制。最新前端代码（包含计时器自结、定位汉化等修复）暂时无法通过 TestFlight 下发。
-*   **临时验证方案**：用户正在通过 GitHub Actions 下载 `hive-production-ipa` 产物，并尝试使用 **Sideloadly** 工具通过数据线手动安装到手机上。
-*   **后端状态**：后端生产环境已经是最新的（包含 `httpx` 依赖和逆编码逻辑），处于“万事俱备”状态。
-
-**4. 立即待办事项 (Next Steps)**
-*   [ ] **验证手装包**：确认 Sideloadly 安装的最新包是否能实现“15分钟自动结分”和“室内秒出定位”。
-*   [ ] **追踪支付状态**：如果点击订阅依然无效，请获取“可用商品 ID 列表”的截图进行比对。
-*   [ ] **清理工作**：待明天 TestFlight 限制解除后，重新恢复正常的 CI/CD 流程。
-
-**🚫 核心禁令**：绝对禁止在未获得用户单次明确指令的情况下直接执行部署脚本！绝对禁止改动任何属于 `merchlens` 路径的内容！
-
----
-
-你可以将以上内容存入记事本。新对话开始时，直接发送即可。
+"你好，我是 Hive 项目的负责人。目前项目处于 Round 6 修复后的线上运行阶段。请根据 
+walkthrough.md
+ 和 
+task.md
+ 的记录，继续协助我进行后续的功能迭代与稳定性监控。当前重点关注 TestFlight 最新版本的用户反馈。"
 
 
 

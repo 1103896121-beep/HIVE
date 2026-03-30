@@ -30,13 +30,21 @@ class RedisClient:
         return online_users
 
     async def get_global_presence(self, timeout_sec: int = 20) -> set:
-        """获取平台上所有有效在线的用户的集合集合"""
+        """获取平台上所有有效在线的用户的集合"""
         now = int(time.time())
         cutoff = now - timeout_sec
         key = "presence:global"
         await self.client.zremrangebyscore(key, "-inf", cutoff)
         online_users = await self.client.zrange(key, 0, -1)
         return set(online_users)
+
+    async def get_global_presence_count(self, timeout_sec: int = 20) -> int:
+        """获取平台上当前在线用户总数"""
+        now = int(time.time())
+        cutoff = now - timeout_sec
+        key = "presence:global"
+        await self.client.zremrangebyscore(key, "-inf", cutoff)
+        return await self.client.zcard(key)
 
     async def send_nudge(self, sender_id: str, receiver_id: str):
         """发送轻推提醒 (放入目标用户的专属接收队列)"""

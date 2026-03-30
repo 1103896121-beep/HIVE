@@ -91,6 +91,8 @@ export const presenceService = {
         apiClient.post<{ status: string; online_users: string[]; nudges: { sender_id: string }[] }>('/presence/heartbeat', { squad_id: squadId }),
     nudge: (receiverId: string) =>
         apiClient.post<{ status: string }>('/presence/nudge', { receiver_id: receiverId }),
+    getStats: () =>
+        apiClient.get<{ total_online: number; active_hives: number; total_sparks_today: number }>('/presence/stats'),
 };
 
 export const subscriptionService = {

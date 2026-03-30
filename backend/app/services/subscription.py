@@ -26,7 +26,7 @@ class SubscriptionService:
             "com.hive.sub.monthly": 30,
             "com.hive.sub.quarterly": 90,
             "com.hive.sub.annual": 365,
-            "com.hive.lifetime": 36500
+            "com.hive.lifetime": 30000  # Standardized to 30000 as per requirement
         }
 
         # 2. 生产环境验证请求
@@ -97,7 +97,11 @@ class SubscriptionService:
         await UserRepository.commit(db)
         
         print(f"[APPLE-IAP] User {user_id} processed {new_transactions_count} new transactions. Final expiry: {user.subscription_end_at}", file=sys.stderr)
-        return {"status": "success", "expires_at": user.subscription_end_at}
+        return {
+            "status": "success", 
+            "expires_at": user.subscription_end_at,
+            "new_transactions_count": new_transactions_count
+        }
 
     @staticmethod
     async def subscribe(db: AsyncSession, user_id: UUID, plan: str) -> Dict[str, Any]:
@@ -113,7 +117,7 @@ class SubscriptionService:
             "monthly": 30,
             "quarterly": 90,
             "yearly": 365,
-            "lifetime": 36500
+            "lifetime": 30000
         }
         
         if plan not in PLAN_DURATION:

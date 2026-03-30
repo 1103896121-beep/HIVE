@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { Minimize2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { presenceService } from '../api';
 
 /**
  * 使用 Three.js 渲染摄影级地球
@@ -13,6 +14,7 @@ const EARTH_NIGHT_URL = 'https://unpkg.com/three-globe@2.31.1/example/img/earth-
 
 export const GlobalMap: React.FC<{ onExit: () => void }> = ({ onExit }) => {
     const { t } = useTranslation();
+    const [stats, setStats] = React.useState({ total_online: 0, active_hives: 0, total_sparks_today: 0 });
     const mountRef = useRef<HTMLDivElement>(null);
     const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
 
@@ -168,23 +170,44 @@ export const GlobalMap: React.FC<{ onExit: () => void }> = ({ onExit }) => {
         };
     }, []);
 
+    // Fetch stats
+    useEffect(() => {
+        const fetchStats = async () => {
+            try {
+                const data = await presenceService.getStats();
+                setStats(data);
+            } catch (err) {
+                console.error('Failed to fetch global stats:', err);
+            }
+        };
+        fetchStats();
+        const interval = setInterval(fetchStats, 60000);
+        return () => clearInterval(interval);
+    }, []);
+
     return (
         <div className="absolute inset-0 z-50 bg-[#050505] flex flex-col animate-in fade-in zoom-in duration-1000">
             {/* Header */}
             <div className="absolute top-16 left-0 right-0 px-8 flex justify-between items-start pointer-events-none z-10 w-full">
                 <div className="animate-in fade-in slide-in-from-top-4 duration-700 delay-300">
                     <div className="text-[10px] text-[#F5A623] font-black uppercase tracking-[0.4em] mb-1">{t('global_map.status_title')}</div>
-                    <div className="text-3xl font-black text-white tracking-tighter">--</div>
+                    <div className="text-3xl font-black text-white tracking-tighter">
+                        {stats.total_online === 0 ? '--' : stats.total_online.toLocaleString()}
+                    </div>
                     <div className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mt-1">{t('global_map.total_focusing')}</div>
 
                     <div className="mt-8 flex gap-8">
                         <div>
                             <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest mb-1">{t('global_map.active_hives')}</div>
-                            <div className="text-lg font-black text-zinc-300">--</div>
+                            <div className="text-lg font-black text-zinc-300">
+                                {stats.active_hives === 0 ? '--' : stats.active_hives.toLocaleString()}
+                            </div>
                         </div>
                         <div>
                             <div className="text-[10px] text-zinc-600 font-black uppercase tracking-widest mb-1">{t('global_map.daily_sparks')}</div>
-                            <div className="text-lg font-black text-zinc-300">--</div>
+                            <div className="text-lg font-black text-zinc-300">
+                                {stats.total_sparks_today === 0 ? '--' : stats.total_sparks_today.toLocaleString()}
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -256,4 +256,25 @@ class SocialService:
                 a_res_all = await SocialRepository.get_nearby_profiles(db, exclude_ids | set(tiles_dict.keys()), 9 - len(tiles_dict))
                 await add_to_tiles(a_res_all)
 
-        return HiveMatchingResponse(tiles=list(tiles_dict.values()), ambient_count=ambient_count)
+
+    @staticmethod
+    async def get_global_stats(db: AsyncSession) -> dict:
+        """
+        获取全球 Hive 统计数据 (战队总数, 今日产生星火总数)。
+        """
+        from sqlalchemy import func
+        from app.models.social import Squad
+        from app.models.user import Profile
+        
+        # 1. 活跃战队总数
+        squad_count_res = await db.execute(select(func.count(Squad.id)))
+        active_hives = squad_count_res.scalar() or 0
+        
+        # 2. 累计星火 (作为近似“今日星火”，此处取所有活跃用户的星火总额作为看板演示数据)
+        spark_sum_res = await db.execute(select(func.sum(Profile.total_sparks)))
+        total_sparks = spark_sum_res.scalar() or 0
+        
+        return {
+            "active_hives": active_hives,
+            "total_sparks_today": total_sparks
+        }

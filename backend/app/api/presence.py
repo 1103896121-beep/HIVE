@@ -49,3 +49,24 @@ async def send_nudge(
     """
     await redis_client.send_nudge(str(current_user.id), request.receiver_id)
     return {"status": "ok", "message": "Nudge sent"}
+
+@router.get("/stats")
+async def get_global_stats():
+    """
+    获取 Hive 全球实时统计数据。
+    """
+    from app.services.social import SocialService
+    from app.core.database import AsyncSessionLocal
+    
+    # 1. 在线人数 (来自 Redis)
+    total_online = await redis_client.get_global_presence_count()
+    
+    # 2. 活跃战队与累计星火 (来自 DB)
+    async with AsyncSessionLocal() as db:
+        stats = await SocialService.get_global_stats(db)
+    
+    return {
+        "total_online": total_online,
+        "active_hives": stats["active_hives"],
+        "total_sparks_today": stats["total_sparks_today"]
+    }

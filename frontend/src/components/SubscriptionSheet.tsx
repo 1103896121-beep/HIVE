@@ -33,6 +33,7 @@ export function SubscriptionSheet({ userId, trialStatus, onSuccess, onClose, onA
     const safetyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const storeInitializedRef = useRef(false);
     const hasAlertedSuccessRef = useRef(false);
+    const lastUserActionRef = useRef<'purchase' | 'restore' | null>(null);
 
     useEffect(() => {
         isMountedRef.current = true;
@@ -113,13 +114,24 @@ export function SubscriptionSheet({ userId, trialStatus, onSuccess, onClose, onA
                         const expires = resp.expires_at || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
                         onSuccess(expires);
                         
-                        // NOTE: 仅弹出一次成功提示，防止恢复多笔订单时弹窗堆叠
-                        if (!hasAlertedSuccessRef.current) {
+                        // NOTE: 仅弹出一次成功提示，并且必须是用户在本会话中主动发起的购买或恢复
+                        if (!hasAlertedSuccessRef.current && lastUserActionRef.current) {
                             hasAlertedSuccessRef.current = true;
+                            const isRestore = lastUserActionRef.current === 'restore';
+                            const newCount = (resp as any).new_transactions_count || 0;
+                            
                             const successTitle = t('common.success');
-                            const successMsg = isRestoring ? t('subscription.restore_success') : t('subscription.success_msg', { plan: 'Premium' });
+                            let successMsg = t('subscription.success_msg', { plan: 'Premium' });
+                            
+                            if (isRestore) {
+                                successMsg = newCount > 0 
+                                    ? t('subscription.restore_success') 
+                                    : t('subscription.already_up_to_date', 'Subscription is already up to date.');
+                            }
+                            
                             onAlert(successTitle, successMsg);
                             onClose();
+                            lastUserActionRef.current = null;
                         }
                     }
                 } else {
@@ -193,7 +205,7 @@ export function SubscriptionSheet({ userId, trialStatus, onSuccess, onClose, onA
     const handlePurchase = async (sku: string) => {
         try {
             setIsLoading(true);
-            setIsRestoring(false); // 明确标记为非恢复流程
+            lastUserActionRef.current = 'purchase';
             setStatusText(t('subscription.processing', 'Processing...'));
 
             if (Capacitor.isNativePlatform()) {
@@ -227,6 +239,10 @@ export function SubscriptionSheet({ userId, trialStatus, onSuccess, onClose, onA
 
                 const result = await offer.order();
                 console.log('[IAP] Order result:', result);
+                
+                // 只要调用成功（由 Apple 接管 UI），就立即释放 Hive 端的 Loading 蒙层
+                // 这样用户在 Apple 支付界面操作时，Hive 不会卡在“等待支付完成”的模糊层
+                safeResetLoading();
 
                 if (result && 'isError' in result) {
                     const err = result as any;
@@ -294,7 +310,7 @@ export function SubscriptionSheet({ userId, trialStatus, onSuccess, onClose, onA
 
         try {
             setIsLoading(true);
-            setIsRestoring(true); // 标记当前为恢复购买来源
+            lastUserActionRef.current = 'restore';
             hasAlertedSuccessRef.current = false; // 重置标识位
             setStatusText(t('subscription.restoring', 'Restoring purchases...'));
 
