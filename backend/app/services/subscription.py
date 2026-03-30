@@ -1,4 +1,5 @@
 import os
+from uuid import UUID
 import requests
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.user import User, ProcessedTransaction
