@@ -77,22 +77,27 @@ class SubscriptionService:
         unique_purchases.sort(key=lambda x: float(x.get("purchase_date_ms", 0)))
         
         new_transactions_count = 0
+        added_days_total = 0
         for p in unique_purchases:
             t_id = str(p.get("transaction_id"))
             p_id = p.get("product_id")
             
-            if p_id not in PRODUCT_DURATION: continue
+            if p_id not in PRODUCT_DURATION: 
+                print(f"[APPLE-IAP] Unknown product_id: {p_id}", file=sys.stderr)
+                continue
             
             # 幂等性检查：如果此交易已处理过，则跳过
             if await UserRepository.is_transaction_processed(db, t_id):
                 continue
 
             # 确定累加基准：max(当前时间, 试用期结束, 当前已有的订阅结束时间)
+            # NOTE: 如果用户已经过期，从现在开始加；如果还没过期，顺延
             current_base = max(datetime.utcnow(), trial_end, user.subscription_end_at or datetime.min)
             
             # 累加天数
             days = PRODUCT_DURATION[p_id]
             user.subscription_end_at = current_base + timedelta(days=days)
+            added_days_total += days
             
             # 记录交易
             p_date_ms = float(p.get("purchase_date_ms", 0))
@@ -105,11 +110,13 @@ class SubscriptionService:
             )
             await UserRepository.record_transaction(db, new_tx)
             new_transactions_count += 1
+            print(f"[APPLE-IAP] Processed TID {t_id} for {p_id} (+{days} days)", file=sys.stderr)
 
-        # 4. 更新数据库
-        await UserRepository.commit(db)
+        # 4. 更新前端显示的过期时间
+        if new_transactions_count > 0:
+            await UserRepository.commit(db)
         
-        print(f"[APPLE-IAP] User {user_id} processed {new_transactions_count} new transactions. Final expiry: {user.subscription_end_at}", file=sys.stderr)
+        print(f"[APPLE-IAP] User {user_id} summary: {new_transactions_count} new tx, +{added_days_total} days. Expiry: {user.subscription_end_at}", file=sys.stderr)
         return {
             "status": "success", 
             "expires_at": user.subscription_end_at,

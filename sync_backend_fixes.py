@@ -8,7 +8,10 @@ password = 'cK.7+j%hRCW+}LeD'
 # Files to sync
 files_to_sync = [
     (r'e:\workrooten\Hive\backend\app\api\__init__.py', '/opt/hive_work/backend/app/api/__init__.py'),
-    (r'e:\workrooten\Hive\backend\app\services\subscription.py', '/opt/hive_work/backend/app/services/subscription.py')
+    (r'e:\workrooten\Hive\backend\app\services\subscription.py', '/opt/hive_work/backend/app/services/subscription.py'),
+    (r'e:\workrooten\Hive\backend\app\services\social.py', '/opt/hive_work/backend/app/services/social.py'),
+    (r'e:\workrooten\Hive\backend\app\core\config.py', '/opt/hive_work/backend/app/core/config.py'),
+    (r'e:\workrooten\Hive\backend\app\core\email.py', '/opt/hive_work/backend/app/core/email.py')
 ]
 
 def sync_and_restart():
@@ -26,10 +29,12 @@ def sync_and_restart():
         
         sftp.close()
         
-        print("Restarting backend container: hive_work-backend-1...")
-        ssh.exec_command("docker restart hive_work-backend-1")
+        print("Rebuilding backend container...")
+        stdin, stdout, stderr = ssh.exec_command("cd /opt/hive_work && docker-compose up -d --build backend")
+        print(stdout.read().decode())
+        print(stderr.read().decode())
         
-        print("[SUCCESS] Production backend updated and restarted.")
+        print("[SUCCESS] Production backend updated and rebuilt.")
         
     except Exception as e:
         print(f"[ERROR] Syncing failed: {e}")

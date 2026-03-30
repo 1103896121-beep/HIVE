@@ -253,8 +253,9 @@ class SocialService:
             await add_to_tiles(profiles)
         else:
             if len(tiles_dict) < 9:
-                a_res_all = await SocialRepository.get_nearby_profiles(db, exclude_ids | set(tiles_dict.keys()), 9 - len(tiles_dict))
                 await add_to_tiles(a_res_all)
+
+        return HiveMatchingResponse(tiles=list(tiles_dict.values()), ambient_count=ambient_count)
 
 
     @staticmethod

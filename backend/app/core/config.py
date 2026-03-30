@@ -49,14 +49,19 @@ class Settings(BaseSettings):
     # Redis 配置 (用于短连接状态长轮询与心跳)
     REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
     
-    # 邮件配置 (SMTP)
+    # 邮件配置 (SMTP / Resend)
     SMTP_TLS: bool = True
     SMTP_PORT: Optional[int] = 587
     SMTP_HOST: Optional[str] = "smtp.gmail.com"
     SMTP_USER: Optional[str] = None
     SMTP_PASSWORD: Optional[str] = None
-    EMAILS_FROM_EMAIL: Optional[str] = "info@hiveapp.com"
-    EMAILS_FROM_NAME: Optional[str] = "Hive Support"
+    
+    # Resend API 配置
+    RESEND_API_KEY: Optional[str] = os.getenv("RESEND_API_KEY")
+    RESEND_FROM_EMAIL: Optional[str] = os.getenv("RESEND_FROM_EMAIL", "noreply@hive.app")
+    
+    EMAILS_FROM_EMAIL: Optional[str] = os.getenv("RESEND_FROM_EMAIL", "info@hiveapp.com")
+    EMAILS_FROM_NAME: Optional[str] = os.getenv("SMTP_FROM_NAME", "Hive Support")
 
     class Config:
         env_file = ".env"

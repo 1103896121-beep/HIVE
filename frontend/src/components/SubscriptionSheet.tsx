@@ -110,6 +110,9 @@ export function SubscriptionSheet({ userId, trialStatus, onSuccess, onClose, onA
 
                     if (resp.status === 'success' && isMountedRef.current) {
                         const expires = resp.expires_at || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+                        
+                        // NOTE: 先停止 Loading 再触发跳转/弹窗，避免 UI 阻塞
+                        safeResetLoading();
                         onSuccess(expires);
                         
                         // NOTE: 仅弹出一次成功提示，并且必须是用户在本会话中主动发起的购买或恢复
@@ -131,6 +134,8 @@ export function SubscriptionSheet({ userId, trialStatus, onSuccess, onClose, onA
                             onClose();
                             lastUserActionRef.current = null;
                         }
+                    } else {
+                        safeResetLoading();
                     }
                 } else {
                     // 收据为空但 Apple 已批准 — 仍标记成功
@@ -149,13 +154,12 @@ export function SubscriptionSheet({ userId, trialStatus, onSuccess, onClose, onA
                 transaction.finish();
             } catch (err: any) {
                 console.error('[IAP] Receipt verification error:', err);
+                safeResetLoading();
                 if (isMountedRef.current) {
                     onAlert(t('common.error'), err?.message || t('subscription.verify_failed'));
                 }
                 // 即使验证失败也 finish 交易，避免 Apple 重复扣款
                 transaction.finish();
-            } finally {
-                safeResetLoading();
             }
         });
 
