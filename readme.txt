@@ -44,3 +44,7 @@ https://1103896121-beep.github.io/HIVE/privacy_en.html
 https://1103896121-beep.github.io/HIVE/eula_en.html
 专用共享密钥：
 63e3a31c98b147b89344d8caba4b321f
+
+根据E:\workrooten\Hive\docs中的HIVE_线上服务架构.md和生产环境.md  的要求去做，不要碰任何merchlens项目的东西
+
+把最新的后端代码，根据上面的文档要求，提交到后端服务器进行覆盖更新，记住不要动任何merchlens项目的东西

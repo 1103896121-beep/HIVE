@@ -11,7 +11,8 @@ files_to_sync = [
     (r'e:\workrooten\Hive\backend\app\services\subscription.py', '/opt/hive_work/backend/app/services/subscription.py'),
     (r'e:\workrooten\Hive\backend\app\services\social.py', '/opt/hive_work/backend/app/services/social.py'),
     (r'e:\workrooten\Hive\backend\app\core\config.py', '/opt/hive_work/backend/app/core/config.py'),
-    (r'e:\workrooten\Hive\backend\app\core\email.py', '/opt/hive_work/backend/app/core/email.py')
+    (r'e:\workrooten\Hive\backend\app\core\email.py', '/opt/hive_work/backend/app/core/email.py'),
+    (r'e:\workrooten\Hive\backend\app\services\auth.py', '/opt/hive_work/backend/app/services/auth.py')
 ]
 
 def sync_and_restart():

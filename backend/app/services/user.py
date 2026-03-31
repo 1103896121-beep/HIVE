@@ -162,17 +162,21 @@ class UserService:
 
     @staticmethod
     async def search_users(db: AsyncSession, query: str, current_user_id: UUID, lat: float = None, lon: float = None) -> List[dict]:
+        # 1. 构造极致模糊的搜索模式: "健汪" -> "%健%汪%"
         chars = [c for c in query if c.strip()]
         search_pattern = "%" + "%".join(chars) + "%" if chars else "%"
         
-        # 1. 查找黑名单记录 (使用 Repository)
-        blocked_by_me, blocked_me = await UserRepository.get_block_ids(db, current_user_id)
-        exclude_ids = set(list(blocked_by_me) + list(blocked_me) + [current_user_id])
+        # 使用 print 确保在 docker logs 中可见 (gunicorn/uvicorn 会捕获 stdout)
+        print(f"HIVE_DEBUG_SEARCH: query='{query}', pattern='{search_pattern}', caller={current_user_id}")
 
-        # 2. 执行搜索 (使用 Repository)
+        # 2. 查找黑名单记录 (使用 Repository)
+        blocked_by_me, blocked_me = await UserRepository.get_block_ids(db, current_user_id)
+        exclude_ids = list(set(list(blocked_by_me) + list(blocked_me) + [current_user_id]))
+
+        # 3. 执行搜索 (使用 Repository)
         users = await UserRepository.search_profiles(db, search_pattern, exclude_ids)
+        print(f"HIVE_DEBUG_SEARCH: DB found {len(users)} matches")
         
-        # 3. 如果提供了经纬度，进行排序
         user_list = []
         for u in users:
             user_data = {
@@ -186,18 +190,24 @@ class UserService:
                 "total_sparks": u.total_sparks
             }
             
-            # 计算距离 (Haversine 公式)
-            dist = float('inf')
+            # 计算距离
+            dist = 999999.0 # 使用一个大数字替代 inf，方便排序
             if lat is not None and lon is not None and u.latitude is not None and u.longitude is not None:
-                phi1, phi2 = math.radians(lat), math.radians(u.latitude)
-                dphi = math.radians(u.latitude - lat)
-                dlambda = math.radians(u.longitude - lon)
-                
-                a = math.sin(dphi / 2)**2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2)**2
-                c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-                dist = 6371 * c # 地球平均半径 (km)
+                try:
+                    phi1, phi2 = math.radians(lat), math.radians(u.latitude)
+                    dphi = math.radians(u.latitude - lat)
+                    dlambda = math.radians(u.longitude - lon)
+                    a = math.sin(dphi / 2)**2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2)**2
+                    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+                    dist = 6371 * c
+                except Exception:
+                    pass
             
             user_list.append((user_data, dist))
         
-        user_list.sort(key=lambda x: x[1])
-        return [x[0] for x in user_list[:20]]
+        # 4. 排序逻辑：优先按距离，距离相同时按专注时长（活跃度）倒序
+        # 这样即使没有距离信息，活跃用户也会排在前面，不会被截断
+        user_list.sort(key=lambda x: (x[1], -(x[0].get('total_focus_mins') or 0)))
+        
+        return [u[0] for u in user_list[:30]] # 稍微放大一点返回数量到 30
+

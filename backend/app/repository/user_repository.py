@@ -86,6 +86,7 @@ class UserRepository:
                         Profile.name.ilike(search_pattern),
                         User.email.ilike(search_pattern)
                     ),
+                    User.is_active == True,
                     User.id.not_in(exclude_ids)
                 )
             )
