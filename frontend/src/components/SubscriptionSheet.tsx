@@ -109,7 +109,7 @@ export function SubscriptionSheet({ userId, trialStatus, onSuccess, onClose, onA
                     console.log('[IAP] Backend verify response:', resp);
 
                     if (resp.status === 'success' && isMountedRef.current) {
-                        const expires = resp.expires_at || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+                        const expires = resp.expires_at; // MUST use backend returned time to ensure trial + purchase accumulation
                         
                         // NOTE: 先停止 Loading 再触发跳转/弹窗，避免 UI 阻塞
                         safeResetLoading();
@@ -141,7 +141,8 @@ export function SubscriptionSheet({ userId, trialStatus, onSuccess, onClose, onA
                     // 收据为空但 Apple 已批准 — 仍标记成功
                     console.warn('[IAP] No receipt data, Apple already approved. Marking success.');
                     if (isMountedRef.current) {
-                        onSuccess(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString());
+                        // If Apple approved but receipt is empty, we must trigger a profile refresh rather than guessing 30 days
+                        onSuccess(''); 
                         const isRestore = lastUserActionRef.current === 'restore';
                         const successMsg = isRestore ? t('subscription.restore_success') : t('subscription.success_msg', { plan: 'Premium' });
                         onAlert(t('common.success'), successMsg);
@@ -289,7 +290,7 @@ export function SubscriptionSheet({ userId, trialStatus, onSuccess, onClose, onA
                     try {
                         const resp = await subscriptionService.subscribe(userId, mapPlan());
                         if (resp.status === 'success') {
-                            onSuccess(resp.expires_at || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString());
+                            onSuccess(resp.expires_at);
                             onAlert(t('common.success'), t('subscription.success_msg', { plan: 'Premium' }));
                             onClose();
                         }

@@ -61,7 +61,7 @@ export function useHiveSocket(userId: string, squadId?: string) {
 
         // 立即发一次，然后每 10 秒轮询一次心跳
         poll();
-        const timer = setInterval(poll, 10000);
+        const timer = setInterval(poll, 30000);
 
         return () => {
             isMounted = false;

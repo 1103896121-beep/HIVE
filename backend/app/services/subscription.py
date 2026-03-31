@@ -80,7 +80,11 @@ class SubscriptionService:
         if not user:
              raise ValueError("User not found")
         
-        trial_end = user.trial_start_at + timedelta(days=7)
+        # 确定试用期结束时间 (防御性校验 trial_start_at)
+        t_start = user.trial_start_at or user.created_at or datetime.utcnow()
+        trial_end = t_start + timedelta(days=7)
+        
+        print(f"[APPLE-IAP] User {user_id} | Trial Start: {t_start} | Trial End: {trial_end}", file=sys.stderr)
         
         receipt = data.get("receipt", {})
         # subscriptions should also check latest_receipt_info if available (requires shared secret)
@@ -115,8 +119,12 @@ class SubscriptionService:
                 continue
 
             # 确定累加基准：max(当前时间, 试用期结束, 当前已有的订阅结束时间)
-            # NOTE: 如果用户已经过期，从现在开始加；如果还没过期，顺延
-            current_base = max(datetime.utcnow(), trial_end, user.subscription_end_at or datetime.min)
+            # NOTE: 关键修复点：确保 trial_end 始终参与 max 判定，保护 7 天试用不被覆盖
+            now_utc = datetime.utcnow()
+            current_expiry = user.subscription_end_at or datetime.min
+            current_base = max(now_utc, trial_end, current_expiry)
+            
+            print(f"[APPLE-IAP] Calculation for TID {t_id}: now={now_utc}, trial_end={trial_end}, current_expiry={current_expiry} -> Base: {current_base}", file=sys.stderr)
             
             # 累加天数
             days = PRODUCT_DURATION[p_id]
@@ -134,13 +142,13 @@ class SubscriptionService:
             )
             await UserRepository.record_transaction(db, new_tx)
             new_transactions_count += 1
-            print(f"[APPLE-IAP] Processed TID {t_id} for {p_id} (+{days} days)", file=sys.stderr)
+            print(f"[APPLE-IAP] Processed TID {t_id} for {p_id} (+{days} days) -> New Expiry: {user.subscription_end_at}", file=sys.stderr)
 
         # 4. 更新前端显示的过期时间
         if new_transactions_count > 0:
             await UserRepository.commit(db)
         
-        print(f"[APPLE-IAP] User {user_id} summary: {new_transactions_count} new tx, +{added_days_total} days. Expiry: {user.subscription_end_at}", file=sys.stderr)
+        print(f"[APPLE-IAP] User {user_id} Final Summary: {new_transactions_count} new tx, +{added_days_total} days. Final Expiry: {user.subscription_end_at}", file=sys.stderr)
         return {
             "status": "success", 
             "expires_at": user.subscription_end_at,

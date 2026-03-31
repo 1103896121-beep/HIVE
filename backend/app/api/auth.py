@@ -60,9 +60,8 @@ async def apple_login(apple_in: AppleLogin, response: Response, db: AsyncSession
         return {"user_id": res["user_id"], "access_token": res["access_token"]}
     except ValueError as e:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e),
-            headers={"WWW-Authenticate": "Bearer"},
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
         )
 
 @router.post("/register", response_model=LoginResponse)
@@ -96,7 +95,6 @@ async def login(user_in: UserLogin, response: Response, db: AsyncSession = Depen
         return {"user_id": res["user_id"], "access_token": res["access_token"]}
     except ValueError as e:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e),
-            headers={"WWW-Authenticate": "Bearer"},
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
         )

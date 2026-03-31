@@ -31,7 +31,7 @@ class RedisClient:
         online_users = await self.client.zrange(key, 0, -1)
         return online_users
 
-    async def get_global_presence(self, timeout_sec: int = 20) -> set:
+    async def get_global_presence(self, timeout_sec: int = 45) -> set:
         """获取平台上所有有效在线的用户的集合"""
         now = int(time.time())
         cutoff = now - timeout_sec
@@ -40,7 +40,7 @@ class RedisClient:
         online_users = await self.client.zrange(key, 0, -1)
         return set(online_users)
 
-    async def get_global_presence_count(self, timeout_sec: int = 20) -> int:
+    async def get_global_presence_count(self, timeout_sec: int = 45) -> int:
         """获取平台上当前在线用户总数"""
         now = int(time.time())
         cutoff = now - timeout_sec

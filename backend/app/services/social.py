@@ -272,15 +272,20 @@ class SocialService:
         from datetime import datetime
         
         # 1. 在线人数 (Redis 实时心跳)
-        total_online = await redis_client.get_global_presence_count()
+        online_users_set = await redis_client.get_global_presence(timeout_sec=45)
+        total_online = len(online_users_set) if online_users_set else 0
         
         # 2. 活跃 Hive (实际正在进行专注的用户终端总数)
-        # 统计所有 status='IN_PROGRESS' 的唯一用户数量
-        active_sessions_res = await db.execute(
-            select(func.count(FocusSession.user_id.distinct()))
-            .where(FocusSession.status == "IN_PROGRESS")
-        )
-        hives_count = active_sessions_res.scalar() or 0
+        # 统计所有 status='IN_PROGRESS' 的唯一用户数量，且该用户当前必须通过了心跳检测
+        hives_count = 0
+        if online_users_set:
+            import uuid
+            active_sessions_res = await db.execute(
+                select(func.count(FocusSession.user_id.distinct()))
+                .where(FocusSession.status == "IN_PROGRESS")
+                .where(FocusSession.user_id.in_([uuid.UUID(u) for u in online_users_set]))
+            )
+            hives_count = active_sessions_res.scalar() or 0
             
         # 3. 每日累计星火 (今天已完成的所有会话时长总和)
         today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)

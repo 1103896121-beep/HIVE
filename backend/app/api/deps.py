@@ -65,6 +65,6 @@ async def get_current_active_user(
     """
     确保用户帐号是激活状态的依赖项（目前默认为激活）。
     """
-    # if not current_user.is_active:
-    #     raise HTTPException(status_code=400, detail="Inactive user")
+    if not getattr(current_user, "is_active", True):
+        raise HTTPException(status_code=400, detail="账号已注销")
     return current_user

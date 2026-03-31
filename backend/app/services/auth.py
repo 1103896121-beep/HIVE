@@ -122,8 +122,14 @@ class AuthService:
         try:
             user = await UserRepository.get_user_by_email(db, email)
             
-            if not user or not verify_password(password, user.hashed_password):
-                raise ValueError("Incorrect email or password")
+            if not user:
+                raise ValueError("账号未注册")
+                
+            if getattr(user, "is_active", True) is False:
+                raise ValueError("账号已注销")
+                
+            if not verify_password(password, user.hashed_password):
+                raise ValueError("邮箱或密码错误")
                 
             access_token = create_access_token(subject=user.id)
             return {
