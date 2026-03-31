@@ -162,7 +162,8 @@ class UserService:
 
     @staticmethod
     async def search_users(db: AsyncSession, query: str, current_user_id: UUID, lat: float = None, lon: float = None) -> List[dict]:
-        search_pattern = f"%{query}%"
+        chars = [c for c in query if c.strip()]
+        search_pattern = "%" + "%".join(chars) + "%" if chars else "%"
         
         # 1. 查找黑名单记录 (使用 Repository)
         blocked_by_me, blocked_me = await UserRepository.get_block_ids(db, current_user_id)

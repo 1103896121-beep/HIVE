@@ -92,7 +92,8 @@ async def search_users(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
 ):
-    if not q or len(q) < 2:
+    q_stripped = q.strip() if q else ""
+    if not q_stripped:
         return []
         
-    return await UserService.search_users(db, q, current_user.id, lat, lon)
+    return await UserService.search_users(db, q_stripped, current_user.id, lat, lon)
