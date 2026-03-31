@@ -30,10 +30,10 @@ export const BondsPortal: React.FC<BondsPortalProps> = ({ bonds, userId, onNudge
 
     useEffect(() => {
         const delayDebounceFn = setTimeout(async () => {
-            if (searchQuery.length >= 2) {
+            if (searchQuery.trim().length >= 1) {
                 setIsSearching(true);
                 try {
-                    const results = await userService.searchUsers(searchQuery, mockLocation.lat, mockLocation.lon);
+                    const results = await userService.searchUsers(searchQuery.trim(), mockLocation.lat, mockLocation.lon);
                     // Filter self and existing
                     const existingBondIds = new Set(
                         bonds.flatMap(b => [b.user_id_1, b.user_id_2])
@@ -383,11 +383,7 @@ export const BondsPortal: React.FC<BondsPortalProps> = ({ bonds, userId, onNudge
                                 <div className="flex items-center justify-center h-32 text-zinc-500">
                                     <Loader2 className="animate-spin mr-2" size={20} /> {t('common.searching')}
                                 </div>
-                            ) : searchQuery.length > 0 && searchQuery.length < 2 ? (
-                                <div className="flex items-center justify-center h-32 text-zinc-600 text-xs font-bold uppercase tracking-widest text-center px-4">
-                                    {t('bonds.type_2_chars')}
-                                </div>
-                            ) : searchResults.length === 0 && searchQuery.length >= 2 ? (
+                            ) : searchResults.length === 0 && searchQuery.trim().length >= 1 ? (
                                 <div className="flex items-center justify-center h-32 text-zinc-600 text-xs font-bold uppercase tracking-widest text-center px-4">
                                     {t('bonds.no_users_found')}
                                 </div>
